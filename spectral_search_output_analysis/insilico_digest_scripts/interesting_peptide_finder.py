@@ -21,6 +21,8 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
         if len(keys)>0:
             for key in keys:
                 c_peplist=custom[key]
+                if len(keys)==2 and key==pid:
+                    key=pid+' h0'
                 dif=c_peplist.difference(peplist)
                 for pep in dif:
                     if determine_snv(pep,peplist):

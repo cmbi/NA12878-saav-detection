@@ -6,6 +6,6 @@ There is a jupyter notebook to test out functions and figures on a subset of the
 
 I run the jupyter notebook on a docker, which I bring up with the following commands:
 
-docker-compose build
-docker-compose up -d
-docker exec -it scripts_jupyter_1 bash -c 'jupyter notebook list' | grep http | cut -f1 -d ' ' | awk '{sub(/8888/, "8887")}1' | xargs open
+- docker-compose build
+- docker-compose up -d
+- docker exec -it scripts_jupyter_1 bash -c 'jupyter notebook list' | grep http | cut -f1 -d ' ' | awk '{sub(/8888/, "8887")}1' | xargs open

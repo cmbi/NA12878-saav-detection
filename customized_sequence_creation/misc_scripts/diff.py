@@ -25,23 +25,23 @@ def print_diff_lists(reference,custom,outfa,outfahet):
                 idline=line
             elif line.strip!='':
                 if reference_seqs[id]!= line.strip():
-                    idh=id+' h1'
-                    if id in het or idh in het:
+                    if id in het:
                         fh.writelines(idline+line)
                     else:
                         f.writelines(idline+line)
     return 'Fastas written'
                     
 def id_het(customfa):
+    '''sequences with heterozygous variants will have 2 sequences with the same id, save these identifiers'''
     het=Set()
     with open(customfa) as handle:
-        previd=''
+        recorded=Set()
         for line in handle:
             if line.startswith('>'):
                 id=re.split('\|',line,1)[0]
-                if id==previd:
+                if id in recorded:
                     het.add(id)
-                previd=id
+                recorded.add(id)
     return het
 
 

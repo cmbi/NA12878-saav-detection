@@ -66,8 +66,8 @@ def combine_exons(hap_exons,gff,isBed,outfile):
         if not kill:
             if AS:
                 count_allele_specific+=1
-                f.writelines('>'+transcript+' haplotype:0'+'\n'+sequence_zero+'\n')
-                f.writelines('>'+transcript+' haplotype:1'+'\n'+sequence_one+'\n')
+                f.writelines('>'+transcript+'_h0'+'\n'+sequence_zero+'\n')
+                f.writelines('>'+transcript+'_h1'+'\n'+sequence_one+'\n')
             else:
                 f.writelines('>'+transcript+'\n'+sequence_zero+'\n')
         sequence_zero=''

@@ -12,30 +12,30 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
     newall={}
     newsnv={}
     for pid,peplist in ref.iteritems():
-        idalt=pid+' h1'
+        idho=pid+'_h1'
+        idhz=pid+'_h0'
         keys=[]
-        if idalt in custom:
-            keys=[pid,idalt]
+        if idho in custom or idhz in custom:
+            keys=[idhz,idho]
         elif pid in custom:
             keys=[pid]
         if len(keys)>0:
             for key in keys:
-                c_peplist=custom[key]
-                if len(keys)==2 and key==pid:
-                    key=pid+' h0'
-                dif=c_peplist.difference(peplist)
-                for pep in dif:
-                    if determine_snv(pep,peplist):
-                        if key in newsnv:
-                            newsnv[key].add(pep)
+                if key in custom:
+                    c_peplist=custom[key]
+                    dif=c_peplist.difference(peplist)
+                    for pep in dif:
+                        if determine_snv(pep,peplist):
+                            if key in newsnv:
+                                newsnv[key].add(pep)
+                            else:
+                                newsnv[key]=Set()
+                                newsnv[key].add(pep)
+                        if key in newall:
+                            newall[key].add(pep)
                         else:
-                            newsnv[key]=Set()
-                            newsnv[key].add(pep)
-                    if key in newall:
-                        newall[key].add(pep)
-                    else:
-                        newall[key]=Set()
-                        newall[key].add(pep)
+                            newall[key]=Set()
+                            newall[key].add(pep)
     return newall,newsnv
 
 def determine_snv(peptide,plist):
@@ -61,8 +61,6 @@ def read_cpdt(cpdt):
             if line.startswith('>'):
                 key=line.strip()[1:]
                 key=key.split('|')[0]
-                if key in cpdt_pep: #2 haplotypes means 2x the same protein
-                    key=key+' h1'
                 cpdt_pep[key]=Set()
             elif 'PEPTIDE' in line:
                 lp=line.split('PEPTIDE ')[1]

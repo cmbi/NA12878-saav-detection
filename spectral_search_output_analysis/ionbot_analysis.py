@@ -75,82 +75,147 @@ def import_coding_transcriptids(sources):
                         transcript_ids.append(line.strip()[1:])
     return(transcript_ids)
 
-def detected_proteins(hits_df):
-    proteins_covered=Counter()
-    for row in ib_mutout_human_ont.iterrows():
-        protein=''
-        if '||' in row[1][9]:
-            ids=row[1][9].split('||')
-            for idu in ids:
-                proteins_covered[idu]+=1
-        else:
-            proteins_covered[row[1][9]]+=1
+def detected_proteins(row,pco):
+    proteins_covered=pco
+    if '||' in row[1][9]:
+        ids=row[1][9].split('||')
+        for idu in ids:
+            proteins_covered[idu]+=1
+    else:
+        proteins_covered[row[1][9]]+=1
     return(proteins_covered)
 
-def import_cpdt(cpdt, proteins_covered):
+def import_cpdt(cpdt,wantFull):
     ''' read the cpdt files into a data structure
-    importing only the peptides from proteins that were matched with ionbot (in the sample)
+    this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
+    {protein_ID:{pep1:0, pep2:0, pep3:0}}
     '''
     cpdt_pep={}
     full_seqs={}
     with open(cpdt) as c:
-        add=False
         for line in c:
             if line.startswith('>'):
                 key=line.strip()[1:]
-                if key in set(proteins_covered):
-                    add=True
-                    cpdt_pep[key]={}
-                    full_seqs[key]
-                else:
-                    add=False
-            elif add and 'PEPTIDE' in line:
+                if '|m.' in key:
+                    key=key.split('|m.')[0]
+                cpdt_pep[key]={}
+                full_seqs[key]=''
+            elif 'PEPTIDE' in line:
                 lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')[0]
+                if ':' in lp:
+                    lp=lp.split(':')[0]
                 cpdt_pep[key][lp]=0
-            elif add and 'PEPTIDE' not in line:
+            elif 'PEPTIDE' not in line:
                 full_seqs[key]=line.strip()
-    return(cpdt_pep, full_seqs)
+    if wantFull:
+        return(cpdt_pep, full_seqs)
+    return(cpdt_pep)
 
-
-def bin_hits_by_source(df):
-    '''sort peptide hits by their source'''
-    ref_only=set()
-    ont_only=set()
-    #ont_only_prot={}
-    both=set()
-    for row in ib_mutout_human_ont.iterrows():
-        if '||' in row[1][9]:
-            ids=row[1][9].split('||')
-            ont=False
-            ref=False
-            for i in ids:
-                if '|m.' in i: #assumes that the proteins from the reference were not generated with ANGEL
-                    ont=True
+def import_gff(gfffile,isBed):
+    '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
+    '''
+    chromdict={}
+    with open(gfffile) as handle:
+        for line in handle:
+            info=line.split('\t')
+            if len(info)>5:
+                if not isBed:
+                    if 'transcript_type=protein_coding' in line:
+                        tid=line.split('transcript_id=')[1]
+                        tid=tid.split(';')[0]
+                        chromdict[tid]=info[0]
                 else:
-                    ref=True
-            if ont and ref:
-                both.add(row[1][0])
-            elif ont:
-                ont_only.add(row[1][0])
-                #ont_only_prot[row[1][0]]=row[1][9]
-            elif ref:
-                ref_only.add(row[1][0])
+                    chromdict[info[3]]=info[0]
+    return(chromdict)
+
+def match_peps(row,cpdt_pep,olddetected):
+    '''match predicted mutated peptides to observed
+    how many unique variant peptides are detected, from how many unique proteins?
+    how many total instances of correct/incorrect variant peptides are detected?
+    build up the dictionary with every iteration of the 
+    '''
+    prot=row[1][9]
+    pep=row[1][3]
+    mod=str(row[1][7])
+    detected=olddetected
+    if '|m.' in prot:
+        prot=prot.split('|m.')[0]
+    if prot in cpdt_pep:
+        for p,ct in cpdt_pep.items():
+            if p==pep:
+                if prot not in detected:
+                    detected[prot]={}
+                detected[prot][pep]=ct
+    return(detected)
+
+def coverage_measure(cpdt_pep):
+    #high_cov_vert={}
+    high_cov_hor={}
+    perc_cov_dist=[]
+    vert_cov=[]
+    for p,peps in cpdt_pep.items():
+        seq=full_seqs[p]
+        remains=seq
+        count_pep=0
+        for s,c in peps.items():
+            if c>1: #increase this number with the whole dataset, "true" hit
+                count_pep+=c
+                if s in remains:
+                    remains=remains.replace(s,'')
+                else:
+                    prefix=re.split('R|K',s)
+                    for p in prefix:
+                        if len(p)>3 and p in remains:
+                            remains=remains.replace(p,'')
+        perc_cov=float((len(seq)-len(remains))/len(seq))*100
+        perc_cov_dist.append(perc_cov)
+        vert_cov.append(count_pep)
+        if perc_cov>50:
+            high_cov_hor[p]=peps
+    #if count_pep>100:
+    #    high_cov_vert[p]=peps
+    return(high_cov_hor,perc_cov_dist)
+
+def bin_hits_by_source(row,oro,ono,ob):
+    '''sort peptide hits by their source dictionary'''
+    ref_only=oro
+    ont_only=ono
+    both=ob
+    if '||' in row[1][9]:
+        ids=row[1][9].split('||')
+        ont=False
+        ref=False
+        for i in ids:
+            if '|m.' in i: #assumes that the proteins from the reference were not generated with ANGEL
+                ont=True
             else:
-                raise Exception('')
+                ref=True
+        if ont and ref:
+            both.add(row[1][0])
+        elif ont:
+            ont_only.add(row[1][0])
+        elif ref:
+            ref_only.add(row[1][0])
         else:
-            if 'HUMAN' in (row[1][9]):
-                ref_only.add(row[1][0])
-            else:
-                ont_only.add(row[1][0])
+            raise Exception('Unexpected protein found')
+    else:
+        if 'HUMAN' in (row[1][9]):
+            ref_only.add(row[1][0])
+        else:
+            ont_only.add(row[1][0])
     return(ref_only,ont_only,both)
+
 
 def plot_source_piechart():
     '''this function will plot the source piechart and save it to a pdf'''
     return 0
 
-def plot_coverage_plots():
-    '''this function will plot the graphs that correspond to the coverage of the proteome'''
+def plot_coverage_plots(cpdt_pep):
+    '''this function will plot the graphs that correspond to the coverage of the proteome
+    - vertical coverage
+    - horizontal coverage
+    - chromosome distribution
+    '''
     return 0
 
 def make_report(hits_df):
@@ -160,10 +225,38 @@ def make_report(hits_df):
     - how many unique proteins are found (and how many are in transcriptome v reference)
     - inventory PTMs (including how many SNVs there are)
     '''
+    uniquepeptides=hits_df['peptide'].nunique()
     return 0
 
     
+def main(directory):
+    '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
+    this is written in a way that iteration should only be done once.
+    '''
+    #imports
+    ibdf=concatenate_csvs(directory)
+    cpdt_pep,full_seqs=import_cpdt(cpdtfile,True) #import cpdt will all peptides (cat gencode and flair beforehand)
+    mut_cpdt_pep=import_cpdt(cpdtfile_mut,False) #import the cpdt file with all mutant peptides
+    chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
+    chromdict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
+    chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
+
     
+    #initialize data structures to collect information
+    proteins_covered=Counter() #proteins detected
+    detected={} #variant peptides detected
+    ref_only=set() #scan ids in the reference set
+    ont_only=set() #scan ids in the ont set
+    both=set() #scan ids that matched to both ref and ont proteins
+
+    #iterate to fill the data structures
+    for row in ibdf.iterrows():
+        proteins_covered=detected_proteins(row,proteins_covered) #what proteins from the proteome are covered and in what amounts
+        ref_only,ont_only,both=bin_hits_by_source(row,ref_only,ont_only,both) #what dictionaries do the hits come from
+        detected=match_peps(row,mut_cpdt_pep,detected) #what mutant peptides are detected, how many, and what proteins they come from
+
+    #create
+    return 0
     
     
     

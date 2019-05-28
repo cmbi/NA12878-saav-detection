@@ -24,6 +24,7 @@ def print_diff_lists(reference,custom,outfa,outfahet):
     altend=0
     frameshift=0
     SNP=0
+    indel=0
     different=open('different.fa','w')
     undef=open('uncat.fa', 'w')
     reference_seqs={} #store id:sequence
@@ -48,12 +49,25 @@ def print_diff_lists(reference,custom,outfa,outfahet):
                 if id in reference_seqs:
                     if reference_seqs[id]!= line.strip():
                         category=identify_interesting_events(reference_seqs[id], line.strip())
-                        if category==''
+                        if 'SNP' in category:
+                            SNP+=1
+                        if 'alternative end' in category:
+                            altend+=1
+                        if 'alternative start' in category:
+                            altstart+=1
+                        if 'frameshift' in category:
+                            frameshift+=1
+                        if 'indel' in category:
+                            indel+=1
+                        if 'different' in category:
+                            different.writelines(idline+reference_seqs[id]+'\n'+line)
+                        if 'undefined' in category:
+                            undef.writelines(idline+reference_seqs[id]+'\n'+line)
                         if het:
                             fh.writelines(idline+reference_seqs[id]+'\n'+line)
                         else:
                             f.writelines(idline+reference_seqs[id]+'\n'+line)
-    return 'Fastas written'
+    return str(SNP)+' containing SNP, '+str(altstart)+' alt start, '+str(altend)+' alt end, '+str(frameshift)+' frameshift, '+str(indel)+' indel'
 
 def identify_interesting_events(reference,custom):
     ''' input reference sequence and custom sequence and classify the event that occurred
@@ -81,7 +95,7 @@ def identify_interesting_events(reference,custom):
                 consecutive=0
         if consecutive>1:
             streak.append(consecutive)
-        if consecutive>15:
+        if consecutive>20:
             return "frameshift"
         if len(streak)>0 and sum(streak)>20:
             return 'different'
@@ -111,15 +125,15 @@ def tag_based_search(shorter,longer):
     '''in the case where imperfect match between 2 varied length strings, use tag based search'''
     if shorter[:6] and shorter[-6:] in longer: #in case the shorter is completely inside the longer
         head=re.split(shorter[:6],longer,1)
-        tail=head[1].split(shorter[-6:])
+        tail=longer.split(shorter[-6:])
         if len(tail)>2: #if the end pattern 
             tail=[''.join(tail[:-1]),tail[-1]]
         if len(head[0])<3 and len(tail[1])<3: #something in the middle that is different
             return "indel"
-        elif len(head[0])>3 and abs(head[1]-len(shorter))<3:
-            return "alternative start"
-        elif len(tail[-1])>3 and abs(len(head[0])+len(tail[0])-len(shorter))<3:
-            return "alternative end"
+        elif len(head[0])>3 and abs(len(head[1])+6-len(shorter))<3:
+            return "alternative start SNP"
+        elif len(tail[-1])>3 and abs(len(tail[0])+6-len(shorter))<3:
+            return "alternative end SNP"
     return "undefined" #doesn't deal with SNPs in the tags
 
 def het_diff_info(difffile):

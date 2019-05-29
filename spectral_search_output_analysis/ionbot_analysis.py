@@ -149,7 +149,7 @@ def match_peps(row,cpdt_pep,olddetected):
     return(detected)
 
 def coverage_measure(cpdt_pep):
-    #high_cov_vert={}
+    high_cov_vert={}
     high_cov_hor={}
     perc_cov_dist=[]
     vert_cov=[]
@@ -158,7 +158,7 @@ def coverage_measure(cpdt_pep):
         remains=seq
         count_pep=0
         for s,c in peps.items():
-            if c>1: #increase this number with the whole dataset, "true" hit
+            if c>5: #what constitutes a "true" hit
                 count_pep+=c
                 if s in remains:
                     remains=remains.replace(s,'')
@@ -172,9 +172,9 @@ def coverage_measure(cpdt_pep):
         vert_cov.append(count_pep)
         if perc_cov>50:
             high_cov_hor[p]=peps
-    #if count_pep>100:
-    #    high_cov_vert[p]=peps
-    return(high_cov_hor,perc_cov_dist)
+        if count_pep>100:
+            high_cov_vert[p]=peps
+    return(high_cov_hor,high_cov_vert,perc_cov_dist)
 
 def bin_hits_by_source(row,oro,ono,ob):
     '''sort peptide hits by their source dictionary'''
@@ -205,6 +205,18 @@ def bin_hits_by_source(row,oro,ono,ob):
             ont_only.add(row[1][0])
     return(ref_only,ont_only,both)
 
+def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
+    '''look at the quality of the matches per dictionary before the dataset has been filtered'''
+    plt.figure("Pearson R distribution")
+    matplotlib.rcParams['axes.titlesize'] = 'xx-large'
+    matplotlib.rcParams['axes.labelsize'] = 'x-large'
+    matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
+    sns.distplot(ibdf_refonly['ms2pip_pearsonr'], hist=False, label='Human reference only',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_ontonly['ms2pip_pearsonr'], hist=False, label='Transcriptome translation only',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation',axlabel='Pearson R Correlation')
+    plt.legend(prop={'size':30})
+    plt.title('Correlation between theoretical and observed spectra of matched peptide')
+    return("Scores plot made")
 
 def plot_source_piechart():
     '''this function will plot the source piechart and save it to a pdf'''
@@ -229,12 +241,14 @@ def make_report(hits_df):
     return 0
 
     
-def main(directory):
+def main(directory_ontonly, directory_refonly, directory_combination):
     '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
     this is written in a way that iteration should only be done once.
     '''
     #imports
-    ibdf=concatenate_csvs(directory)
+    ibdf_ontonly=concatenate_csvs(directory_ontonly)
+    ibdf_refonly=concatenate_csvs(directory_refonly)
+    ibdf_combi=concatenate_csvs(directory_combination)
     cpdt_pep,full_seqs=import_cpdt(cpdtfile,True) #import cpdt will all peptides (cat gencode and flair beforehand)
     mut_cpdt_pep=import_cpdt(cpdtfile_mut,False) #import the cpdt file with all mutant peptides
     chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
@@ -248,6 +262,9 @@ def main(directory):
     ref_only=set() #scan ids in the reference set
     ont_only=set() #scan ids in the ont set
     both=set() #scan ids that matched to both ref and ont proteins
+
+    #qc function
+
 
     #iterate to fill the data structures
     for row in ibdf.iterrows():

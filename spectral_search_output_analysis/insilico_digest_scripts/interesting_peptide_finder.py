@@ -60,7 +60,11 @@ def read_cpdt(cpdt):
         for line in c:
             if line.startswith('>'):
                 key=line.strip()[1:]
-                key=key.split('|')[0]
+                key=key.split('|')
+                if 'ENSP' in key[0]:
+                    key=key[1]
+                else:
+                    key=key[0]
                 cpdt_pep[key]=Set()
             elif 'PEPTIDE' in line:
                 lp=line.split('PEPTIDE ')[1]

@@ -25,7 +25,7 @@ def print_diff_lists(reference,custom,outfa,outfahet):
     frameshift=0
     SNP=0
     indel=0
-    different=open('different.fa','w')
+    ud=0
     undef=open('uncat.fa', 'w')
     reference_seqs={} #store id:sequence
     with open(reference) as ref:
@@ -59,15 +59,14 @@ def print_diff_lists(reference,custom,outfa,outfahet):
                             frameshift+=1
                         if 'indel' in category:
                             indel+=1
-                        if 'different' in category:
-                            different.writelines(idline+reference_seqs[id]+'\n'+line)
                         if 'undefined' in category:
+                            ud+=1
                             undef.writelines(idline+reference_seqs[id]+'\n'+line)
                         if het:
                             fh.writelines(idline+reference_seqs[id]+'\n'+line)
                         else:
                             f.writelines(idline+reference_seqs[id]+'\n'+line)
-    return str(SNP)+' containing SNP, '+str(altstart)+' alt start, '+str(altend)+' alt end, '+str(frameshift)+' frameshift, '+str(indel)+' indel'
+    return str(SNP)+' containing SNP, '+str(altstart)+' alt start, '+str(altend)+' alt end, '+str(frameshift)+' frameshift, '+str(indel)+' indel '+str(ud)+ ' undefined'
 
 def identify_interesting_events(reference,custom):
     ''' input reference sequence and custom sequence and classify the event that occurred
@@ -81,6 +80,10 @@ def identify_interesting_events(reference,custom):
         - undefined
     use align when necessary?
     '''
+    if reference.endswith('*'):
+        reference=reference[:-1]
+    if custom.endswith('*'):
+        custom=custom[:-1]
     if len(reference)==len(custom):
         consecutive=0
         streak=[]
@@ -97,8 +100,8 @@ def identify_interesting_events(reference,custom):
             streak.append(consecutive)
         if consecutive>20:
             return "frameshift"
-        if len(streak)>0 and sum(streak)>20:
-            return 'different'
+        if len(streak)>0:
+            return 'indel'
         elif len(streak)==0 and mismatch>0:
             return 'SNP'
     elif len(reference)>len(custom): #custom shorter
@@ -119,11 +122,11 @@ def identify_interesting_events(reference,custom):
                 return "alternative start"
         elif len(reference)>15:
             return tag_based_search(reference, custom)
-    return event
+    return 'undefined'
 
 def tag_based_search(shorter,longer):
     '''in the case where imperfect match between 2 varied length strings, use tag based search'''
-    if shorter[:6] and shorter[-6:] in longer: #in case the shorter is completely inside the longer
+    if shorter[:6] in longer and shorter[-6:] in longer: #in case the shorter is completely inside the longer
         head=re.split(shorter[:6],longer,1)
         tail=longer.split(shorter[-6:])
         if len(tail)>2: #if the end pattern 

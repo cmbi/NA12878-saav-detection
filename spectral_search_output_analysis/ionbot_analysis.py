@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import matplotlib, re, os
+import matplotlib, re, os,sys
 from matplotlib_venn import venn3, venn3_unweighted
 import matplotlib.pyplot as plt
 import numpy as np
@@ -384,14 +384,14 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     print("number of hits with detected mutation = " +str(len(hit_mut))+ " matched to "+str((mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
     mut_proteins_detected,mut_peptides,mut_occurences=matched_mut_peptides(mut_cpdt_pep)
-    print("Total of "+str(mut_occurences)+" occurances of "+""+str(mut_proteins_detected)+" proteins detected")
+    print("Total of "+str(mut_occurences)+" occurances of "+str(mut_peptides)+" peptides from "+str(mut_proteins_detected)+" proteins were detected")
     plot_coverage_plots(cpdt_pep)
     plot_source_piechart(ref_only,ont_only,both)
     plot_chromosomal_dist(chrom_dist)
-    return 0
+    return("Finished")
     
     
-    
+    main(*sys.argv[1:])
     
     
     

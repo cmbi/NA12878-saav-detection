@@ -275,35 +275,30 @@ def plot_mut(mutant_cpdtpep,cpdtpep):
     '''plot protein abundance vs number of detected mutant peptides'''
     prot_abundance=[]
     nr_mutant=[]
-    for prot,peps in mutant_cpdtpep.items():
-        if prot in cpdtpep:
-            sum_mut=0
-            sum_nonmut=0
-            for pep,ct in peps.items():
-                sum_mut+=ct
-            
-            nr_mutant.append(sum_mut)
-            for pepc,ctc in mutant_cpdtpep[prot]:
-                sum_nonmut+=ctc
-            prot_abundance.append(sum_mut+sum_nonmut)
-    #make plot
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
-    sns.scatterplot(prot_abundance,nr_mutant)
-    return("plotted")
-
-def matched_mut_peptides(mut_cpdt_pep):
-    '''this function will return the information gathered about the mutated peptides'''
-    # num_proteins_total=len(mut_cpdt_pep)
     mut_proteins_detected=set()
     num_peptides=0
     num_occurences=0
-    for prot,peps in mut_cpdt_pep:
-        for pep,ct in peps:
-            if ct>0:
-                mut_proteins_detected.add(prot)
-                num_occurences+=ct
-                num_peptides+=1
+    for prot,peps in mutant_cpdtpep.items():
+        if prot in cpdtpep:
+            sum_mut=0 #total number of detected mutant peptides
+            sum_nonmut=0
+            for pep,ct in peps.items():
+                sum_mut+=ct
+                if ct>0:
+                    mut_proteins_detected.add(prot)
+                    num_occurences+=ct
+                    num_peptides+=1
+            if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
+                nr_mutant.append(sum_mut)
+                for pepc,ctc in cpdtpep[prot]:
+                    sum_nonmut+=ctc
+                prot_abundance.append(sum_mut+sum_nonmut)
+    #make plot
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    ax=sns.scatterplot(prot_abundance,nr_mutant)
+    ax.set(xlabel='Protein abundance',ylabel='Number mutant peptides detected')
+    ax.savefig("mutant_abundance.png")
     return(len(mut_proteins_detected),num_peptides,num_occurences)
 
 def make_report(hits_df):
@@ -340,7 +335,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
 
     #import insilico digest info
     cpdt_pep,full_seqs=import_cpdt(cpdtfile,True) #import cpdt will all peptides (cat gencode and flair beforehand)
-    mut_cpdt_pep=import_cpdt(cpdtfile_mut,False) #import the cpdt file with all mutant peptides
+    mut_cpdt_pep=import_cpdt(cpdtfile_mut,False) #import the cpdt file with all snv peptides
     chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
     chromdict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
     chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
@@ -383,7 +378,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     #create the figures
     print("number of hits with detected mutation = " +str(len(hit_mut))+ " matched to "+str((mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
-    mut_proteins_detected,mut_peptides,mut_occurences=matched_mut_peptides(mut_cpdt_pep)
+    mut_proteins_detected,mut_peptides,mut_occurences=plot_mut(mut_cpdt_pep,cpdt_pep)
     print("Total of "+str(mut_occurences)+" occurances of "+str(mut_peptides)+" peptides from "+str(mut_proteins_detected)+" proteins were detected")
     plot_coverage_plots(cpdt_pep)
     plot_source_piechart(ref_only,ont_only,both)

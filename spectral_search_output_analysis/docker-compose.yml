@@ -19,5 +19,5 @@ volumes:
        driver_opts:
          type: none
          # Please set the 'device' here to a local folder to where your spectral search results are located
-         device: /Users/rsalz/Desktop/plinc/
+         device: /Users/rsalz/Desktop/narrativum/
          o: bind

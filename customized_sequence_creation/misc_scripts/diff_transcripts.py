@@ -43,3 +43,5 @@ def import_fasta(fastafile):
             else:
                 seq+=line.strip()
     return fasta
+
+print compare_transcripts(*sys.argv[1:])

@@ -22,20 +22,15 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
         if len(keys)>0:
             for key in keys:
                 if key in custom:
-                    c_peplist=custom[key]
-                    dif=c_peplist.difference(peplist)
+                    pepdict=custom[key]
+                    c_peplist=Set(pepdict.keys())
+                    r_peplist=Set(peplist.keys())
+                    dif=c_peplist.difference(r_peplist) #save all the peptides that are in the custom but not the reference
                     for pep in dif:
-                        if determine_snv(pep,peplist):
-                            if key in newsnv:
-                                newsnv[key].add(pep)
-                            else:
-                                newsnv[key]=Set()
-                                newsnv[key].add(pep)
-                        if key in newall:
-                            newall[key].add(pep)
-                        else:
-                            newall[key]=Set()
-                            newall[key].add(pep)
+                        prob=pepdict[pep] #fetch probability
+                        if determine_snv(pep,r_peplist):
+                            newsnv[key][pep]=prob
+                        newall[key][pep]=prob
     return newall,newsnv
 
 def determine_snv(peptide,plist):
@@ -54,7 +49,7 @@ def determine_snv(peptide,plist):
     return False
 
 def read_cpdt(cpdt):
-    '''{id:Set(peptides)}'''
+    '''{id:{peptide:probability}'''
     cpdt_pep={}
     with open(cpdt) as c:
         for line in c:
@@ -65,23 +60,23 @@ def read_cpdt(cpdt):
                     key=key[1]
                 else:
                     key=key[0]
-                cpdt_pep[key]=Set()
+                cpdt_pep[key]={}
             elif 'PEPTIDE' in line:
                 lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')[0] #remove the probability
-                cpdt_pep[key].add(lp)
+                lp=lp.split(': ')
+                cpdt_pep[key][lp[0]]=lp[1].strip()
     return cpdt_pep
 
 def write_cpdt(d,outfile):
     '''
-    input format: {id:Set(peptides)}
+    input format: {id:{peptide:probability}}
     output: new cpdt file
     '''
     f=open(outfile,'w')
     for id,peplist in d.iteritems():
         f.writelines('>'+id+'\n')
-        for pep in peplist:
-            f.writelines('\t'+'PEPTIDE '+pep+'\n')
+        for pep,prob in peplist.iteritems():
+            f.writelines('\t'+'PEPTIDE '+pep+': '+prob+'\n')
     return 'new CPDT file written to '+outfile
 
 alldiffpeps,snvdiffpeps=insilico_digest_diff(sys.argv[1],sys.argv[2])

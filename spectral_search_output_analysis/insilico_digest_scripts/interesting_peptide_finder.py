@@ -29,8 +29,14 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                     for pep in dif:
                         prob=pepdict[pep] #fetch probability
                         if determine_snv(pep,r_peplist):
-                            newsnv[key][pep]=prob
-                        newall[key][pep]=prob
+                            if key in newsnv:
+                                newsnv[key][pep]=prob
+                            else:
+                                newsnv[key]={pep:prob}
+                        if key in newall:
+                            newall[key][pep]=prob
+                        else:
+                            newall[key]={pep:prob}
     return newall,newsnv
 
 def determine_snv(peptide,plist):

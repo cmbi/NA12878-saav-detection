@@ -16,12 +16,13 @@ def compare_transcripts(fasta_custom, fasta_reference):
             if line.startswith('>'):
                 if seq!='':
                     if '_h' in tid:
-                        unmatching.add(tid.split('_')[0])
+                        #unmatching.add(tid.split('_')[0])
+                        unmatching.add(tid) #include both haps in the output
                     elif tid in ref:
                         if seq!=ref[tid]:
                             unmatching.add(tid)
-                    else:
-                        raise KeyError('IDs of reference and custom transcript sets dont match')
+                    # else:
+                    #     raise KeyError('IDs of reference and custom transcript sets dont match')
                     seq=''
                 if '|' in line:
                     line=line.split('|')[0]
@@ -40,6 +41,8 @@ def import_fasta(fastafile):
                     fasta[tid]=seq
                     seq=''
                 tid=line.strip()[1:]
+                if '|' in tid:
+                    tid=tid.split('|')[0]
             else:
                 seq+=line.strip()
     return fasta

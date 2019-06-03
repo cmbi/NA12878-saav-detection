@@ -27,16 +27,17 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                     r_peplist=Set(peplist.keys())
                     dif=c_peplist.difference(r_peplist) #save all the peptides that are in the custom but not the reference
                     for pep in dif:
-                        prob=pepdict[pep] #fetch probability
-                        if determine_snv(pep,r_peplist):
-                            if key in newsnv:
-                                newsnv[key][pep]=prob
+                        if len(pep)>2:
+                            prob=pepdict[pep] #fetch probability
+                            if determine_snv(pep,r_peplist):
+                                if key in newsnv:
+                                    newsnv[key][pep]=prob
+                                else:
+                                    newsnv[key]={pep:prob}
+                            if key in newall:
+                                newall[key][pep]=prob
                             else:
-                                newsnv[key]={pep:prob}
-                        if key in newall:
-                            newall[key][pep]=prob
-                        else:
-                            newall[key]={pep:prob}
+                                newall[key]={pep:prob}
     return newall,newsnv
 
 def determine_snv(peptide,plist):

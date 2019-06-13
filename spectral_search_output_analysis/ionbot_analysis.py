@@ -393,7 +393,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     return("Finished")
     
     
-    main(*sys.argv[1:])
+main(*sys.argv[1:])
     
     
     

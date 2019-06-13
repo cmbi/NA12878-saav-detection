@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sets import Set
-from tqdm import tqdm
+#from tqdm import tqdm
 from collections import Counter
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
@@ -362,7 +362,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
 
     #iterate to fill the data structures
     print("Analyzing data...")
-    for row in tqdm(ibdf_combi.iterrows()):
+    for row in ibdf_combi.iterrows():
         scanid=row[1][0]
         mod=str(row[1][7])
         pep=row[1][3]

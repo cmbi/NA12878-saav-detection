@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sets import Set
+from tqdm import tqdm
 from collections import Counter
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
@@ -88,21 +89,20 @@ def import_cpdt(cpdt,wantFull):
     '''
     cpdt_pep={}
     full_seqs={}
-    with open(cpdt) as c:
-        for line in c:
-            if line.startswith('>'):
-                key=line.strip()[1:]
-                if '|m.' in key:
-                    key=key.split('|m.')[0]
-                cpdt_pep[key]={}
-                full_seqs[key]=''
-            elif 'PEPTIDE' in line:
-                lp=line.split('PEPTIDE ')[1]
-                if ':' in lp:
+    for cpf in source:
+        with open(cpf) as c:
+            for line in c:
+                if line.startswith('>'):
+                    key=line.strip()[1:]
+                    key=get_id(key)
+                    cpdt_pep[key]={}
+                    full_seqs[key]=''
+                elif 'PEPTIDE' in line:
+                    lp=line.split('PEPTIDE ')[1]
                     lp=lp.split(':')[0]
-                cpdt_pep[key][lp]=0
-            elif 'PEPTIDE' not in line:
-                full_seqs[key]=line.strip()
+                    cpdt_pep[key][lp]=0
+                elif 'PEPTIDE' not in line:
+                    full_seqs[key]=line.strip()
     if wantFull:
         return(cpdt_pep, full_seqs)
     return(cpdt_pep)
@@ -129,6 +129,14 @@ def find_chrom(prots,chromdict):
         if p in chromdict:
             return(chromdict[p])
     return("unknown")
+
+def get_id(idstring):
+    i=idstring
+    if '|m.' in i:
+        i=i.split('|m.')[0]
+    elif 'ENSP' in i:
+        i=i.split('|')[1]
+    return(i)
 
 def coverage_measure(cpdt_pep,full_seqs):
     #high_cov_vert={}
@@ -189,10 +197,9 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
     '''
     cpdt_pep=old_cpdt_pep
     notfound=0
-    for i in ids:
+    for isi in ids:
+        i=get_id(isi)
         found=False
-        if '|m.' in i:
-            i=i.split('|m.')[0]
         if i in cpdt_pep.keys():
             ispeplist=cpdt_pep[i]#make copy to mutate as you iterate
             for p,ct in cpdt_pep[i].items():
@@ -355,7 +362,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
 
     #iterate to fill the data structures
     print("Analyzing data...")
-    for row in ibdf_combi.iterrows():
+    for row in tqdm(ibdf_combi.iterrows()):
         scanid=row[1][0]
         mod=str(row[1][7])
         pep=row[1][3]
@@ -373,7 +380,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
             hit_mut+=1
             mut_cpdt_pep=fill_cpdt(pep,mod,ids,mut_cpdt_pep)
             for i in ids:
-                mutated.add(i)
+                mutated.add(get_id(i))
 
     #create the figures
     print("number of hits with detected mutation = " +str(len(hit_mut))+ " matched to "+str((mutated))+ " proteins.")

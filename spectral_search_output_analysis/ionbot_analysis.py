@@ -235,6 +235,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
 
 def plot_source_piechart(ref_only,ont_only,both):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
+    plt.figure('source piechart')
     explode = (0.1, 0, 0)
     labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
     plt.pie([len(ont_only),len(ref_only),len(both)],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
@@ -246,7 +247,7 @@ def plot_source_piechart(ref_only,ont_only,both):
 def plot_chromosomal_dist(distr_list):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    #horizontal coverage
+    plt.figure('chromosomal distribution')
     plt.hist(distr_list)
     plt.ylabel("# Peptides")
     plt.xlabel("Chomosomes")
@@ -301,6 +302,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep):
                     sum_nonmut+=ctc
                 prot_abundance.append(sum_mut+sum_nonmut)
     #make plot
+    plt.figure('mutant peptides')
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     ax=sns.scatterplot(prot_abundance,nr_mutant)
@@ -390,7 +392,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
     mut_proteins_detected,mut_peptides,mut_occurences=plot_mut(mut_cpdt_pep,cpdt_pep)
     print("Total of "+str(mut_occurences)+" occurances of "+str(mut_peptides)+" peptides from "+str(mut_proteins_detected)+" proteins were detected")
-    plot_coverage_plots(cpdt_pep,full_seqs)
+    # plot_coverage_plots(cpdt_pep,full_seqs)
     plot_source_piechart(ref_only,ont_only,both)
     plot_chromosomal_dist(chrom_dist)
     return("Finished")

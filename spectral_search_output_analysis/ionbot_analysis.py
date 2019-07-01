@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sets import Set
-#from tqdm import tqdm
+from tqdm import tqdm
 from collections import Counter
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
@@ -23,19 +22,19 @@ questions:
 - extent of multiple mapping, proportion of mapping that is exclusive to the long-read transcriptome
 - are my peptides of interest present? How often does ionbot correctly predict an SNV?
 '''
-def concatenate_csvs(folder_path):
+def concatenate_csvs(csvpath):
     directory= os.fsencode(csvpath)
     ionbotout=pd.DataFrame()
     for csvfile in os.listdir(directory):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
-            temp=read_df_in_chunks(csvname, 1000)
+            temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
             ionbotout=pd.concat([ionbotout,temp])
     return(ionbotout)
 
-def read_df_in_chunks(filename, chunksize):
+def read_df_in_chunks(directory, chunksize):
     # read the large csv file with specified chunksize 
-    df_chunk = pd.read_csv(filename, chunksize=chunksize) # chunksize represents number of rows read per chunk
+    df_chunk = pd.read_csv(directory, chunksize=chunksize) # chunksize represents number of rows read per chunk
 
     chunk_list = []  # append each chunk df here 
 
@@ -89,20 +88,19 @@ def import_cpdt(cpdt,wantFull):
     '''
     cpdt_pep={}
     full_seqs={}
-    for cpf in source:
-        with open(cpf) as c:
-            for line in c:
-                if line.startswith('>'):
-                    key=line.strip()[1:]
-                    key=get_id(key)
-                    cpdt_pep[key]={}
-                    full_seqs[key]=''
-                elif 'PEPTIDE' in line:
-                    lp=line.split('PEPTIDE ')[1]
-                    lp=lp.split(':')[0]
-                    cpdt_pep[key][lp]=0
-                elif 'PEPTIDE' not in line:
-                    full_seqs[key]=line.strip()
+    with open(cpdt) as c:
+        for line in c:
+            if line.startswith('>'):
+                key=line.strip()[1:]
+                key=get_id(key)
+                cpdt_pep[key]={}
+                full_seqs[key]=''
+            elif 'PEPTIDE' in line:
+                lp=line.split('PEPTIDE ')[1]
+                lp=lp.split(':')[0]
+                cpdt_pep[key][lp]=0
+            elif 'PEPTIDE' not in line:
+                full_seqs[key]=line.strip()
     if wantFull:
         return(cpdt_pep, full_seqs)
     return(cpdt_pep)
@@ -184,8 +182,8 @@ def bin_hits_by_source(scanid,ids,oro,ono,ob):
         ont_only.add(scanid)
     elif ref:
         ref_only.add(scanid)
-    else:
-        raise Exception('Unexpected protein found')
+    #else:
+    #    raise Exception('Unexpected protein found')
     return(ref_only,ont_only,both)
 
 def fill_cpdt(pep,mod,ids,old_cpdt_pep):
@@ -255,24 +253,26 @@ def plot_chromosomal_dist(distr_list):
     plt.savefig("chromosomal_distribution.png")
     return("plotted chromosomal distribution")
 
-def plot_coverage_plots(cpdt_pep):
+def plot_coverage_plots(cpdt_pep,fullseqs):
     '''this function will plot the graphs that correspond to the coverage of the proteome
     - vertical coverage
     - horizontal coverage
     - chromosome distribution
     '''
-    high_cov_hor,cov_vert,perc_cov_dist=coverage_measure(cpdt_pep)
+    high_cov_hor,cov_vert,perc_cov_dist=coverage_measure(cpdt_pep,fullseqs)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     #horizontal coverage
     plt.hist(perc_cov_dist,bins=300)
     plt.xlim(1,100)
+    plt.ylim(0,1000)
     plt.xlabel("% Coverage")
     plt.ylabel("# Proteins")
     plt.savefig("horizontal_coverage.png")
     plt.clf()
     #vertical coverage
     plt.hist(cov_vert,bins=500)
+    plt.xlim(1,50)
     plt.xlabel("# Proteins")
     plt.ylabel("# Peptides")
     plt.savefig("vertical_coverage.png")
@@ -305,7 +305,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep):
     sns.set_style(style='white')
     ax=sns.scatterplot(prot_abundance,nr_mutant)
     ax.set(xlabel='Protein abundance',ylabel='Number mutant peptides detected')
-    ax.savefig("mutant_abundance.png")
+    ax.figure.savefig("mutant_abundance.png")
     return(len(mut_proteins_detected),num_peptides,num_occurences)
 
 def make_report(hits_df):
@@ -333,7 +333,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     ibdf_combi=concatenate_csvs(directory_combination)
 
     #qc function
-    plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi)
+    plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
 
     #filter badly scoring hits
     ibdf_ontonly = chunk_preprocessing(ibdf_ontonly)
@@ -358,11 +358,12 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     chrom_dist=[] # 1 chromosome location per scan id
     hits_missed=0
     hit_mut=0
+    hits_missed_mut=0
     
 
     #iterate to fill the data structures
     print("Analyzing data...")
-    for row in ibdf_combi.iterrows():
+    for row in tqdm(ibdf_combi.iterrows()):
         scanid=row[1][0]
         mod=str(row[1][7])
         pep=row[1][3]
@@ -374,26 +375,28 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both) #what dictionaries do the hits come from
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what mutant peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
-        chrom_dist.append(find_chrom(ids,chromdict)) #which chromosome does the 
+        chrom_dist.append(find_chrom(ids,chromdict)) #which chromosome does the peptide belong to
 
         if '->' in mod: #if ib detects a mutated peptide
             hit_mut+=1
-            mut_cpdt_pep=fill_cpdt(pep,mod,ids,mut_cpdt_pep)
+            mut_cpdt_pep,notfound_mut=fill_cpdt(pep,mod,ids,mut_cpdt_pep)
+            hits_missed_mut+=notfound_mut
             for i in ids:
                 mutated.add(get_id(i))
 
     #create the figures
-    print("number of hits with detected mutation = " +str(len(hit_mut))+ " matched to "+str((mutated))+ " proteins.")
+    print("number of hits with detected mutation = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
+    print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
     mut_proteins_detected,mut_peptides,mut_occurences=plot_mut(mut_cpdt_pep,cpdt_pep)
     print("Total of "+str(mut_occurences)+" occurances of "+str(mut_peptides)+" peptides from "+str(mut_proteins_detected)+" proteins were detected")
-    plot_coverage_plots(cpdt_pep)
+    plot_coverage_plots(cpdt_pep,full_seqs)
     plot_source_piechart(ref_only,ont_only,both)
     plot_chromosomal_dist(chrom_dist)
     return("Finished")
     
     
-main(*sys.argv[1:])
+main(*sys.argv[1:]) #args: folder containing ONT-variant-free ionbot search, folder containing ref-variant-free ionbot search, folder containing combi-variant-free ionbot search results, combi-variant-free peptides, combi-variant-containing peptides
     
     
     

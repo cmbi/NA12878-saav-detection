@@ -240,13 +240,14 @@ def plot_source_piechart(ref_only,ont_only,both):
     labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
     plt.pie([len(ont_only),len(ref_only),len(both)],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
     plt.title('Peptide spectral hits by source',fontsize=35)
-    plt.legend(labels,loc = (0.1,-0.25))
+    plt.legend(labels)
     plt.savefig("sources_spectral_hits.png") 
     return("saved to sources_spectral_hits")
 
 def plot_chromosomal_dist(distr_list):
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
+    plot.figure('chomosomal distribution')
+    # sns.set(rc={'figure.figsize':(11.7,8.27)})
+    # sns.set_style(style='white')
     plt.figure('chromosomal distribution')
     plt.hist(distr_list)
     plt.ylabel("# Peptides")
@@ -377,7 +378,8 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both) #what dictionaries do the hits come from
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what mutant peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
-        chrom_dist.append(find_chrom(ids,chromdict)) #which chromosome does the peptide belong to
+        chrom_origin=find_chrom(ids,chromdict)
+        chrom_dist.append(chrom_origin) #which chromosome does the peptide belong to
 
         if '->' in mod: #if ib detects a mutated peptide
             hit_mut+=1

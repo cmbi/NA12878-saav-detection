@@ -35,20 +35,15 @@ def concatenate_csvs(csvpath):
 def read_df_in_chunks(directory, chunksize):
     # read the large csv file with specified chunksize 
     df_chunk = pd.read_csv(directory, chunksize=chunksize) # chunksize represents number of rows read per chunk
-
     chunk_list = []  # append each chunk df here 
-
     # Each chunk is in df format
     for chunk in df_chunk:  
         # perform data filtering 
         #chunk_filter = chunk_preprocessing(chunk)
-
         # Once the data filtering is done, append the chunk to list
         chunk_list.append(chunk)
-
     # concat the list into dataframe 
     df_concat = pd.concat(chunk_list) # this is your final dataframe
-    
     return(df_concat)
 
 def chunk_preprocessing(df_chunk):
@@ -198,21 +193,24 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
     for isi in ids:
         i=get_id(isi)
         found=False
-        if i in cpdt_pep.keys():
-            ispeplist=cpdt_pep[i]#make copy to mutate as you iterate
-            for p,ct in cpdt_pep[i].items():
-                if p==pep:
-                    ct+=1
-                    ispeplist[p]=ct
-                    found=True
-            cpdt_pep[i]=ispeplist
-        if not found:
-            notfound+=1
-            ##this recovers a lot of peptides that would otherwise be filtered out
-            # if '->' not in mod and found==False:
-            #     if pep in full_seqs[i] or 'X' in full_seqs[i]:
-            #         ispeplist[pep]=1
-            #         cpdt_pep[i]=ispeplist
+        possibilities=[i,i+'_h0',i+'_h1']
+        for poss in possibilities:
+            if poss in cpdt_pep.keys():
+                ispeplist=cpdt_pep[poss]#make copy to mutate as you iterate
+                for p,ct in cpdt_pep[poss].items():
+                    if p==pep:
+                        ct+=1
+                        ispeplist[p]=ct
+                        found=True
+                cpdt_pep[poss]=ispeplist
+                break
+            if not found:
+                notfound+=1
+                ##this recovers a lot of peptides that would otherwise be filtered out
+                # if '->' not in mod and found==False:
+                #     if pep in full_seqs[i] or 'X' in full_seqs[i]:
+                #         ispeplist[pep]=1
+                #         cpdt_pep[i]=ispeplist
     if notfound==len(ids):
         missed=1
     else:
@@ -245,7 +243,6 @@ def plot_source_piechart(ref_only,ont_only,both):
     return("saved to sources_spectral_hits")
 
 def plot_chromosomal_dist(distr_list):
-    plot.figure('chomosomal distribution')
     # sns.set(rc={'figure.figsize':(11.7,8.27)})
     # sns.set_style(style='white')
     plt.figure('chromosomal distribution')
@@ -334,6 +331,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
     ibdf_ontonly=concatenate_csvs(directory_ontonly)
     ibdf_refonly=concatenate_csvs(directory_refonly)
     ibdf_combi=concatenate_csvs(directory_combination)
+    #ibdf_combi_pg=concatenate_csvs(directory_combination_novar)
 
     #qc function
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())

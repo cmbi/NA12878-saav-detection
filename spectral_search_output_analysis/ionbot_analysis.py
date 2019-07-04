@@ -76,7 +76,7 @@ def detected_proteins(ids,pco):
         proteins_covered[idu]+=1
     return(proteins_covered)
 
-def import_cpdt(cpdt,wantFull):
+def import_cpdt(cpdt):
     ''' read the cpdt files into a data structure
     this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
     {protein_ID:{pep1:0, pep2:0, pep3:0}}
@@ -96,8 +96,20 @@ def import_cpdt(cpdt,wantFull):
                 cpdt_pep[key][lp]=0
             elif 'PEPTIDE' not in line:
                 full_seqs[key]=line.strip()
-    if wantFull:
-        return(cpdt_pep, full_seqs)
+    return(cpdt_pep, full_seqs)
+
+def import_cpdt_simple(cpdt):
+    cpdt_pep={}
+    with open(cpdt) as c:
+        for line in c:
+            if line.startswith('>'):
+                key=line.strip()[1:]
+                key=get_id(key)
+                cpdt_pep[key]=set()
+            elif 'PEPTIDE' in line:
+                lp=line.split('PEPTIDE ')[1]
+                lp=lp.split(':')[0]
+                cpdt_pep[key].add(lp)
     return(cpdt_pep)
 
 def import_gff(gfffile,isBed):
@@ -119,6 +131,7 @@ def import_gff(gfffile,isBed):
 
 def find_chrom(prots,chromdict):
     for p in prots:
+        p=get_id(p)
         if p in chromdict:
             return(chromdict[p])
     return("unknown")
@@ -228,10 +241,22 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     sns.distplot(ibdf_combi['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation',axlabel='Pearson R Correlation')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
-    plt.savefig("qc_pearsonr.png")
+    plt.savefig("qc_pearsonr_3source.png")
     return("Scores plot made")
 
-def plot_source_piechart(ref_only,ont_only,both):
+def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
+    '''look at the quality of the matches per dictionary before the dataset has been filtered'''
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure("Pearson R distribution 2")
+    sns.distplot(ibdf_combi['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi_pg['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Pearson R Correlation')
+    plt.legend()
+    plt.title('Correlation between theoretical and observed spectra of matched peptide')
+    plt.savefig("qc_pearsonr_pgvsopenmut.png")
+    return("Scores plot made")
+
+def plot_source_piechart(ref_only,ont_only,both,figname):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
     plt.figure('source piechart')
     explode = (0.1, 0, 0)
@@ -239,20 +264,20 @@ def plot_source_piechart(ref_only,ont_only,both):
     plt.pie([len(ont_only),len(ref_only),len(both)],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
     plt.title('Peptide spectral hits by source',fontsize=35)
     plt.legend(labels)
-    plt.savefig("sources_spectral_hits.png") 
+    plt.savefig(figname) 
     return("saved to sources_spectral_hits")
 
-def plot_chromosomal_dist(distr_list):
+def plot_chromosomal_dist(distr_list,figname):
     # sns.set(rc={'figure.figsize':(11.7,8.27)})
     # sns.set_style(style='white')
     plt.figure('chromosomal distribution')
     plt.hist(distr_list)
     plt.ylabel("# Peptides")
     plt.xlabel("Chomosomes")
-    plt.savefig("chromosomal_distribution.png")
+    plt.savefig(figname)
     return("plotted chromosomal distribution")
 
-def plot_coverage_plots(cpdt_pep,fullseqs):
+def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     '''this function will plot the graphs that correspond to the coverage of the proteome
     - vertical coverage
     - horizontal coverage
@@ -267,25 +292,28 @@ def plot_coverage_plots(cpdt_pep,fullseqs):
     plt.ylim(0,1000)
     plt.xlabel("% Coverage")
     plt.ylabel("# Proteins")
-    plt.savefig("horizontal_coverage.png")
+    plt.savefig(fignamehorizontal)
     plt.clf()
     #vertical coverage
     plt.hist(cov_vert,bins=500)
     plt.xlim(1,50)
     plt.xlabel("# Proteins")
     plt.ylabel("# Peptides")
-    plt.savefig("vertical_coverage.png")
+    plt.savefig(fignamevertical)
     return("Plotted coverage")
 
-def plot_mut(mutant_cpdtpep,cpdtpep):
-    '''plot protein abundance vs number of detected mutant peptides'''
+def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
     prot_abundance=[]
     nr_mutant=[]
     mut_proteins_detected=set()
     num_peptides=0
     num_occurences=0
     for prot,peps in mutant_cpdtpep.items():
-        if prot in cpdtpep:
+        if '_h' in prot:
+            stem=prot.split('_h')[0]
+        else:
+            stem=prot
+        if stem in cpdtpep:
             sum_mut=0 #total number of detected mutant peptides
             sum_nonmut=0
             for pep,ct in peps.items():
@@ -296,17 +324,41 @@ def plot_mut(mutant_cpdtpep,cpdtpep):
                     num_peptides+=1
             if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
                 nr_mutant.append(sum_mut)
-                for pepc,ctc in cpdtpep[prot]:
+                for pepc,ctc in cpdtpep[stem].items():
                     sum_nonmut+=ctc
                 prot_abundance.append(sum_mut+sum_nonmut)
+    print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
+    return(prot_abundance,nr_mutant)
+
+def plot_mut(mutant_cpdtpep,cpdtpep,figname):
+    '''plot protein abundance vs number of detected mutant peptides'''
+    prot_abundance,nr_mutant=calc_mut_abundances(mutant_cpdtpep,cpdtpep)
     #make plot
     plt.figure('mutant peptides')
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     ax=sns.scatterplot(prot_abundance,nr_mutant)
     ax.set(xlabel='Protein abundance',ylabel='Number mutant peptides detected')
-    ax.figure.savefig("mutant_abundance.png")
-    return(len(mut_proteins_detected),num_peptides,num_occurences)
+    ax.figure.savefig(figname)
+    return('done')
+
+def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical):
+    allmuts_classic={}
+    allmuts_openmut={}
+    truncated_ids=set()
+    #go through each dictionary and concatenate all the dictionaries:
+    for prot,mutdic in mut_peptide_dict_classic.items(): #no open mutation
+        allmuts_classic={**allmuts_classic,**mutdic}
+        if '_h' in prot:
+            truncated_ids.add(prot.split('_h')[0])
+    for prott,muti in mut_peptide_dict_openmut.items():
+        allmuts_openmut={**allmuts_openmut,**muti}
+    #create diagrams
+    plt.figure('venn mutant peptides')
+    vda=venn2(Counter(allmuts_classic),Counter(allmuts_openmut)) #venn for the overlap in detected peptides
+    plt.figure('venn mutant proteins')
+    vdb=venn3(set(mut_peptide_dict_openmut.keys(),truncated_ids,set(mut_cpdt_theoretical.keys)) #venn for the overlap in detected proteins
+    return(0)
 
 def make_report(hits_df):
     '''report general information collected about the hits, including quality control measures
@@ -321,50 +373,47 @@ def make_report(hits_df):
     uniquepeptides=hits_df['peptide'].nunique()
     return("report written")
 
+def detect_mut_peptides(pep,ids,cpdt_pep):
+    for isi in ids:
+        i=get_id(isi)
+        found=False
+        possibilities=[i,i+'_h0',i+'_h1']
+        for poss in possibilities:
+            if poss in cpdt_pep.keys():
+                if pep in cpdt_pep[poss]:
+                    return(poss)
+    return('')
+
+def isMutCandidate(idlist,theoretical_mutdict):
+    for idt in idlist:
+        if idt in theoretical_mutdict:
+            return(idt)
+    return('')
+
+def add_to_observed_mutdict(mut_prot,pep,olddict):
+    newdict=olddict
+    if mut_prot in newdict:
+        mut_ctr=newdict[mut_prot]
+        if pep in mut_ctr:
+            newdict[mut_prot][pep]+=1
+        else:
+            newdict[mut_prot][pep]=1
+    else:
+        newdict[mut_prot]={pep:1}
+    return(newdict)
     
-def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,cpdtfile_mut,gfffile,bedfile):
-    '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
-    this is written in a way that iteration should only be done once.
-    '''
-    #imports
-    print("importing data")
-    ibdf_ontonly=concatenate_csvs(directory_ontonly)
-    ibdf_refonly=concatenate_csvs(directory_refonly)
-    ibdf_combi=concatenate_csvs(directory_combination)
-    #ibdf_combi_pg=concatenate_csvs(directory_combination_novar)
-
-    #qc function
-    plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
-
-    #filter badly scoring hits
-    ibdf_ontonly = chunk_preprocessing(ibdf_ontonly)
-    ibdf_refonly = chunk_preprocessing(ibdf_refonly)
-    ibdf_combi = chunk_preprocessing(ibdf_combi)
-
-    #import insilico digest info
-    cpdt_pep,full_seqs=import_cpdt(cpdtfile,True) #import cpdt will all peptides (cat gencode and flair beforehand)
-    mut_cpdt_pep=import_cpdt(cpdtfile_mut,False) #import the cpdt file with all snv peptides
-    chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
-    chromdict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
-    chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
-
-    
-    #initialize data structures to collect information
-    print("initializing analyses...")
+def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenmut):
     proteins_covered=Counter() #proteins detected
-    mutated=set() #all protiens that matched to a predicted mutated peptide
+    mutated=set() #all proteins that were detected to have a mutation by ionbot. how does compare to the proteins that actually do have mutation?
     ref_only=set() #scan ids in the reference set
     ont_only=set() #scan ids in the ont set
     both=set() #scan ids that matched to both ref and ont proteins
-    chrom_dist=[] # 1 chromosome location per scan id
     hits_missed=0
     hit_mut=0
     hits_missed_mut=0
-    
-
-    #iterate to fill the data structures
-    print("Analyzing data...")
-    for row in tqdm(ibdf_combi.iterrows()):
+    chrom_dist=[] # 1 chromosome location per scan id
+    mut_cpdt_observed={}
+    for row in tqdm(combidict.iterrows()):
         scanid=row[1][0]
         mod=str(row[1][7])
         pep=row[1][3]
@@ -374,27 +423,80 @@ def main(directory_ontonly, directory_refonly, directory_combination, cpdtfile,c
             ids=[row[1][9]]
         proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both) #what dictionaries do the hits come from
-        cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what mutant peptides are detected, how many, and what proteins they come from
+        cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
         chrom_origin=find_chrom(ids,chromdict)
         chrom_dist.append(chrom_origin) #which chromosome does the peptide belong to
-
-        if '->' in mod: #if ib detects a mutated peptide
+        if '->' in mod: #if ib detects a mutated peptide (for open mutation search only)
             hit_mut+=1
-            mut_cpdt_pep,notfound_mut=fill_cpdt(pep,mod,ids,mut_cpdt_pep)
-            hits_missed_mut+=notfound_mut
-            for i in ids:
+            #mut_cpdt_pep,notfound_mut=fill_cpdt()
+            mut_prot=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
+            #add mutant peptide to observed
+            if mut_prot!='':
+                mut_cpdt_observed=add_to_observed_mutdict(mut_prot,pep,mut_cpdt_observed)
+            #hits_missed_mut+=notfound_mut
+            for i in ids: 
                 mutated.add(get_id(i))
-
+            #mutdict_id,pep
+        elif not isOpenmut: #check if mutant peptide if not open mutation settings
+            mutcand=isMutCandidate(ids,mut_cpdt_theoretical)
+            if mutcand!='': 
+                if pep in mut_cpdt_theoretical[mutcand]:
+                    mut_cpdt_observed=add_to_observed_mutdict(mutcand,pep,mut_cpdt_observed)
     #create the figures
     print("number of hits with detected mutation = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
     print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
-    mut_proteins_detected,mut_peptides,mut_occurences=plot_mut(mut_cpdt_pep,cpdt_pep)
-    print("Total of "+str(mut_occurences)+" occurances of "+str(mut_peptides)+" peptides from "+str(mut_proteins_detected)+" proteins were detected")
-    # plot_coverage_plots(cpdt_pep,full_seqs)
-    plot_source_piechart(ref_only,ont_only,both)
-    plot_chromosomal_dist(chrom_dist)
+    if isOpenmut:
+        plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varfree.png")
+        # plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
+        plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png")
+        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
+    else:
+        plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varcont.png")
+        # plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
+        plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png")
+        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
+    return(mut_cpdt_observed)
+
+
+def create_chromosome_reference(gfffile,bedfile):
+    chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
+    chromdict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
+    chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
+    return(chromdict)
+
+def main(directory_ontonly, directory_refonly, directory_combination, directory_combination_including_variants, cpdtfile,cpdtfile_mut,gfffile,bedfile):
+    '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
+    this is written in a way that iteration should only be done once.
+    '''
+    #imports
+    print("importing data")
+    ibdf_ontonly=concatenate_csvs(directory_ontonly)
+    ibdf_refonly=concatenate_csvs(directory_refonly)
+    ibdf_combi=concatenate_csvs(directory_combination)
+    ibdf_combi_pg=concatenate_csvs(directory_combination_including_variants)
+
+    #qc function
+    plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
+    plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
+
+    #filter badly scoring hits
+    ibdf_ontonly = chunk_preprocessing(ibdf_ontonly)
+    ibdf_refonly = chunk_preprocessing(ibdf_refonly)
+    ibdf_combi = chunk_preprocessing(ibdf_combi)
+    ibdf_combi_pg= chunk_preprocessing(ibdf_combi_pg)
+
+    #import insilico digest info
+    cpdt_pep,full_seqs=import_cpdt(cpdtfile) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
+    mut_cpdt_theoretical=import_cpdt_simple(cpdtfile_mut) #import the cpdt file with all snv peptides
+    chromdict=create_chromosome_reference(gfffile,bedfile) #import information about the chromosome of origin (QC)
+    
+    #iterate to fill the data structures
+    print("Analyzing data...")
+    mut_observed_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,mut_cpdt_theoretical,True)
+    mut_observed_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,mut_cpdt_theoretical,False)
+    plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical)
     return("Finished")
     
     

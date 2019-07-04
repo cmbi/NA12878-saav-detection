@@ -356,8 +356,10 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     #create diagrams
     plt.figure('venn mutant peptides')
     vda=venn2(Counter(allmuts_classic),Counter(allmuts_openmut)) #venn for the overlap in detected peptides
+    vda.savefig('overlap_detected_mut_peps.png')
     plt.figure('venn mutant proteins')
-    vdb=venn3(set(mut_peptide_dict_openmut.keys(),truncated_ids,set(mut_cpdt_theoretical.keys)) #venn for the overlap in detected proteins
+    vdb=venn3(set(mut_peptide_dict_openmut.keys(),truncated_ids,set(mut_cpdt_theoretical.keys))) #venn for the overlap in detected proteins
+    vdb.savefig('overlap_detected_mut_prots.png')
     return(0)
 
 def make_report(hits_df):

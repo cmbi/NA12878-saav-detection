@@ -432,7 +432,7 @@ def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict[mut_prot][pep]+=1
     return(newdict)
     
-def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenmut):
+def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
     proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a mutation by ionbot. how does compare to the proteins that actually do have mutation?
     ref_only=set() #scan ids in the reference set
@@ -482,12 +482,12 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenm
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
         plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varfree.png")
-        # plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
+        plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
         plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
     else:
         plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varcont.png")
-        # plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
+        plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
     return(mut_cpdt_observed)
@@ -527,9 +527,9 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     
     #iterate to fill the data structures
     print("Analyzing data...")
-    mut_observed_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,mut_cpdt_theoretical,True)
+    mut_observed_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
     plt.clf()
-    mut_observed_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,mut_cpdt_theoretical,False)
+    mut_observed_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
     plt.clf()
     plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical)
     return("Finished")

@@ -304,6 +304,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     #horizontal coverage
+    plt.figure('horizontal coverage')
     plt.hist(perc_cov_dist,bins=300)
     plt.xlim(1,100)
     plt.ylim(0,1000)
@@ -312,11 +313,13 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.savefig(fignamehorizontal)
     plt.clf()
     #vertical coverage
-    plt.hist(cov_vert,bins=50)
+    plt.figure('vertical coverage')
+    plt.hist(cov_vert,bins=1000)
     plt.xlim(1,50)
     plt.xlabel("# Proteins")
     plt.ylabel("# Peptides")
     plt.savefig(fignamevertical)
+    plt.clf()
     return("Plotted coverage")
 
 def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
@@ -352,9 +355,9 @@ def plot_mut(mutant_cpdtpep,cpdtpep,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     prot_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep)
     #make plot
-    plt.figure('mutant peptides')
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
+    plt.figure('mutant peptides')
     plt.scatter(*zip(*prot_abundance))
     plt.xlabel('Protein abundance')
     plt.ylabel('Number mutant peptides detected')
@@ -382,7 +385,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.savefig('overlap_detected_mut_peps.png')
     plt.clf()
     plt.figure('venn mutant proteins')
-    vdb=venn2_unweighted([mut_peptide_dict_openmut.keys(),mut_peptide_dict_classic.keys()],("Open mutation search","Proteogenomics approach")) #venn for the overlap in detected proteins
+    vdb=venn2_unweighted([mut_peptide_dict_classic.keys(),mut_peptide_dict_openmut.keys()],("Proteogenomics approach","Open mutation search")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with observed variant peptides",fontsize=26)
     for text in vdb.set_labels:
         text.set_fontsize(26)

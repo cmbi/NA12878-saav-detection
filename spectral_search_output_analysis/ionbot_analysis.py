@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import matplotlib, re, os,sys
-from matplotlib_venn import venn3, venn3_unweighted
+from matplotlib_venn import venn2,venn2_unweighted,venn3, venn3_unweighted
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 from collections import Counter
+import json
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
 matplotlib.rcParams['axes.titlesize'] = 'xx-large'
@@ -132,6 +133,8 @@ def import_gff(gfffile,isBed):
 def find_chrom(prots,chromdict):
     for p in prots:
         p=get_id(p)
+        if '_h' in p:
+            p=p.split('_h')[0]
         if p in chromdict:
             return(chromdict[p])
     return("unknown")
@@ -172,7 +175,7 @@ def coverage_measure(cpdt_pep,full_seqs):
         #     high_cov_vert[p]=peps
     return(high_cov_hor,vert_cov,perc_cov_dist)
 
-def bin_hits_by_source(scanid,ids,oro,ono,ob):
+def bin_hits_by_source(scanid,ids,oro,ono,ob,isOpenmut):
     '''sort peptide hits by their source dictionary'''
     ref_only=oro
     ont_only=ono
@@ -180,10 +183,16 @@ def bin_hits_by_source(scanid,ids,oro,ono,ob):
     ont=False
     ref=False
     for i in ids:
-        if '|m.' in i: #assumes that the proteins from the reference were not generated with ANGEL
-            ont=True
-        elif 'ENST' in i:
-            ref=True
+        if not isOpenmut:
+            if '_E' in i:
+                ont=True
+            elif 'ENST' in i:
+                ref=True
+        else:
+            if '|m.' in i: #assumes that the proteins from the reference were not generated with ANGEL
+                ont=True
+            elif 'ENST' in i:
+                ref=True
     if ont and ref:
         both.add(scanid)
     elif ont:
@@ -242,6 +251,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_3source.png")
+    plt.clf()
     return("Scores plot made")
 
 def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
@@ -254,27 +264,34 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
+    plt.clf()
     return("Scores plot made")
 
-def plot_source_piechart(ref_only,ont_only,both,figname):
+def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
     plt.figure('source piechart')
     explode = (0.1, 0, 0)
-    labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
+    if isOpenmut:
+        labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
+    else:
+        labels='Novel','Annotated','Combination'
     plt.pie([len(ont_only),len(ref_only),len(both)],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
     plt.title('Peptide spectral hits by source',fontsize=35)
-    plt.legend(labels)
-    plt.savefig(figname) 
+    plt.legend(labels,loc=8)
+    plt.savefig(figname)
+    plt.clf()
     return("saved to sources_spectral_hits")
 
-def plot_chromosomal_dist(distr_list,figname):
+def plot_chromosomal_dist(distr_cnt,figname):
     # sns.set(rc={'figure.figsize':(11.7,8.27)})
     # sns.set_style(style='white')
     plt.figure('chromosomal distribution')
-    plt.hist(distr_list)
+    chist=pd.DataFrame.from_dict(distr_cnt,orient='index')
+    chist.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
-    plt.xlabel("Chomosomes")
+    plt.xlabel("Chromosomes")
     plt.savefig(figname)
+    plt.clf()
     return("plotted chromosomal distribution")
 
 def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
@@ -343,24 +360,33 @@ def plot_mut(mutant_cpdtpep,cpdtpep,figname):
     return('done')
 
 def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical):
-    allmuts_classic={}
-    allmuts_openmut={}
-    truncated_ids=set()
-    #go through each dictionary and concatenate all the dictionaries:
-    for prot,mutdic in mut_peptide_dict_classic.items(): #no open mutation
-        allmuts_classic={**allmuts_classic,**mutdic}
-        if '_h' in prot:
-            truncated_ids.add(prot.split('_h')[0])
+    allmuts_classic=Counter()
+    allmuts_openmut=Counter()
+    #go through each dictionary and concatenate counters so one large counter object with peptides
+    for prot,mutct in mut_peptide_dict_classic.items(): #no open mutation
+        allmuts_classic+=mutct
     for prott,muti in mut_peptide_dict_openmut.items():
-        allmuts_openmut={**allmuts_openmut,**muti}
+        allmuts_openmut+=muti
     #create diagrams
     plt.figure('venn mutant peptides')
-    vda=venn2(Counter(allmuts_classic),Counter(allmuts_openmut)) #venn for the overlap in detected peptides
-    vda.savefig('overlap_detected_mut_peps.png')
+    vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Proteogenomics approach','Open mutation search')) #venn for the overlap in detected peptides
+    plt.title("Unique observed variant peptides",fontsize=30)
+    for text in vda.set_labels:
+        text.set_fontsize(26)
+    for text in vda.subset_labels:
+        text.set_fontsize(20)
+    plt.savefig('overlap_detected_mut_peps.png')
+    plt.clf()
     plt.figure('venn mutant proteins')
-    vdb=venn3(set(mut_peptide_dict_openmut.keys(),truncated_ids,set(mut_cpdt_theoretical.keys))) #venn for the overlap in detected proteins
-    vdb.savefig('overlap_detected_mut_prots.png')
-    return(0)
+    vdb=venn2_unweighted([mut_peptide_dict_openmut.keys(),mut_peptide_dict_classic.keys()],("Open mutation search","Proteogenomics approach")) #venn for the overlap in detected proteins
+    plt.title("Unique proteins associated with observed variant peptides",fontsize=30)
+    for text in vda.set_labels:
+        text.set_fontsize(26)
+    for text in vda.subset_labels:
+        text.set_fontsize(20)
+    plt.savefig('overlap_detected_mut_prots.png')
+    plt.clf()
+    return('plotted final venns')
 
 def make_report(hits_df):
     '''report general information collected about the hits, including quality control measures
@@ -382,26 +408,24 @@ def detect_mut_peptides(pep,ids,cpdt_pep):
         possibilities=[i,i+'_h0',i+'_h1']
         for poss in possibilities:
             if poss in cpdt_pep.keys():
-                if pep in cpdt_pep[poss]:
-                    return(poss)
+                for p in cpdt_pep[poss]:
+                    if pep in p:
+                        return(poss)
+                # if pep in cpdt_pep[poss]:
+                #     return(poss)
     return('')
 
 def isMutCandidate(idlist,theoretical_mutdict):
     for idt in idlist:
-        if idt in theoretical_mutdict:
-            return(idt)
+        if get_id(idt) in theoretical_mutdict:
+            return(get_id(idt))
     return('')
 
 def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict=olddict
-    if mut_prot in newdict:
-        mut_ctr=newdict[mut_prot]
-        if pep in mut_ctr:
-            newdict[mut_prot][pep]+=1
-        else:
-            newdict[mut_prot][pep]=1
-    else:
-        newdict[mut_prot]={pep:1}
+    if mut_prot not in newdict:
+        newdict[mut_prot]=Counter()
+    newdict[mut_prot][pep]+=1
     return(newdict)
     
 def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenmut):
@@ -413,7 +437,7 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenm
     hits_missed=0
     hit_mut=0
     hits_missed_mut=0
-    chrom_dist=[] # 1 chromosome location per scan id
+    chrom_dist=Counter() # 1 chromosome location per scan id
     mut_cpdt_observed={}
     for row in tqdm(combidict.iterrows()):
         scanid=row[1][0]
@@ -424,11 +448,11 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenm
         else:
             ids=[row[1][9]]
         proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
-        ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both) #what dictionaries do the hits come from
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
         chrom_origin=find_chrom(ids,chromdict)
-        chrom_dist.append(chrom_origin) #which chromosome does the peptide belong to
+        chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
+        ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
         if '->' in mod: #if ib detects a mutated peptide (for open mutation search only)
             hit_mut+=1
             #mut_cpdt_pep,notfound_mut=fill_cpdt()
@@ -449,7 +473,10 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,mut_cpdt_theoretical,isOpenm
     print("number of hits with detected mutation = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
     print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
+    #create checkpoint- save the results from above so that whole analysis does not need to be repeated to re-create the graphs
     if isOpenmut:
+        # with open('checkpoint.openmut.json','w'):
+        #     json.dump()
         plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varfree.png")
         # plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png")
@@ -497,7 +524,9 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     #iterate to fill the data structures
     print("Analyzing data...")
     mut_observed_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,mut_cpdt_theoretical,True)
+    plt.clf()
     mut_observed_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,mut_cpdt_theoretical,False)
+    plt.clf()
     plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical)
     return("Finished")
     

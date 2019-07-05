@@ -312,7 +312,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.savefig(fignamehorizontal)
     plt.clf()
     #vertical coverage
-    plt.hist(cov_vert,bins=500)
+    plt.hist(cov_vert,bins=50)
     plt.xlim(1,50)
     plt.xlabel("# Proteins")
     plt.ylabel("# Peptides")
@@ -374,7 +374,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     #create diagrams
     plt.figure('venn mutant peptides')
     vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Proteogenomics approach','Open mutation search')) #venn for the overlap in detected peptides
-    plt.title("Unique observed variant peptides",fontsize=30)
+    plt.title("Unique observed variant peptides",fontsize=26)
     for text in vda.set_labels:
         text.set_fontsize(26)
     for text in vda.subset_labels:
@@ -383,10 +383,10 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.clf()
     plt.figure('venn mutant proteins')
     vdb=venn2_unweighted([mut_peptide_dict_openmut.keys(),mut_peptide_dict_classic.keys()],("Open mutation search","Proteogenomics approach")) #venn for the overlap in detected proteins
-    plt.title("Unique proteins associated with observed variant peptides",fontsize=30)
-    for text in vda.set_labels:
+    plt.title("Unique proteins associated with observed variant peptides",fontsize=26)
+    for text in vdb.set_labels:
         text.set_fontsize(26)
-    for text in vda.subset_labels:
+    for text in vdb.subset_labels:
         text.set_fontsize(20)
     plt.savefig('overlap_detected_mut_prots.png')
     plt.clf()

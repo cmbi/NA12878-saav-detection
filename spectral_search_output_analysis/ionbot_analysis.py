@@ -321,7 +321,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
 
 def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
     prot_abundance=[]
-    nr_mutant=[]
+    #nr_mutant=[]
     mut_proteins_detected=set()
     num_peptides=0
     num_occurences=0
@@ -340,23 +340,27 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
                     num_occurences+=ct
                     num_peptides+=1
             if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
-                nr_mutant.append(sum_mut)
+                #nr_mutant.append(sum_mut)
                 for pepc,ctc in cpdtpep[stem].items():
                     sum_nonmut+=ctc
-                prot_abundance.append(sum_mut+sum_nonmut)
+                prot_abundance.append((sum_nonmut,sum_mut))
+                #prot_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
-    return(prot_abundance,nr_mutant)
+    return(prot_abundance)
 
 def plot_mut(mutant_cpdtpep,cpdtpep,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
-    prot_abundance,nr_mutant=calc_mut_abundances(mutant_cpdtpep,cpdtpep)
+    prot_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep)
     #make plot
     plt.figure('mutant peptides')
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    ax=sns.scatterplot(prot_abundance,nr_mutant)
-    ax.set(xlabel='Protein abundance',ylabel='Number mutant peptides detected')
-    ax.figure.savefig(figname)
+    plt.scatter(*zip(*prot_abundance))
+    plt.xlabel('Protein abundance')
+    plt.ylabel('Number mutant peptides detected')
+    plt.title('Mutant peptide abundance vs total non-mutated protein abundance')
+    plt.savefig(figname)
+    plt.clf()
     return('done')
 
 def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical):

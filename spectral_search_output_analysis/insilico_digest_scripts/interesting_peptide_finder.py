@@ -25,9 +25,9 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                     pepdict=custom[key]
                     c_peplist=Set(pepdict.keys())
                     r_peplist=Set(peplist.keys())
-                    dif=c_peplist.difference(r_peplist) #save all the peptides that are in the custom but not the reference
+                    dif=c_peplist.difference(r_peplist) #save all the peptides that are in the custom but not the reference for this particular protein
                     for pep in dif:
-                        if len(pep)>2:
+                        if len(pep)>2 and isQualified(pep,ref): #need to check if unique peptide
                             prob=pepdict[pep] #fetch probability
                             if determine_snv(pep,r_peplist):
                                 if key in newsnv:
@@ -39,6 +39,12 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                             else:
                                 newall[key]={pep:prob}
     return newall,newsnv
+
+def isQualified(peptide,reference_pepdict):
+    for pid,peplist in reference_pepdict.iteritems():
+        if peptide in peplist:
+            return False
+    return True
 
 def determine_snv(peptide,plist):
     ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid

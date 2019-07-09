@@ -370,7 +370,7 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
             #calculate count of non-mutant peptides
             for normpep,normct in cpdtpep[stem].items():
                 sum_nonmut+=normct
-            lennonmut=fullseqs[stem]
+            lennonmut=len(fullseqs[stem])
             nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
             nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
             if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
@@ -378,16 +378,17 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
                 mut_pep_abundance.append((nsafnonmut,sum_mut))
                 #mut_pep_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
-    return(mut_pep_abundance)
+    return(mut_pep_abundance,nonmut_pep_abundance)
 
 def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
-    mut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
+    mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
     #make plot
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*mut_pep_abundance))
+    plt.scatter(*zip(*mut_pep_abundance),c='b',label='Mutant peptide')
+    plt.scatter(*zip(*nonmut_pep_abundance),c='r',label='Normal peptide')
     plt.xlabel('Protein abundance (NSAF normalized)')
     plt.ylabel('Number mutant peptides detected')
     plt.title('Mutant peptide abundance vs total non-mutated protein abundance')

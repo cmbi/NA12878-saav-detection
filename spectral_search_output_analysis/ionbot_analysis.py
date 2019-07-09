@@ -387,11 +387,12 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*mut_pep_abundance),c='b',label='Mutant peptide')
-    plt.scatter(*zip(*nonmut_pep_abundance),c='r',label='Normal peptide')
+    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Mutant peptide')
+    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide')
     plt.xlabel('Protein abundance (NSAF normalized)')
     plt.ylabel('Number mutant peptides detected')
-    plt.title('Mutant peptide abundance vs total non-mutated protein abundance')
+    plt.title('Peptide abundance vs total protein abundance')
+    plt.legend(loc='upper left')
     plt.savefig(figname)
     plt.clf()
     return('done')
@@ -404,6 +405,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
         allmuts_classic+=mutct
     for prott,muti in mut_peptide_dict_openmut.items():
         allmuts_openmut+=muti
+    print(set(allmuts_classic).difference(set(allmuts_openmut))) #TESTING PURPOSES
     #create diagrams
     plt.figure('venn mutant peptides')
     vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Proteogenomics approach','Open mutation search')) #venn for the overlap in detected peptides
@@ -424,7 +426,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.savefig('overlap_detected_mut_prots.png')
     plt.clf()
     plt.figure('venn proteins all')
-    vdb=venn3([mut_peptide_dict_classic.keys(),mut_cpdt_theoretical.keys(),list(mutprotset)],("Proteogenomics approach","All theoretical","All predicted open mutation")) #venn for the overlap in detected proteins
+    vdb=venn3([set(mut_peptide_dict_classic.keys()),set(mut_cpdt_theoretical.keys()),mutprotset],("Proteogenomics approach","All theoretical","All predicted open mutation")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with mutations",fontsize=26)
     for text in vdb.set_labels:
         text.set_fontsize(26)

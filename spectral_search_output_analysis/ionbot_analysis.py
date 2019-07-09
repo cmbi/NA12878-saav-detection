@@ -337,7 +337,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
 def calc_nsaf_standard(cpdt_pep,fullseqs):
     '''after cpdt_pep has been filled, find the sum nsaf in order to standardize the abundance scores in calc_mut_abundances'''
     nsaf=0
-    for prot,peps in cpdt_pep():
+    for prot,peps in cpdt_pep.items():
         count_peps=0
         for p,ct in peps.items():
             count_peps+=ct
@@ -372,6 +372,7 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
                 sum_nonmut+=normct
             lennonmut=fullseqs[stem]
             nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
+            nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
             if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
                 #nr_mutant.append(sum_mut)
                 mut_pep_abundance.append((nsafnonmut,sum_mut))

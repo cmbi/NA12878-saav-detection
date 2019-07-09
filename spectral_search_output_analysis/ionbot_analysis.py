@@ -168,7 +168,7 @@ def coverage_measure(cpdt_pep,full_seqs):
                             remains=remains.replace(p,'')
         perc_cov=float((len(seq)-len(remains))/len(seq))*100
         perc_cov_dist.append(perc_cov)
-        vert_cov.append(count_pep)
+        vert_cov.append(float(count_pep/len(peps.keys())))
         if perc_cov>50:
             high_cov_hor[p]=peps
         # if count_pep>100:
@@ -202,6 +202,11 @@ def bin_hits_by_source(scanid,ids,oro,ono,ob,isOpenmut):
     #else:
     #    raise Exception('Unexpected protein found')
     return(ref_only,ont_only,both)
+
+def calculate_support():
+    '''look into the support for proteins
+    how many proteins have 1,2,3... peptides supporting their existence? unambiguously?'''
+    return(0)
 
 def fill_cpdt(pep,mod,ids,old_cpdt_pep):
     '''fill the data structure to match predicted (mutated) peptides to observed
@@ -245,9 +250,9 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution")
-    sns.distplot(ibdf_refonly['ms2pip_pearsonr'], hist=False, label='Human reference only',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_ontonly['ms2pip_pearsonr'], hist=False, label='Transcriptome translation only',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_combi['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_refonly['ionbot_psm_score'], hist=False, label='Human reference only',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_ontonly['ionbot_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Pearson R Correlation')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_3source.png")
@@ -259,8 +264,8 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_combi_pg['ms2pip_pearsonr'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi_pg['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Pearson R Correlation')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
@@ -282,15 +287,21 @@ def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
     plt.clf()
     return("saved to sources_spectral_hits")
 
-def plot_chromosomal_dist(distr_cnt,figname):
+def plot_chromosomal_dist(distr_classic,distr_openmut):
     # sns.set(rc={'figure.figsize':(11.7,8.27)})
     # sns.set_style(style='white')
+    # combi={'Classical proteogenomics':distr_classic,'Open mutation':distr_openmut}
     plt.figure('chromosomal distribution')
-    chist=pd.DataFrame.from_dict(distr_cnt,orient='index')
-    chist.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
+    # combi_df=pd.DataFrame(combi).stack().reset
+    # index=["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY","unknown"]
+    chist=pd.DataFrame.from_dict(distr_classic,orient='index').sort_index()
+    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index').sort_index()
+    combi=pd.concat([chist,chist_openmut],axis=1)
+    combi.columns=['Classical proteogenomics','Open mutation']
+    combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
     plt.xlabel("Chromosomes")
-    plt.savefig(figname)
+    plt.savefig('chromosomal_distribution.png')
     plt.clf()
     return("plotted chromosomal distribution")
 
@@ -366,7 +377,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,figname):
     plt.clf()
     return('done')
 
-def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical):
+def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical,mutprotset):
     allmuts_classic=Counter()
     allmuts_openmut=Counter()
     #go through each dictionary and concatenate counters so one large counter object with peptides
@@ -392,6 +403,15 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     for text in vdb.subset_labels:
         text.set_fontsize(20)
     plt.savefig('overlap_detected_mut_prots.png')
+    plt.clf()
+    plt.figure('venn proteins all')
+    vdb=venn3([mut_peptide_dict_classic.keys(),mut_cpdt_theoretical.keys(),list(mutprotset)],("Proteogenomics approach","All theoretical","All predicted open mutation")) #venn for the overlap in detected proteins
+    plt.title("Unique proteins associated with mutations",fontsize=26)
+    for text in vdb.set_labels:
+        text.set_fontsize(26)
+    for text in vdb.subset_labels:
+        text.set_fontsize(20)
+    plt.savefig('overlap_all_detected_mut_prots.png')
     plt.clf()
     return('plotted final venns')
 
@@ -422,12 +442,6 @@ def detect_mut_peptides(pep,ids,cpdt_pep):
                 #     return(poss)
     return('')
 
-def isMutCandidate(idlist,theoretical_mutdict):
-    for idt in idlist:
-        if get_id(idt) in theoretical_mutdict:
-            return(get_id(idt))
-    return('')
-
 def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict=olddict
     if mut_prot not in newdict:
@@ -446,9 +460,11 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
     hits_missed_mut=0
     chrom_dist=Counter() # 1 chromosome location per scan id
     mut_cpdt_observed={}
+    mutprotset=set()
     for row in tqdm(combidict.iterrows()):
         scanid=row[1][0]
         mod=str(row[1][7])
+        aamod=re.findall('[A-Z]->[A-Z]',mod)
         pep=row[1][3]
         if '||' in row[1][9]:
             ids=row[1][9].split('||')
@@ -460,7 +476,8 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         chrom_origin=find_chrom(ids,chromdict)
         chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
-        if '->' in mod: #if ib detects a mutated peptide (for open mutation search only)
+        if len(aamod)>0: #if ib detects a mutated peptide (for open mutation search only)
+            mutprotset=mutprotset.union(set(ids))
             hit_mut+=1
             #mut_cpdt_pep,notfound_mut=fill_cpdt()
             mut_prot=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
@@ -472,7 +489,7 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
                 mutated.add(get_id(i))
             #mutdict_id,pep
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
-            mutcand=isMutCandidate(ids,mut_cpdt_theoretical)
+            mutcand=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
             if mutcand!='': 
                 if pep in mut_cpdt_theoretical[mutcand]:
                     mut_cpdt_observed=add_to_observed_mutdict(mutcand,pep,mut_cpdt_observed)
@@ -487,13 +504,15 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
-        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
+        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
     else:
         plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
-        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
-    return(mut_cpdt_observed)
+        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
+    if isOpenmut:
+        return(mut_cpdt_observed,mutprotset,chrom_dist)
+    return(mut_cpdt_observed,chrom_dist)
 
 
 def create_chromosome_reference(gfffile,bedfile):
@@ -530,11 +549,12 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     
     #iterate to fill the data structures
     print("Analyzing data...")
-    mut_observed_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
+    mut_observed_openmut,mutprotset,chromdist_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
     plt.clf()
-    mut_observed_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
+    mut_observed_classic,chromdist_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
     plt.clf()
-    plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical)
+    plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
+    plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical,mutprotset)
     return("Finished")
     
     

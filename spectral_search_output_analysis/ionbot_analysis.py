@@ -266,12 +266,23 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
     sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='F']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
     sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='F']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
+    plt.clf()
+    return("Scores plot made")
+
+def plot_scores_decoy(ibdf_combi):
+    '''look at the quality of the matches per dictionary before the dataset has been filtered'''
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure("Pearson R distribution 2")
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['ionbot_psm_score'], label='Target',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='F']['ionbot_psm_score'], label='Decoy',axlabel='Ionbot score')
+    plt.legend()
+    plt.title('Correlation between theoretical and observed spectra of matched peptide')
+    plt.savefig("qc_pearsonr_decoy.png")
     plt.clf()
     return("Scores plot made")
 
@@ -346,6 +357,13 @@ def calc_nsaf_standard(cpdt_pep,fullseqs):
         nsaf+=float(count_peps/length_prot)
     return(nsaf)
 
+def calc_nsaf_protein(pepdict_singleprot,lenprot,sumnsaf):
+    sum_nonmut=0
+    for normpep,normct in pepdict_singleprot.items():
+        sum_nonmut+=normct
+    nsaf=float(float(sum_nonmut/lenprot)/sumnsaf)
+    return(nsaf)
+
 def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     mut_pep_abundance=[]
     nonmut_pep_abundance=[]
@@ -360,6 +378,7 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
         else:
             stem=prot
         if stem in cpdtpep:
+            nsafnonmut=calc_nsaf_protein(cpdtpep[stem],len(fullseqs[stem]),sumnsaf)
             sum_mut=0 #total number of detected mutant peptides
             sum_nonmut=0
             for pep,ct in peps.items():
@@ -368,16 +387,20 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
                     mut_proteins_detected.add(prot)
                     num_occurences+=ct
                     num_peptides+=1
+                    mut_pep_abundance.append((nsafnonmut,ct))
             #calculate count of non-mutant peptides
+            # for normpep,normct in cpdtpep[stem].items():
+            #     sum_nonmut+=normct
+            # lennonmut=len(fullseqs[stem])
             for normpep,normct in cpdtpep[stem].items():
-                sum_nonmut+=normct
-            lennonmut=len(fullseqs[stem])
-            nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
-            nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
-            if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
-                #nr_mutant.append(sum_mut)
-                mut_pep_abundance.append((nsafnonmut,sum_mut))
-                #mut_pep_abundance.append(sum_mut+sum_nonmut)
+                # sum_nonmut+=normct
+                nonmut_pep_abundance.append((nsafnonmut,normct))
+            # nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
+            # nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
+            # if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
+            #     #nr_mutant.append(sum_mut)
+            #     mut_pep_abundance.append((nsafnonmut,sum_mut))
+            #     #mut_pep_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
 
@@ -461,13 +484,9 @@ def detect_mut_peptides(pep,ids,cpdt_pep,isOpenmut):
             possibilities=[i]
         for poss in possibilities:
             if poss in cpdt_pep.keys():
-                if pep in cpdt_pep[poss]: # this only allows for exact matches to predicted peptides
-                    return(poss)
-                # for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
-                #     if pep in p:
-                #         return(poss)
-                # if pep in cpdt_pep[poss]:
-                #     return(poss)
+                for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
+                    if pep in p:
+                        return(poss)
     return('')
 
 def add_to_observed_mutdict(mut_prot,pep,olddict):
@@ -563,6 +582,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     #qc function
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
     plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
+    plot_scores_decoy(ibdf_combi.dropna())
 
     #filter badly scoring hits
     ibdf_ontonly = chunk_preprocessing(ibdf_ontonly)

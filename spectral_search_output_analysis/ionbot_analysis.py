@@ -265,8 +265,10 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi_pg['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='F']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='F']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
@@ -390,6 +392,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.scatter(*zip(*mut_pep_abundance),c='r',label='Mutant peptide')
     plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide')
     plt.xlabel('Protein abundance (NSAF normalized)')
+    plt.xlim(0,0.001)
     plt.ylabel('Number mutant peptides detected')
     plt.title('Peptide abundance vs total protein abundance')
     plt.legend(loc='upper left')
@@ -428,10 +431,10 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.figure('venn proteins all')
     vdb=venn3([set(mut_peptide_dict_classic.keys()),set(mut_cpdt_theoretical.keys()),mutprotset],("Proteogenomics approach","All theoretical","All predicted open mutation")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with mutations",fontsize=26)
-    for text in vdb.set_labels:
-        text.set_fontsize(26)
-    for text in vdb.subset_labels:
-        text.set_fontsize(20)
+    # for text in vdb.set_labels:
+    #     text.set_fontsize(26)
+    # for text in vdb.subset_labels:
+    #     text.set_fontsize(20)
     plt.savefig('overlap_all_detected_mut_prots.png')
     plt.clf()
     return('plotted final venns')
@@ -509,6 +512,8 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
             for i in ids: 
                 mutated.add(get_id(i))
             #mutdict_id,pep
+        elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical)!='': ##very strange scenario here!!##
+            print(scanid)
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
             mutcand=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
             if mutcand!='': 

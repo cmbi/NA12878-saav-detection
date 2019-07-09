@@ -156,23 +156,24 @@ def coverage_measure(cpdt_pep,full_seqs):
         seq=full_seqs[p]
         remains=seq
         count_pep=0
-        for s,c in peps.items():
-            if c>5: #what constitutes a "true" hit
-                count_pep+=c
-                if s in remains:
-                    remains=remains.replace(s,'')
-                else:
-                    prefix=re.split('R|K',s)
-                    for p in prefix:
-                        if len(p)>3 and p in remains:
-                            remains=remains.replace(p,'')
-        perc_cov=float((len(seq)-len(remains))/len(seq))*100
-        perc_cov_dist.append(perc_cov)
-        vert_cov.append(float(count_pep/len(peps.keys())))
-        if perc_cov>50:
-            high_cov_hor[p]=peps
-        # if count_pep>100:
-        #     high_cov_vert[p]=peps
+        if len(peps.keys())>0:
+            for s,c in peps.items():
+                if c>5: #what constitutes a "true" hit
+                    count_pep+=c
+                    if s in remains:
+                        remains=remains.replace(s,'')
+                    else:
+                        prefix=re.split('R|K',s)
+                        for p in prefix:
+                            if len(p)>3 and p in remains:
+                                remains=remains.replace(p,'')
+            perc_cov=float((len(seq)-len(remains))/len(seq))*100
+            perc_cov_dist.append(perc_cov)
+            vert_cov.append(float(count_pep/len(peps.keys())))
+            if perc_cov>50:
+                high_cov_hor[p]=peps
+            # if count_pep>100:
+            #     high_cov_vert[p]=peps
     return(high_cov_hor,vert_cov,perc_cov_dist)
 
 def bin_hits_by_source(scanid,ids,oro,ono,ob,isOpenmut):
@@ -250,9 +251,9 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution")
-    sns.distplot(ibdf_refonly['ionbot_psm_score'], hist=False, label='Human reference only',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_ontonly['ionbot_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_refonly['ionbot_psm_score'], hist=False, label='Human reference only',axlabel='Ionbot score')
+    sns.distplot(ibdf_ontonly['ionbot_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Ionbot score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_3source.png")
@@ -264,8 +265,8 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Pearson R Correlation')
-    sns.distplot(ibdf_combi_pg['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Pearson R Correlation')
+    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi_pg['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
@@ -333,12 +334,24 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.clf()
     return("Plotted coverage")
 
-def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
+def calc_nsaf_standard(cpdt_pep,fullseqs):
+    '''after cpdt_pep has been filled, find the sum nsaf in order to standardize the abundance scores in calc_mut_abundances'''
+    nsaf=0
+    for prot,peps in cpdt_pep():
+        count_peps=0
+        for p,ct in peps.items():
+            count_peps+=ct
+        length_prot=len(fullseqs[prot])
+        nsaf+=float(count_peps/length_prot)
+    return(nsaf)
+
+def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     prot_abundance=[]
     #nr_mutant=[]
     mut_proteins_detected=set()
     num_peptides=0
     num_occurences=0
+    sumnsaf=calc_nsaf_standard(cpdtpep,fullseqs)
     for prot,peps in mutant_cpdtpep.items():
         if '_h' in prot:
             stem=prot.split('_h')[0]
@@ -357,7 +370,9 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep):
                 #nr_mutant.append(sum_mut)
                 for pepc,ctc in cpdtpep[stem].items():
                     sum_nonmut+=ctc
-                prot_abundance.append((sum_nonmut,sum_mut))
+                lennonmut=fullseqs[stem]
+                nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
+                prot_abundance.append((nsafnonmut,sum_mut))
                 #prot_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(prot_abundance)

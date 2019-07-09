@@ -291,12 +291,9 @@ def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
     return("saved to sources_spectral_hits")
 
 def plot_chromosomal_dist(distr_classic,distr_openmut):
-    # sns.set(rc={'figure.figsize':(11.7,8.27)})
-    # sns.set_style(style='white')
-    # combi={'Classical proteogenomics':distr_classic,'Open mutation':distr_openmut}
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
     plt.figure('chromosomal distribution')
-    # combi_df=pd.DataFrame(combi).stack().reset
-    # index=["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY","unknown"]
     chist=pd.DataFrame.from_dict(distr_classic,orient='index').sort_index()
     chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index').sort_index()
     combi=pd.concat([chist,chist_openmut],axis=1)
@@ -304,6 +301,7 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
     plt.xlabel("Chromosomes")
+    plt.legend(loc='upper right')
     plt.savefig('chromosomal_distribution.png')
     plt.clf()
     return("plotted chromosomal distribution")
@@ -329,7 +327,8 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     #vertical coverage
     plt.figure('vertical coverage')
     plt.hist(cov_vert,bins=1000)
-    plt.xlim(1,50)
+    plt.xlim(1,10)
+    plt.ylim(0,1000)
     plt.xlabel("# Proteins")
     plt.ylabel("# Peptides")
     plt.savefig(fignamevertical)
@@ -395,7 +394,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.xlim(0,0.001)
     plt.ylabel('Number mutant peptides detected')
     plt.title('Peptide abundance vs total protein abundance')
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.clf()
     return('done')
@@ -452,16 +451,21 @@ def make_report(hits_df):
     uniquepeptides=hits_df['peptide'].nunique()
     return("report written")
 
-def detect_mut_peptides(pep,ids,cpdt_pep):
+def detect_mut_peptides(pep,ids,cpdt_pep,isOpenmut):
     for isi in ids:
         i=get_id(isi)
         found=False
-        possibilities=[i,i+'_h0',i+'_h1']
+        if isOpenmut:
+            possibilities=[i,i+'_h0',i+'_h1']
+        else:
+            possibilities=[i]
         for poss in possibilities:
             if poss in cpdt_pep.keys():
-                for p in cpdt_pep[poss]:
-                    if pep in p:
-                        return(poss)
+                if pep in cpdt_pep[poss]: # this only allows for exact matches to predicted peptides
+                    return(poss)
+                # for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
+                #     if pep in p:
+                #         return(poss)
                 # if pep in cpdt_pep[poss]:
                 #     return(poss)
     return('')
@@ -484,7 +488,6 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
     hits_missed_mut=0
     chrom_dist=Counter() # 1 chromosome location per scan id
     mut_cpdt_observed={}
-    mutprotset=set()
     for row in tqdm(combidict.iterrows()):
         scanid=row[1][0]
         mod=str(row[1][7])
@@ -500,11 +503,10 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         chrom_origin=find_chrom(ids,chromdict)
         chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
-        if len(aamod)>0: #if ib detects a mutated peptide (for open mutation search only)
-            mutprotset=mutprotset.union(set(ids))
+        if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open mutation search only)
             hit_mut+=1
             #mut_cpdt_pep,notfound_mut=fill_cpdt()
-            mut_prot=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
+            mut_prot=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
             #add mutant peptide to observed
             if mut_prot!='':
                 mut_cpdt_observed=add_to_observed_mutdict(mut_prot,pep,mut_cpdt_observed)
@@ -512,10 +514,10 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
             for i in ids: 
                 mutated.add(get_id(i))
             #mutdict_id,pep
-        elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical)!='': ##very strange scenario here!!##
-            print(scanid)
+        # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
+        #     print(scanid)
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
-            mutcand=detect_mut_peptides(pep,ids,mut_cpdt_theoretical)
+            mutcand=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
             if mutcand!='': 
                 if pep in mut_cpdt_theoretical[mutcand]:
                     mut_cpdt_observed=add_to_observed_mutdict(mutcand,pep,mut_cpdt_observed)
@@ -537,7 +539,7 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
     if isOpenmut:
-        return(mut_cpdt_observed,mutprotset,chrom_dist)
+        return(mut_cpdt_observed,mutated,chrom_dist)
     return(mut_cpdt_observed,chrom_dist)
 
 

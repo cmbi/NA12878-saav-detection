@@ -346,7 +346,8 @@ def calc_nsaf_standard(cpdt_pep,fullseqs):
     return(nsaf)
 
 def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
-    prot_abundance=[]
+    mut_pep_abundance=[]
+    nonmut_pep_abundance=[]
     #nr_mutant=[]
     mut_proteins_detected=set()
     num_peptides=0
@@ -366,26 +367,27 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
                     mut_proteins_detected.add(prot)
                     num_occurences+=ct
                     num_peptides+=1
+            #calculate count of non-mutant peptides
+            for normpep,normct in cpdtpep[stem].items():
+                sum_nonmut+=normct
+            lennonmut=fullseqs[stem]
+            nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
             if sum_mut>0: #only record the proteins with at least 1 detected mutation peptide
                 #nr_mutant.append(sum_mut)
-                for pepc,ctc in cpdtpep[stem].items():
-                    sum_nonmut+=ctc
-                lennonmut=fullseqs[stem]
-                nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
-                prot_abundance.append((nsafnonmut,sum_mut))
-                #prot_abundance.append(sum_mut+sum_nonmut)
+                mut_pep_abundance.append((nsafnonmut,sum_mut))
+                #mut_pep_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
-    return(prot_abundance)
+    return(mut_pep_abundance)
 
-def plot_mut(mutant_cpdtpep,cpdtpep,figname):
+def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
-    prot_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep)
+    mut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
     #make plot
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*prot_abundance))
-    plt.xlabel('Protein abundance')
+    plt.scatter(*zip(*mut_pep_abundance))
+    plt.xlabel('Protein abundance (NSAF normalized)')
     plt.ylabel('Number mutant peptides detected')
     plt.title('Mutant peptide abundance vs total non-mutated protein abundance')
     plt.savefig(figname)
@@ -516,12 +518,12 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
     if isOpenmut:
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
-        plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varfree.png")
+        plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
         # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
     else:
-        plot_mut(mut_cpdt_observed,cpdt_pep,"mutant_abundance_varcont.png")
+        plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")

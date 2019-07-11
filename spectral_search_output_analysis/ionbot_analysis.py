@@ -136,8 +136,8 @@ def find_chrom(prots,chromdict):
         if '_h' in p:
             p=p.split('_h')[0]
         if p in chromdict:
-            return(re.sub('r','r ',chromdict[p]))
-            # return(int())
+            # return(re.sub('r','r ',chromdict[p]))
+            return(chromdict[p].split('chr')[1])
     return("unknown")
 
 def get_id(idstring):

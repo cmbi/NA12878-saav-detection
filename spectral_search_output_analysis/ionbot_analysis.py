@@ -137,6 +137,7 @@ def find_chrom(prots,chromdict):
             p=p.split('_h')[0]
         if p in chromdict:
             return(re.sub('r','r ',chromdict[p]))
+            # return(int())
     return("unknown")
 
 def get_id(idstring):
@@ -325,8 +326,8 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('chromosomal distribution')
-    chist=pd.DataFrame.from_dict(distr_classic,orient='index').sort_index()
-    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index').sort_index()
+    chist=pd.DataFrame.from_dict(distr_classic,orient='index')#.sort_index()
+    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index')#.sort_index()
     combi=pd.concat([chist,chist_openmut],axis=1)
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")

@@ -590,13 +590,13 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
-        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
+        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
-        plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
+        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
     if isOpenmut:
         return(mut_cpdt_observed,mutated,chrom_dist)

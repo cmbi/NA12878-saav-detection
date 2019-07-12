@@ -29,15 +29,16 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                     for pep in dif:
                         if len(pep)>2 and isQualified(pep,ref): #need to check if unique peptide
                             prob=pepdict[pep] #fetch probability
-                            if determine_snv(pep,r_peplist):
-                                if key in newsnv:
-                                    newsnv[key][pep]=prob
+                            if float(prob)>=0.05:
+                                if determine_snv(pep,r_peplist):
+                                    if key in newsnv:
+                                        newsnv[key][pep]=prob
+                                    else:
+                                        newsnv[key]={pep:prob}
+                                if key in newall:
+                                    newall[key][pep]=prob
                                 else:
-                                    newsnv[key]={pep:prob}
-                            if key in newall:
-                                newall[key][pep]=prob
-                            else:
-                                newall[key]={pep:prob}
+                                    newall[key]={pep:prob}
     return newall,newsnv
 
 def isQualified(peptide,reference_pepdict):

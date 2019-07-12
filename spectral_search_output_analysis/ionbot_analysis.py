@@ -137,7 +137,11 @@ def find_chrom(prots,chromdict):
             p=p.split('_h')[0]
         if p in chromdict:
             # return(re.sub('r','r ',chromdict[p]))
-            return(chromdict[p].split('chr')[1])
+            chrom=chromdict[p].split('chr')[1]
+            if chrom.isdigit():
+                return(int(chrom))
+            else:
+                return(chrom)
     return("unknown")
 
 def get_id(idstring):
@@ -212,11 +216,14 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.figure('support')
     recountpev=counter_translator(prot_evidence)
     recountunamb=counter_translator(unamb_prot_evidence)
-    pev= pd.DataFrame.from_dict(recountpev,orient='index').sort_index()
-    punamb= pd.DataFrame.from_dict(recountunamb,orient='index').sort_index()
-    combi=pd.concat([pev,punamb],axis=1)
+    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'20+']
+    pev= pd.DataFrame.from_dict(recountpev,orient='index')
+    punamb= pd.DataFrame.from_dict(recountunamb,orient='index')
+    combi=pd.concat([pev,punamb],axis=1,sort=True)
+    # combi=combi.reindex(new_index)
+    combi.fillna(0,inplace=True)
     combi.columns=['Any peptide evidence','Unambiguous assignments']
-    combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
+    combi.plot(kind='bar',legend=False,title="Peptide support for proteins")
     plt.ylabel("# proteins")
     plt.xlabel("# peptides")
     plt.legend(loc='upper right')
@@ -227,7 +234,10 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
 def counter_translator(counterobj):
     ct_prots=Counter()
     for elem,ct in counterobj.items():
-        ct_prots[ct]+=1
+        if ct>19:
+            ct_prots['20+']+=1
+        else:
+            ct_prots[ct]+=1
     return(ct_prots)
 
 def fill_cpdt(pep,mod,ids,old_cpdt_pep):
@@ -294,7 +304,7 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     plt.clf()
     return("Scores plot made")
 
-def plot_scores_decoy(ibdf_combi):
+def plot_scores_decoy(ibdf_combi,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
@@ -303,7 +313,7 @@ def plot_scores_decoy(ibdf_combi):
     sns.distplot(ibdf_combi[ibdf_combi['DB']=='D']['ionbot_psm_score'], label='Decoy',axlabel='Ionbot score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
-    plt.savefig("qc_pearsonr_decoy.png")
+    plt.savefig(figname)
     plt.clf()
     return("Scores plot made")
 
@@ -332,7 +342,7 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
-    plt.xlabel("Chromosomes")
+    plt.xlabel("Chromosome")
     plt.legend(loc='upper right')
     plt.savefig('chromosomal_distribution.png')
     plt.clf()
@@ -425,15 +435,27 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
 
+def calculate_correlation(mut_pep_abundance,nonmut_pep_abundance):
+    dt=np.dtype('float,int')
+    variant = np.array(mut_pep_abundance,dtype=dt)
+    nonvariant=np.array(nonmut_pep_abundance,dtype=dt)
+    cor_var= np.corrcoef(variant['f0'],variant['f1'])
+    cor_nonvar= np.corrcoef(nonvariant['f0'],nonvariant['f1'])
+    # cor_var_nonvar=np.corrcoef(variant['f0'],nonvariant['f0'])
+    print("correlation between variant peptides abundance and total peptide abundance: "+str(cor_var[1][0]))
+    print("correlation between non-variant peptide abundance and total peptide abundance: "+str(cor_nonvar[1][0]))
+    return(0)
+
 def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
+    calculate_correlation(mut_pep_abundance,nonmut_pep_abundance)
     #make plot
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Mutant peptide')
-    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide')
+    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Mutant peptide',alpha=0.5)
+    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.5)
     plt.xlabel('Protein abundance (NSAF normalized)')
     plt.xlim(0,0.001)
     plt.ylabel('Number mutant peptides detected')
@@ -623,7 +645,8 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     #qc function
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
     plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
-    plot_scores_decoy(ibdf_combi.dropna())
+    plot_scores_decoy(ibdf_combi.dropna(),"qc_pearsonr_decoy_varfree.png")
+    plot_scores_decoy(ibdf_combi_pg.dropna(),"qc_pearsonr_decoy_varcont.png")
 
     #filter badly scoring hits
     ibdf_ontonly = chunk_preprocessing(ibdf_ontonly)

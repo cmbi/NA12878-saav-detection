@@ -30,6 +30,7 @@ def concatenate_csvs(csvpath):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
             temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
+            temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files
             ionbotout=pd.concat([ionbotout,temp])
     return(ionbotout)
 
@@ -117,6 +118,7 @@ def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
     '''
     chromdict={}
+    stranddict={}
     with open(gfffile) as handle:
         for line in handle:
             info=line.split('\t')
@@ -126,9 +128,11 @@ def import_gff(gfffile,isBed):
                         tid=line.split('transcript_id=')[1]
                         tid=tid.split(';')[0]
                         chromdict[tid]=info[0]
+                        stranddict[tid]=info[6]
                 else:
                     chromdict[info[3]]=info[0]
-    return(chromdict)
+                    stranddict[info[3]]=info[5]
+    return(chromdict,stranddict)
 
 def find_chrom(prots,chromdict):
     for p in prots:
@@ -142,6 +146,15 @@ def find_chrom(prots,chromdict):
                 return(int(chrom))
             else:
                 return(chrom)
+    return("unknown")
+
+def find_strand(prots,stranddict):
+    for p in prots:
+        p=get_id(p)
+        if '_h' in p:
+            p=p.split('_h')[0]
+        if p in stranddict:
+            return(stranddict[p])
     return("unknown")
 
 def get_id(idstring):
@@ -174,7 +187,9 @@ def coverage_measure(cpdt_pep,full_seqs):
                                 remains=remains.replace(p,'')
             perc_cov=float((len(seq)-len(remains))/len(seq))*100
             perc_cov_dist.append(perc_cov)
-            vert_cov.append(float(count_pep/len(peps.keys())))
+            vert=float(count_pep/len(peps.keys()))
+            if vert>0:
+                vert_cov.append(vert)
             if perc_cov>50:
                 high_cov_hor[p]=peps
             # if count_pep>100:
@@ -216,15 +231,16 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.figure('support')
     recountpev=counter_translator(prot_evidence)
     recountunamb=counter_translator(unamb_prot_evidence)
-    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'20+']
+    new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'20+']
     pev= pd.DataFrame.from_dict(recountpev,orient='index')
     punamb= pd.DataFrame.from_dict(recountunamb,orient='index')
     combi=pd.concat([pev,punamb],axis=1,sort=True)
-    # combi=combi.reindex(new_index)
+    combi=combi.reindex(new_index)
     combi.fillna(0,inplace=True)
     combi.columns=['Any peptide evidence','Unambiguous assignments']
     combi.plot(kind='bar',legend=False,title="Peptide support for proteins")
     plt.ylabel("# proteins")
+    plt.ylim(0,20000)
     plt.xlabel("# peptides")
     plt.legend(loc='upper right')
     plt.savefig(figname)
@@ -335,10 +351,12 @@ def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
 def plot_chromosomal_dist(distr_classic,distr_openmut):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
+    new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     plt.figure('chromosomal distribution')
     chist=pd.DataFrame.from_dict(distr_classic,orient='index')#.sort_index()
     chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index')#.sort_index()
     combi=pd.concat([chist,chist_openmut],axis=1)
+    combi=combi.reindex(new_index)
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
@@ -347,6 +365,22 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     plt.savefig('chromosomal_distribution.png')
     plt.clf()
     return("plotted chromosomal distribution")
+
+def plot_strand_dist(distr_classic,distr_openmut):
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure('strand distribution')
+    chist=pd.DataFrame.from_dict(distr_classic,orient='index')#.sort_index()
+    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index')#.sort_index()
+    combi=pd.concat([chist,chist_openmut],axis=1)
+    combi.columns=['Combi variant-containing','Combi variant-free']
+    combi.plot(kind='bar',legend=False,title="Strand distribution of peptide hits")
+    plt.ylabel("# Peptides")
+    plt.xlabel("Strand")
+    plt.legend(loc='upper right')
+    plt.savefig('strand_distribution.png')
+    plt.clf()
+    return("plotted strand distribution")
 
 def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     '''this function will plot the graphs that correspond to the coverage of the proteome
@@ -362,17 +396,19 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.hist(perc_cov_dist,bins=300)
     plt.xlim(1,100)
     plt.ylim(0,1000)
+    plt.title("Horizontal coverage")
     plt.xlabel("% Coverage")
     plt.ylabel("# Proteins")
     plt.savefig(fignamehorizontal)
     plt.clf()
     #vertical coverage
     plt.figure('vertical coverage')
-    plt.hist(cov_vert,bins=1000)
-    plt.xlim(1,10)
-    plt.ylim(0,1000)
-    plt.xlabel("# Proteins")
-    plt.ylabel("# Peptides")
+    plt.hist(cov_vert,bins=80)
+    plt.xlim(1,40)
+    plt.ylim(0,4000)
+    plt.title("Vertical coverage")
+    plt.xlabel("Peptide count (protein size normalized)")
+    plt.ylabel("Density")
     plt.savefig(fignamevertical)
     plt.clf()
     return("Plotted coverage")
@@ -465,6 +501,12 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.clf()
     return('done')
 
+def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
+    '''check out the differences in identifications between the 2 combination dictionaries
+    why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does'''
+    
+    return(0)
+
 def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical,mutprotset):
     allmuts_classic=Counter()
     allmuts_openmut=Counter()
@@ -552,7 +594,7 @@ def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict[mut_prot][pep]+=1
     return(newdict)
     
-def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
+def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
     proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
@@ -562,6 +604,7 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
     hit_mut=0
     hits_missed_mut=0
     chrom_dist=Counter() # 1 chromosome location per scan id
+    strand_dist=Counter()
     mut_cpdt_observed={}
     protein_support=Counter()
     unamb_protsupport=Counter()
@@ -581,7 +624,9 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
         chrom_origin=find_chrom(ids,chromdict)
+        strand_origin=find_strand(ids,stranddict)
         chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
+        strand_dist[strand_origin]+=1 #which strand does the peptide belong to
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
         if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
             hit_mut+=1
@@ -612,24 +657,23 @@ def combidict_analysis(combidict,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretic
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
-        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varfree.png")
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
-        # plot_chromosomal_dist(chrom_dist,"chromosomal_distribution_varcont.png")
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
     if isOpenmut:
         return(mut_cpdt_observed,mutated,chrom_dist)
-    return(mut_cpdt_observed,chrom_dist)
+    return(mut_cpdt_observed,chrom_dist,strand_dist)
 
 
 def create_chromosome_reference(gfffile,bedfile):
-    chromdict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
-    chromdict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
+    chromdict_ref,stranddict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
+    chromdict_ont,stranddict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
     chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
-    return(chromdict)
+    stranddict={**stranddict_ont,**stranddict_ref} #combine the 2 dictionaries
+    return(chromdict,stranddict)
 
 def main(directory_ontonly, directory_refonly, directory_combination, directory_combination_including_variants, cpdtfile,cpdtfile_mut,gfffile,bedfile):
     '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
@@ -657,15 +701,17 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     #import insilico digest info
     cpdt_pep,full_seqs=import_cpdt(cpdtfile) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
     mut_cpdt_theoretical=import_cpdt_simple(cpdtfile_mut) #import the cpdt file with all snv peptides
-    chromdict=create_chromosome_reference(gfffile,bedfile) #import information about the chromosome of origin (QC)
+    chromdict,stranddict=create_chromosome_reference(gfffile,bedfile) #import information about the chromosome of origin (QC)
     
     #iterate to fill the data structures
     print("Analyzing data...")
-    mut_observed_openmut,mutprotset,chromdist_openmut=combidict_analysis(ibdf_combi,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
     plt.clf()
-    mut_observed_classic,chromdist_classic=combidict_analysis(ibdf_combi_pg,chromdict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
+    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
     plt.clf()
+    # discrepancy_check(mut_observed_classic,mut_observed_openmut)
     plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
+    plot_strand_dist(stranddist_classic,stranddist_openmut)
     plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical,mutprotset)
     return("Finished")
     

@@ -504,7 +504,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
 def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does'''
-    
+
     return(0)
 
 def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical,mutprotset):
@@ -515,7 +515,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
         allmuts_classic+=mutct
     for prott,muti in mut_peptide_dict_openmut.items():
         allmuts_openmut+=muti
-    print(set(allmuts_classic).difference(set(allmuts_openmut))) #TESTING PURPOSES
+    # print(set(allmuts_classic).difference(set(allmuts_openmut))) #TESTING PURPOSES
     #create diagrams
     plt.figure('venn mutant peptides')
     vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
@@ -664,7 +664,7 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
     if isOpenmut:
-        return(mut_cpdt_observed,mutated,chrom_dist)
+        return(mut_cpdt_observed,mutated,chrom_dist,strand_dist)
     return(mut_cpdt_observed,chrom_dist,strand_dist)
 
 

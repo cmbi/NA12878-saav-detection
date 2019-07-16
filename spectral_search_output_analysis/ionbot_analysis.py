@@ -646,8 +646,8 @@ def detect_mut_peptides(pep,ids,cpdt_pep,isOpenmut):
             if poss in cpdt_pep.keys():
                 for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
                     if pep in p or equivalent_check(pep,p):
-                        return(poss)
-    return('')
+                        return(poss,p)
+    return('','')
 
 def equivalent_check(querypep,pep):
     chunks=re.split('I|L',pep)
@@ -706,10 +706,10 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
             hit_mut+=1
             #mut_cpdt_pep,notfound_mut=fill_cpdt()
-            mut_prot=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
+            mut_prot,mut_pep=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
             #add mutant peptide to observed
             if mut_prot!='':
-                mut_cpdt_observed=add_to_observed_mutdict(mut_prot,pep,mut_cpdt_observed)
+                mut_cpdt_observed=add_to_observed_mutdict(mut_prot,mut_pep,mut_cpdt_observed)
             #hits_missed_mut+=notfound_mut
             for i in ids: 
                 mutated.add(get_id(i))
@@ -717,10 +717,10 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
         #     print(scanid)
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
-            mutcand=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
+            mutcand,mut_pep=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
             if mutcand!='': 
                 if pep in mut_cpdt_theoretical[mutcand]:
-                    mut_cpdt_observed=add_to_observed_mutdict(mutcand,pep,mut_cpdt_observed)
+                    mut_cpdt_observed=add_to_observed_mutdict(mutcand,mut_pep,mut_cpdt_observed)
     #create the figures
     print("number of hits with detected variant = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
     print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))

@@ -542,7 +542,8 @@ def plot_unexpected_mods(list_mods):
 def categorize_mods(list_mods):
     mod_ct=Counter()
     for mod in list_mods:
-        if len(re.findall('[A-Z]->[A-Z]',str(mod)))>0:
+        mod=str(mod)
+        if len(re.findall('[A-Z]->[A-Z]',mod))>0:
             mod_ct['SAAV']+=1
         elif mod=='nan':
             mod_ct["none"]+=1
@@ -556,8 +557,8 @@ def plot_peplengths(peptide_counter_pg,peptide_counter_om):
     lenct_om=gather_counts(peptide_counter_om)
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
-    chist_pg=pd.DataFrame.from_dict(peptide_counter_pg,orient='index').sort_index()
-    chist_om=pd.DataFrame.from_dict(peptide_counter_om,orient='index').sort_index()
+    chist_pg=pd.DataFrame.from_dict(lenct_pg,orient='index').sort_index()
+    chist_om=pd.DataFrame.from_dict(lenct_om,orient='index').sort_index()
     combi=pd.concat([chist_pg,chist_om],axis=1)
     combi.columns=['Combi variant-containing only','Combi variant-free only']
     combi.plot(kind='bar',legend=False,title="Length of discrepant peptides (found by one method and not the other)")

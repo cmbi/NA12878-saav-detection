@@ -530,7 +530,7 @@ def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_com
 def plot_unexpected_mods(list_mods):
     mod_ct=categorize_mods(list_mods)
     plt.figure('discrepant peptide lengths')
-    chist_pg=pd.DataFrame.from_dict(list_mods.most_common(20),orient='index')
+    chist_pg=pd.DataFrame.from_dict(mod_ct.most_common(20),orient='index')
     chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Density")
     plt.xlabel("Length peptide")

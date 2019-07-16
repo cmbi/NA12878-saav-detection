@@ -542,7 +542,7 @@ def plot_unexpected_mods(list_mods):
 def categorize_mods(list_mods):
     mod_ct=Counter()
     for mod in list_mods:
-        if len(re.findall('[A-Z]->[A-Z]',mod))>0:
+        if len(re.findall('[A-Z]->[A-Z]',str(mod)))>0:
             mod_ct['SAAV']+=1
         elif mod=='nan':
             mod_ct["none"]+=1

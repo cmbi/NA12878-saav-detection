@@ -527,11 +527,27 @@ def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_com
     plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om)
     #get the scan ids corresponding to all the variant peptides that are in the variant containing search results but not variant free
     scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
+    scores=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
     print(scanids) #TESTING PURPOSES
     #return dataframe containing only rows from other result dictionary corresponding to the list of scan ids just obtained
     discr_df=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids)]
-    plot_unexpected_mods(discr_df["unexpected_modification"].tolist())
+    plot_unexpected_mods(discr_df["unexpected_modification"].tolist()) #plot what modifications they contained
+    plot_ib_scores(discr_df["ionbot_psm_score"].tolist(),scores) #plot what scores they had in each of the libraries
     return(0)
+
+def plot_ib_scores(varfree_scores,varcont_scores):
+    '''for the variant peptides that were found in the variant containing set but not in the variant free set,
+    what is the ionbot score distribution from each respective results list'''
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure("ionbot scores discrepant hits")
+    sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Ionbot score')
+    sns.distplot(varcont_scores, hist=False, label='Variant-containing',axlabel='Ionbot score')
+    plt.legend()
+    plt.title('Ionbot scores for discrepant peptides found only in the variant-containing search')
+    plt.savefig("discrepant_peptide_scores.png")
+    plt.clf()
+    return("Scores plot made")
 
 def plot_unexpected_mods(list_mods):
     mod_ct=categorize_mods(list_mods)

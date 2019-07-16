@@ -522,9 +522,9 @@ def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_com
     plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om)
     #get the scan ids corresponding to all the variant peptides that are in the variant containing search results but not variant free
     scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
+    print(scanids) #TESTING PURPOSES
     #return dataframe containing only rows from other result dictionary corresponding to the list of scan ids just obtained
     discr_df=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids)]
-    discr_df #TESTING PURPOSES
     plot_unexpected_mods(discr_df["unexpected_modification"].tolist())
     return(0)
 
@@ -535,7 +535,6 @@ def plot_unexpected_mods(list_mods):
     chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Density")
     plt.xlabel("Length peptide")
-    plt.legend(loc='upper right')
     plt.savefig('discrepant_peptide_mods.png')
     plt.clf()
     return(0)

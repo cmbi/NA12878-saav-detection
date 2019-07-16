@@ -157,7 +157,11 @@ def find_strand(prots,stranddict):
         if '_h' in p:
             p=p.split('_h')[0]
         if p in stranddict:
-            return(stranddict[p])
+            if stranddict[p]=='-':
+                return("reverse")
+            elif stranddict[p]=='+':
+                return("forward")
+            # return(stranddict[p])
     return("unknown")
 
 def get_id(idstring):

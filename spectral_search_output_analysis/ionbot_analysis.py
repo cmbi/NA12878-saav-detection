@@ -385,6 +385,7 @@ def plot_strand_dist(distr_classic,distr_openmut):
     plt.ylabel("# Peptides")
     plt.xlabel("Strand")
     plt.legend(loc='upper right')
+    plt.tight_layout()
     plt.savefig('strand_distribution.png')
     plt.clf()
     return("plotted strand distribution")
@@ -534,13 +535,12 @@ def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_com
 
 def plot_unexpected_mods(list_mods):
     mod_ct=categorize_mods(list_mods)
-    sns.set(rc={'figure.figsize':(11.7,6.27)})
-    sns.set_style(style='white')
     plt.figure('discrepant peptide lengths')
     chist_pg=pd.DataFrame.from_dict(dict(mod_ct.most_common(20)),orient='index')
     chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Density")
     plt.xlabel("Length peptide")
+    plt.tight_layout()
     plt.savefig('discrepant_peptide_mods.png')
     plt.clf()
     return(0)

@@ -131,7 +131,10 @@ def import_gff(gfffile,isBed):
                         stranddict[tid]=info[6]
                 else:
                     chromdict[info[3]]=info[0]
-                    stranddict[info[3]]=info[5]
+                    if info[5]!='+' and info[5]!='-':
+                        stranddict[info[3]]='unknown'
+                    else:
+                        stranddict[info[3]]=info[5]
     return(chromdict,stranddict)
 
 def find_chrom(prots,chromdict):
@@ -503,9 +506,74 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
 
 def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
     '''check out the differences in identifications between the 2 combination dictionaries
-    why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does'''
-
+    why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
+    plot lengths of the missed/caught peptides (longer than average?)
+    plot unexpected modifications of the missed peptides (more unexpected modifications than average?)'''
+    allmuts_classic=Counter()
+    allmuts_openmut=Counter()
+    for prot,mutct in mut_peptide_dict_classic.items(): #no open mutation
+        allmuts_classic+=mutct
+    for prott,muti in mut_peptide_dict_openmut.items():
+        allmuts_openmut+=muti
+    discrepancy=set(allmuts_classic).difference(set(allmuts_openmut))
+    discrepancy_ct_pg=allmuts_classic-allmuts_openmut
+    discrepancy_ct_om=allmuts_openmut-allmuts_classic
+    #plot lengths of the peptides caught by one method but not the other
+    plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om)
+    #get the scan ids corresponding to all the variant peptides that are in the variant containing search results but not variant free
+    scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
+    #return dataframe containing only rows from other result dictionary corresponding to the list of scan ids just obtained
+    discr_df=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids)]
+    plot_unexpected_mods(discr_df["unexpected_modification"].tolist())
     return(0)
+
+def plot_unexpected_mods(list_mods):
+    mod_ct=categorize_mods(list_mods)
+    plt.figure('discrepant peptide lengths')
+    chist_pg=pd.DataFrame.from_dict(list_mods.most_common(20),orient='index')
+    chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
+    plt.ylabel("Density")
+    plt.xlabel("Length peptide")
+    plt.legend(loc='upper right')
+    plt.savefig('discrepant_peptide_length.png')
+    plt.clf()
+    return(0)
+
+def categorize_mods(list_mods):
+    mod_ct=Counter()
+    for mod in list_mods:
+        if len(re.findall('[A-Z]->[A-Z]',mod))>0:
+            mod_ct['SAAV']+=1
+        elif mod=='nan':
+            mod_ct["none"]+=1
+        else:
+            s_mod=re.split('\[[a-z]\]',mod)[0]
+            mod_ct[s_mod]+=1
+    return(mod_ct)
+
+def plot_peplengths(peptide_counter_pg,peptide_counter_om):
+    lenct_pg=gather_counts(peptide_counter_pg)
+    lenct_om=gather_counts(peptide_counter_om)
+    plt.figure('discrepant peptide lengths')
+    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
+    chist_pg=pd.DataFrame.from_dict(peptide_counter_pg,orient='index').sort_index()
+    chist_om=pd.DataFrame.from_dict(peptide_counter_om,orient='index').sort_index()
+    combi=pd.concat([chist_pg,chist_om],axis=1)
+    combi.columns=['Combi variant-containing only','Combi variant-free only']
+    combi.plot(kind='bar',legend=False,title="Length of discrepant peptides (found by one method and not the other)")
+    # combi=combi.reindex(new_index)
+    plt.ylabel("Density")
+    plt.xlabel("Length peptide")
+    plt.legend(loc='upper right')
+    plt.savefig('discrepant_peptide_length.png')
+    plt.clf()
+    return(0)
+
+def gather_counts(peptide_counter):
+    length_counter=Counter()
+    for pep in peptide_counter:
+        length_counter[len(pep)]+=peptide_counter[pep]
+    return(length_counter)
 
 def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical,mutprotset):
     allmuts_classic=Counter()
@@ -709,7 +777,7 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     plt.clf()
     mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
     plt.clf()
-    # discrepancy_check(mut_observed_classic,mut_observed_openmut)
+    discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plot_strand_dist(stranddist_classic,stranddist_openmut)
     plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical,mutprotset)

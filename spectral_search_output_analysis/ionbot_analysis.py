@@ -309,7 +309,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     sns.distplot(ibdf_ontonly['ionbot_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Ionbot score')
     sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Ionbot score')
     plt.legend()
-    plt.title('Correlation between theoretical and observed spectra of matched peptide')
+    plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     plt.clf()
     return("Scores plot made")
@@ -369,6 +369,7 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     plt.ylabel("# Peptides")
     plt.xlabel("Chromosome")
     plt.legend(loc='upper right')
+    plt.tight_layout()
     plt.savefig('chromosomal_distribution.png')
     plt.clf()
     return("plotted chromosomal distribution")
@@ -411,7 +412,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.clf()
     #vertical coverage
     plt.figure('vertical coverage')
-    plt.hist(cov_vert,bins=80)
+    plt.hist(cov_vert,bins=1000)
     plt.xlim(1,40)
     plt.ylim(0,4000)
     plt.title("Vertical coverage")
@@ -498,10 +499,10 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Mutant peptide',alpha=0.5)
-    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.5)
+    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
+    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
     plt.xlabel('Protein abundance (NSAF normalized)')
-    plt.xlim(0,0.001)
+    plt.xlim(0,0.0002)
     plt.ylabel('Number mutant peptides detected')
     plt.title('Peptide abundance vs total protein abundance')
     plt.legend(loc='upper right')
@@ -554,8 +555,8 @@ def plot_unexpected_mods(list_mods):
     plt.figure('discrepant peptide lengths')
     chist_pg=pd.DataFrame.from_dict(dict(mod_ct.most_common(20)),orient='index')
     chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
-    plt.ylabel("Density")
-    plt.xlabel("Length peptide")
+    plt.ylabel("Count peptides")
+    plt.xlabel("PTMs")
     plt.tight_layout()
     plt.savefig('discrepant_peptide_mods.png')
     plt.clf()
@@ -686,7 +687,7 @@ def add_to_observed_mutdict(mut_prot,pep,olddict):
     return(newdict)
     
 def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
-    proteins_covered=Counter() #proteins detected
+    # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
     ont_only=set() #scan ids in the ont set
@@ -711,7 +712,7 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         else: #unambiguous assignment!
             ids=[row[1][9]]
             unamb_protsupport[get_id(row[1][9])]+=1
-        proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
+        # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
         chrom_origin=find_chrom(ids,chromdict)

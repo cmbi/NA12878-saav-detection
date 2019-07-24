@@ -301,7 +301,7 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
 
 def fetch_proteins(scanid,protinfdf):
     '''return the proteins as inferred by percolator algorithm "best-scoring peptide" instead of default ionbot no inference'''
-    if len(protinfdf.loc(protinfdf['PSMId']==scanid))>0:
+    if len(protinfdf.loc[protinfdf['PSMId']==scanid])>0:
         return(str(protinfdf.loc[protinfdf['PSMId']==scanid,'proteinIds'][0]))
     return('')
 

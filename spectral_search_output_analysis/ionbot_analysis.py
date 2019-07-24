@@ -522,39 +522,75 @@ def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_com
     for prott,muti in mut_peptide_dict_openmut.items():
         allmuts_openmut+=muti
     discrepancy=set(allmuts_classic).difference(set(allmuts_openmut))
+    agreement=set(allmuts_classic).intersection(set(allmuts_openmut))
+    ibonly=set(allmuts_openmut).difference(set(allmuts_classic))
     discrepancy_ct_pg=allmuts_classic-allmuts_openmut
     discrepancy_ct_om=allmuts_openmut-allmuts_classic
     #plot lengths of the peptides caught by one method but not the other
     plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om)
-    #get the scan ids corresponding to all the variant peptides that are in the variant containing search results but not variant free
+    #get the scan ids corresponding to all the variant peptides that are in one set but not the other
     scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
-    scores=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
-    print(scanids) #TESTING PURPOSES
-    #return dataframe containing only rows from other result dictionary corresponding to the list of scan ids just obtained
-    discr_df=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids)]
-    plot_unexpected_mods(discr_df["unexpected_modification"].tolist()) #plot what modifications they contained
-    plot_ib_scores(discr_df["ionbot_psm_score"].tolist(),scores) #plot what scores they had in each of the libraries
+    #Compare unexpected modifications
+    unexp_mod_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),"unexpected_modification"].tolist()
+    unexp_mod_pg=ibdf_combi_pg.loc[ibdf_combi_pg["scan_id"].isin(scanids),"unexpected_modification"].tolist()
+    plot_unexpected_mods(unexp_mod_om,unexp_mod_pg) #plot what modifications they contained
+    #direct comparison of scores of peptides found with variant-containing but not variant-free
+    scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","ionbot_psm_score"]]#.tolist()
+    scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","ionbot_psm_score","matched_peptide"]] #added matched peptide for length dimension
+    plot_ib_scores_directcomp(scores_om,scores_pg) #direct comparison plot: what scores they had in each of the libraries
+    #general comparison of the scores
+    list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"ionbot_psm_score"].tolist()
+    list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
+    list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
+    list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
+    plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
     return(0)
 
-def plot_ib_scores(varfree_scores,varcont_scores):
+def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
     what is the ionbot score distribution from each respective results list'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("ionbot scores discrepant hits")
-    sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Ionbot score')
-    sns.distplot(varcont_scores, hist=False, label='Variant-containing',axlabel='Ionbot score')
+    #inner join the 2
+    combi=pd.merge(varfree_scores,varcont_scores,on="scan_id",suffixes=("_varfree","_varcont"))
+    combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
+    combi.plot.scatter(x="ionbot_psm_score_varfree",y="ionbot_psm_score_varcont",c="pep_length",colormap='viridis')
+    # sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Ionbot score')
+    # sns.distplot(varcont_scores, hist=False, label='Variant-containing',axlabel='Ionbot score')
+    plt.ylabel("Scores variant-containing")
+    plt.xlabel("Scores variant-free")
     plt.legend()
     plt.title('Ionbot scores for discrepant peptides found only in the variant-containing search')
     plt.savefig("discrepant_peptide_scores.png")
     plt.clf()
     return("Scores plot made")
 
-def plot_unexpected_mods(list_mods):
-    mod_ct=categorize_mods(list_mods)
+def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
+    '''for the variant peptides that were found in the variant containing set but not in the variant free set,
+    what is the ionbot score distribution from each respective results list'''
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure("ionbot scores discrepant hits")
+    sns.distplot(ibonly, hist=False, label='Variant-free only',axlabel='Ionbot score')
+    sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Ionbot score')
+    sns.distplot(intersectionom, hist=False, label='Intersection variant-free',axlabel='Ionbot score')
+    sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Ionbot score')
+    plt.legend()
+    plt.title('Ionbot scores for detected variant peptides')
+    plt.savefig("discrepant_peptide_scores.png")
+    plt.clf()
+    return("Scores plot made")
+
+def plot_unexpected_mods(mods_om,mods_pg):
+    mod_ct_om=categorize_mods(mods_om)
+    mod_ct_pg=categorize_mods(mods_pg)
     plt.figure('discrepant peptide lengths')
-    chist_pg=pd.DataFrame.from_dict(dict(mod_ct.most_common(20)),orient='index')
-    chist_pg.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
+    chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(20)),orient='index')
+    chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(20)),orient='index')
+    combi=pd.concat([chist_pg,chist_om],axis=1,sort=False)
+    combi.fillna(0)
+    combi.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")
     plt.tight_layout()

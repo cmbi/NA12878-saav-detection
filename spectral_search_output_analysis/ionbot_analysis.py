@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import matplotlib, re, os,sys, itertools
+import matplotlib, re, os,sys, itertools, argparse
 from matplotlib_venn import venn2,venn2_unweighted,venn3, venn3_unweighted
 import matplotlib.pyplot as plt
 import numpy as np
@@ -299,6 +299,11 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
         missed=0
     return(cpdt_pep,missed)
 
+def fetch_proteins(scanid,protinfdf):
+    '''return the proteins as inferred by percolator algorithm "best-scoring peptide" instead of default ionbot no inference'''
+    if len(protinfdf.loc(protinfdf['PSMId']==scanid))>0:
+        return(str(protinfdf.loc[protinfdf['PSMId']==scanid,'proteinIds'][0]))
+    return('')
 
 def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
@@ -562,7 +567,7 @@ def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     plt.xlabel("Scores variant-free")
     plt.legend()
     plt.title('Ionbot scores for discrepant peptides found only in the variant-containing search')
-    plt.savefig("discrepant_peptide_scores.png")
+    plt.savefig("discrepant_peptide_direct_comparison.png")
     plt.clf()
     return("Scores plot made")
 
@@ -593,6 +598,7 @@ def plot_unexpected_mods(mods_om,mods_pg):
     combi.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")
+    plt.legend()
     plt.tight_layout()
     plt.savefig('discrepant_peptide_mods.png')
     plt.clf()
@@ -722,7 +728,7 @@ def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict[mut_prot][pep]+=1
     return(newdict)
     
-def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
+def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df,isOpenmut):
     # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
@@ -741,13 +747,16 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         mod=str(row[1][7])
         aamod=re.findall('[A-Z]->[A-Z]',mod)
         pep=row[1][3]
-        if '||' in row[1][9]:
-            ids=row[1][9].split('||')
+        prot_ids=fetch_proteins(scanid,prot_df)
+        if prot_ids=='':
+            prot_ids=row[1][9]
+        if '||' in prot_ids:
+            ids=prot_ids.split('||')
             for i in ids:
                 protein_support[get_id(i)]+=1
         else: #unambiguous assignment!
-            ids=[row[1][9]]
-            unamb_protsupport[get_id(row[1][9])]+=1
+            ids=[prot_ids]
+            unamb_protsupport[get_id(prot_ids)]+=1
         # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
         cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
         hits_missed+=notfound
@@ -803,16 +812,16 @@ def create_chromosome_reference(gfffile,bedfile):
     stranddict={**stranddict_ont,**stranddict_ref} #combine the 2 dictionaries
     return(chromdict,stranddict)
 
-def main(directory_ontonly, directory_refonly, directory_combination, directory_combination_including_variants, cpdtfile,cpdtfile_mut,gfffile,bedfile):
+def main(args):
     '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
     this is written in a way that iteration should only be done once.
     '''
-    #imports
+    #import ionbot output data
     print("importing data")
-    ibdf_ontonly=concatenate_csvs(directory_ontonly)
-    ibdf_refonly=concatenate_csvs(directory_refonly)
-    ibdf_combi=concatenate_csvs(directory_combination)
-    ibdf_combi_pg=concatenate_csvs(directory_combination_including_variants)
+    ibdf_ontonly=concatenate_csvs(args.ont)
+    ibdf_refonly=concatenate_csvs(args.ref)
+    ibdf_combi=concatenate_csvs(args.cvf)
+    ibdf_combi_pg=concatenate_csvs(args.cvc)
 
     #qc function
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
@@ -826,16 +835,18 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     ibdf_combi = chunk_preprocessing(ibdf_combi)
     ibdf_combi_pg= chunk_preprocessing(ibdf_combi_pg)
 
-    #import insilico digest info
-    cpdt_pep,full_seqs=import_cpdt(cpdtfile) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
-    mut_cpdt_theoretical=import_cpdt_simple(cpdtfile_mut) #import the cpdt file with all snv peptides
-    chromdict,stranddict=create_chromosome_reference(gfffile,bedfile) #import information about the chromosome of origin (QC)
+    #import other data
+    cpdt_pep,full_seqs=import_cpdt(args.cpdtvf) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
+    mut_cpdt_theoretical=import_cpdt_simple(args.cpdtvar) #import the cpdt file with all snv peptides
+    chromdict,stranddict=create_chromosome_reference(args.gff,args.bedfile) #import information about the chromosome of origin (QC)
+    prot_df_om=pd.read_csv(args.protvf,sep='\t')
+    prot_df_pg=pd.read_csv(args.protvc,sep='\t')
     
     #iterate to fill the data structures
     print("Analyzing data...")
-    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_om,True)
     plt.clf()
-    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
+    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_pg,False)
     plt.clf()
     discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
@@ -843,9 +854,21 @@ def main(directory_ontonly, directory_refonly, directory_combination, directory_
     plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical,mutprotset)
     return("Finished")
     
-    
-main(*sys.argv[1:]) #args: folder containing ONT-variant-free ionbot search, folder containing ref-variant-free ionbot search, folder containing combi-variant-free ionbot search results, combi-variant-free peptides, combi-variant-containing peptides
-    
+parser = argparse.ArgumentParser(description='Ionbot output analysis')
+parser.add_argument('--ont', help='Directory ONT ionbot output files', required=True)
+parser.add_argument('--ref', help='Directory GENCODE reference ionbot output files', required=True)
+parser.add_argument('--cvc', help='Directory combi variant-containing', required=True)
+parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
+parser.add_argument('--cpdtvar', help='CPDT file of selected SAAV peptides', required=True)
+parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', required=True)
+parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
+parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
+parser.add_argument('--protvf', help='Filtered percolator file for variant-free hits', required=True)
+parser.add_argument('--protvc', help='Filtered percolator file for variant-containing hits', required=True)
+# parser.add_argument('-b','--bar', help='Description for bar argument', required=True)
+args = vars(parser.parse_args()) 
+main(args)
+# main(*sys.argv[1:]) 
     
     
     

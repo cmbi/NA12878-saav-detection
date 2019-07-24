@@ -316,7 +316,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
-    plt.clf()
+    plt.close()
     return("Scores plot made")
 
 def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
@@ -329,7 +329,7 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
-    plt.clf()
+    plt.close()
     return("Scores plot made")
 
 def plot_scores_decoy(ibdf_combi,figname):
@@ -342,7 +342,7 @@ def plot_scores_decoy(ibdf_combi,figname):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
-    plt.clf()
+    plt.close()
     return("Scores plot made")
 
 def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
@@ -357,7 +357,7 @@ def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
     plt.title('Peptide spectral hits by source',fontsize=35)
     plt.legend(labels,loc=8)
     plt.savefig(figname)
-    plt.clf()
+    plt.close()
     return("saved to sources_spectral_hits")
 
 def plot_chromosomal_dist(distr_classic,distr_openmut):
@@ -376,7 +376,7 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('chromosomal_distribution.png')
-    plt.clf()
+    plt.close()
     return("plotted chromosomal distribution")
 
 def plot_strand_dist(distr_classic,distr_openmut):
@@ -393,7 +393,7 @@ def plot_strand_dist(distr_classic,distr_openmut):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('strand_distribution.png')
-    plt.clf()
+    plt.close()
     return("plotted strand distribution")
 
 def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
@@ -424,7 +424,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.xlabel("Peptide count (protein size normalized)")
     plt.ylabel("Density")
     plt.savefig(fignamevertical)
-    plt.clf()
+    plt.close()
     return("Plotted coverage")
 
 def calc_nsaf_standard(cpdt_pep,fullseqs):
@@ -512,7 +512,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.title('Peptide abundance vs total protein abundance')
     plt.legend(loc='upper right')
     plt.savefig(figname)
-    plt.clf()
+    plt.close()
     return('done')
 
 def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
@@ -568,7 +568,7 @@ def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     plt.legend()
     plt.title('Ionbot scores for discrepant peptides found only in the variant-containing search')
     plt.savefig("discrepant_peptide_direct_comparison.png")
-    plt.clf()
+    plt.close()
     return("Scores plot made")
 
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
@@ -584,7 +584,7 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     plt.legend()
     plt.title('Ionbot scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")
-    plt.clf()
+    plt.close()
     return("Scores plot made")
 
 def plot_unexpected_mods(mods_om,mods_pg):
@@ -601,7 +601,7 @@ def plot_unexpected_mods(mods_om,mods_pg):
     plt.legend()
     plt.tight_layout()
     plt.savefig('discrepant_peptide_mods.png')
-    plt.clf()
+    plt.close()
     return(0)
 
 def categorize_mods(list_mods):
@@ -632,7 +632,7 @@ def plot_peplengths(peptide_counter_pg,peptide_counter_om):
     plt.xlabel("Length peptide")
     plt.legend(loc='upper left')
     plt.savefig('discrepant_peptide_length.png')
-    plt.clf()
+    plt.close()
     return(0)
 
 def gather_counts(peptide_counter):
@@ -677,7 +677,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     # for text in vdb.subset_labels:
     #     text.set_fontsize(20)
     plt.savefig('overlap_all_detected_mut_prots.png')
-    plt.clf()
+    plt.close()
     return('plotted final venns')
 
 def make_report(hits_df):
@@ -818,10 +818,10 @@ def main(args):
     '''
     #import ionbot output data
     print("importing data")
-    ibdf_ontonly=concatenate_csvs(args.ont)
-    ibdf_refonly=concatenate_csvs(args.ref)
-    ibdf_combi=concatenate_csvs(args.cvf)
-    ibdf_combi_pg=concatenate_csvs(args.cvc)
+    ibdf_ontonly=concatenate_csvs(args['ont'])
+    ibdf_refonly=concatenate_csvs(args['ref'])
+    ibdf_combi=concatenate_csvs(args['cvf'])
+    ibdf_combi_pg=concatenate_csvs(args['cvc'])
 
     #qc function
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
@@ -836,11 +836,11 @@ def main(args):
     ibdf_combi_pg= chunk_preprocessing(ibdf_combi_pg)
 
     #import other data
-    cpdt_pep,full_seqs=import_cpdt(args.cpdtvf) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
-    mut_cpdt_theoretical=import_cpdt_simple(args.cpdtvar) #import the cpdt file with all snv peptides
-    chromdict,stranddict=create_chromosome_reference(args.gff,args.bedfile) #import information about the chromosome of origin (QC)
-    prot_df_om=pd.read_csv(args.protvf,sep='\t')
-    prot_df_pg=pd.read_csv(args.protvc,sep='\t')
+    cpdt_pep,full_seqs=import_cpdt(args['cpdtvf']) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
+    mut_cpdt_theoretical=import_cpdt_simple(args['cpdtvar']) #import the cpdt file with all snv peptides
+    chromdict,stranddict=create_chromosome_reference(args['gff'],args['bedfile']) #import information about the chromosome of origin (QC)
+    prot_df_om=pd.read_csv(args['protvf'],sep='\t')
+    prot_df_pg=pd.read_csv(args['protvc'],sep='\t')
     
     #iterate to fill the data structures
     print("Analyzing data...")

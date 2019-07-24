@@ -817,13 +817,14 @@ def main(args):
     this is written in a way that iteration should only be done once.
     '''
     #import ionbot output data
-    print("importing data")
+    print("importing ionbot results")
     ibdf_ontonly=concatenate_csvs(args['ont'])
     ibdf_refonly=concatenate_csvs(args['ref'])
     ibdf_combi=concatenate_csvs(args['cvf'])
     ibdf_combi_pg=concatenate_csvs(args['cvc'])
 
     #qc function
+    print("plotting initial QC")
     plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
     plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
     plot_scores_decoy(ibdf_combi.dropna(),"qc_pearsonr_decoy_varfree.png")
@@ -836,14 +837,15 @@ def main(args):
     ibdf_combi_pg= chunk_preprocessing(ibdf_combi_pg)
 
     #import other data
+    print('importing helper data')
     cpdt_pep,full_seqs=import_cpdt(args['cpdtvf']) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
     mut_cpdt_theoretical=import_cpdt_simple(args['cpdtvar']) #import the cpdt file with all snv peptides
-    chromdict,stranddict=create_chromosome_reference(args['gff'],args['bedfile']) #import information about the chromosome of origin (QC)
+    chromdict,stranddict=create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
     prot_df_om=pd.read_csv(args['protvf'],sep='\t')
     prot_df_pg=pd.read_csv(args['protvc'],sep='\t')
     
     #iterate to fill the data structures
-    print("Analyzing data...")
+    print("doing analysis...")
     mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_om,True)
     plt.clf()
     mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_pg,False)

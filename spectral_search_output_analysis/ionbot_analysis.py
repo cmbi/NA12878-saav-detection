@@ -299,13 +299,6 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
         missed=0
     return(cpdt_pep,missed)
 
-def fetch_proteins(scanid,protinfdf):
-    '''return the proteins as inferred by percolator algorithm "best-scoring peptide" instead of default ionbot no inference'''
-    if len(protinfdf.loc[protinfdf['PSMId']==scanid])>0:
-        sub_df=protinfdf.loc[protinfdf['PSMId']==scanid,'proteinIds']
-        return(str(sub_df.iloc[0]))
-    return('')
-
 def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
@@ -729,7 +722,7 @@ def add_to_observed_mutdict(mut_prot,pep,olddict):
     newdict[mut_prot][pep]+=1
     return(newdict)
     
-def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df,isOpenmut):
+def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
     # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
@@ -748,9 +741,7 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         mod=str(row[1][7])
         aamod=re.findall('[A-Z]->[A-Z]',mod)
         pep=row[1][3]
-        prot_ids=fetch_proteins(scanid,prot_df)
-        if prot_ids=='':
-            prot_ids=row[1][9]
+        prot_ids=row[1][9]
         if '||' in prot_ids:
             ids=prot_ids.split('||')
             for i in ids:
@@ -842,14 +833,12 @@ def main(args):
     cpdt_pep,full_seqs=import_cpdt(args['cpdtvf']) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
     mut_cpdt_theoretical=import_cpdt_simple(args['cpdtvar']) #import the cpdt file with all snv peptides
     chromdict,stranddict=create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
-    prot_df_om=pd.read_csv(args['protvf'],sep='\t')
-    prot_df_pg=pd.read_csv(args['protvc'],sep='\t')
     
     #iterate to fill the data structures
     print("doing analysis...")
-    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_om,True)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
     plt.clf()
-    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,prot_df_pg,False)
+    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
     plt.clf()
     discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
@@ -866,8 +855,8 @@ parser.add_argument('--cpdtvar', help='CPDT file of selected SAAV peptides', req
 parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', required=True)
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
-parser.add_argument('--protvf', help='Filtered percolator file for variant-free hits', required=True)
-parser.add_argument('--protvc', help='Filtered percolator file for variant-containing hits', required=True)
+# parser.add_argument('--protvf', help='Filtered percolator file for variant-free hits', required=True)
+# parser.add_argument('--protvc', help='Filtered percolator file for variant-containing hits', required=True)
 # parser.add_argument('-b','--bar', help='Description for bar argument', required=True)
 args = vars(parser.parse_args()) 
 main(args)

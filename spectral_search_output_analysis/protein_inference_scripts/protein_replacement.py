@@ -12,6 +12,7 @@ def main_replacement(percolatordir,csvname,ibcsvpath):
     # percolator_directory=os.fsencode(percolatordir)
     percolator_outfile=os.path.join(percolatordir,csvname)
     percolator_df=pd.read_csv(percolator_outfile,sep='\t')
+    percolator_df.columns=["PSMId","proteinIds"]
     #take subset of the percolator file with that csv name in it
     temp=read_df_in_chunks(os.path.join(ibcsvpath,csvname),percolator_df,csvname, 1000)
     # temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files

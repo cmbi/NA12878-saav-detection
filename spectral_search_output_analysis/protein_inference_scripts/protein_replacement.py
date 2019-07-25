@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
+'''this script will replace the protein field of the ionbot output with inferred proteins from percolator
+will also concatenate all the output to a single file'''
+
 import os, sys
 import multiprocessing as mp
 import pandas as pd
 
 
 def main_replacement(percolatordir,csvname,ibcsvpath):
-    percolator_directory=os.fsencode(percolatordir)
-    percolator_outfile=os.path.join(percolator_directory,csvname)
+    # percolator_directory=os.fsencode(percolatordir)
+    percolator_outfile=os.path.join(percolatordir,csvname)
     percolator_df=pd.read_csv(percolator_outfile,sep='\t')
     #take subset of the percolator file with that csv name in it
     temp=read_df_in_chunks(os.path.join(ibcsvpath,csvname),percolator_df,csvname, 1000)

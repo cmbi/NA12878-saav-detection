@@ -58,7 +58,7 @@ def replace_proteins(ibout_df, percolator_out_df):
         prot_ids=fetch_proteins(scanid,percolator_out_df)
         if prot_ids!='':
             row[1][9]=prot_ids
-        new_ib_df=new_ib_df.append(row)
+        new_ib_df=new_ib_df.append(row[1])
     return(new_ib_df)
 
 #run twice, one for varfree and one for varcontaining

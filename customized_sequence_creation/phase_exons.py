@@ -93,7 +93,8 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                             header_0=header.strip()+' haplotype:0'
                             header_1=header.strip()+' haplotype:1'
                             f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  
-                        elif var:
+                        elif var: 
+                            #if i want to keep track of the exons that had any other variation in them I should edit this part, add "var=T" in the header and then fix the parsing in the next script
                             f.writelines(header+entry_0+'\n')
                         else: #no variant positions in the exon
                             f.writelines(header+line)

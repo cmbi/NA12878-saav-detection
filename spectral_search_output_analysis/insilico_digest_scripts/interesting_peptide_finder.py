@@ -11,6 +11,7 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
     custom=read_cpdt(cpdtcustom)
     newall={}
     newsnv={}
+    snvcounterpart={}
     for pid,peplist in ref.iteritems():
         idho=pid+'_h1'
         idhz=pid+'_h0'
@@ -30,16 +31,19 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                         if len(pep)>2 and isQualified(pep,ref): #need to check if unique peptide
                             prob=pepdict[pep] #fetch probability
                             if float(prob)>=0.05:
-                                if determine_snv(pep,r_peplist):
+                                isSNV,counterpart=determine_snv(pep,r_peplist)
+                                if isSNV:
                                     if key in newsnv:
                                         newsnv[key][pep]=prob
+                                        snvcounterpart[key][counterpart]=peplist[counterpart]
                                     else:
                                         newsnv[key]={pep:prob}
+                                        snvcounterpart[key]={counterpart:peplist[counterpart]}
                                 if key in newall:
                                     newall[key][pep]=prob
                                 else:
                                     newall[key]={pep:prob}
-    return newall,newsnv
+    return newall,newsnv,snvcounterpart
 
 def isQualified(peptide,reference_pepdict):
     for pid,peplist in reference_pepdict.iteritems():
@@ -59,8 +63,8 @@ def determine_snv(peptide,plist):
                 if aa!=peptide[idx]:
                     mismatch+=1
             if mismatch==1:
-                return True
-    return False
+                return (True,pep)
+    return (False,'')
 
 def read_cpdt(cpdt):
     '''{id:{peptide:probability}'''
@@ -93,6 +97,7 @@ def write_cpdt(d,outfile):
             f.writelines('\t'+'PEPTIDE '+pep+': '+prob+'\n')
     return 'new CPDT file written to '+outfile
 
-alldiffpeps,snvdiffpeps=insilico_digest_diff(sys.argv[1],sys.argv[2])
+alldiffpeps,snvdiffpeps,snvdiffcounterparts=insilico_digest_diff(sys.argv[1],sys.argv[2])
 print write_cpdt(alldiffpeps,sys.argv[3])
 print write_cpdt(snvdiffpeps,sys.argv[4])
+print write_cpdt(snvdiffcounterparts,sys.argv[5])

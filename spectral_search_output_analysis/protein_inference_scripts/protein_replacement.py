@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
 
 import os, sys
+import multiprocessing as mp
 import pandas as pd
 
-def main(ibcsvpath,percolator_outfile,outfile):
-    '''do replacements per csv file to speed up the search, concatenates it all at the end'''
-    directory= os.fsencode(ibcsvpath)
-    ionbotout=pd.DataFrame()
-    percolator_out_df=pd.read_csv(percolator_outfile,sep='\t')
-    for csvfile in os.listdir(directory):
-        csvname=os.fsdecode(csvfile)
-        if csvname.endswith('.csv'):
-            #take subset of the percolator file with that csv name in it
-            perc=percolator_out_df.loc[percolator_out_df["PSMId"].str.contains(csvname)]
-            print(len(perc))
-            temp=read_df_in_chunks(os.path.join(ibcsvpath,csvname),perc,csvname, 1000)
-            # temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files
-            ionbotout=pd.concat([ionbotout,temp])
-            percolator_out_df=pd.concat([percolator_out_df,perc]).drop_duplicates(keep=False) #remove subset from the total when done with it
-            print(csvname) #keep track of progress
-        ionbotout.to_csv(outfile,index=False)
-    return('finished')
+
+def main_replacement(percolatordir,csvname,ibcsvpath):
+    percolator_directory=os.fsencode(percolatordir)
+    percolator_outfile=os.path.join(percolator_directory,csvname)
+    percolator_df=pd.read_csv(percolator_outfile,sep='\t')
+    #take subset of the percolator file with that csv name in it
+    temp=read_df_in_chunks(os.path.join(ibcsvpath,csvname),percolator_df,csvname, 1000)
+    # temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files
+    print(csvname) #keep track of progress
+    return(temp)
 
 def read_df_in_chunks(directory,percolator_subset,csvname, chunksize):
     # read the large csv file with specified chunksize 
@@ -60,6 +53,25 @@ def replace_proteins(ibout_df, percolator_out_df):
             row[1][9]=prot_ids
         new_ib_df=new_ib_df.append(row[1])
     return(new_ib_df)
+
+def file_list(path):
+    directory= os.fsencode(path)
+    list_files=[]
+    for csvfile in os.listdir(directory):
+        csvname=os.fsdecode(csvfile)
+        if csvname.endswith('.csv'):
+            list_files.append(csvname)
+    return(list_files)
+
+def main(ibcsvpath,percolatordir,outfile):
+    '''do replacements per csv file to speed up the search, concatenates it all at the end'''
+    pool=mp.Pool(processes=20)
+    list_csvs=file_list(ibcsvpath)
+    results=[pool.apply_async(main_replacement,args=(percolatordir,x,ibcsvpath)) for x in list_csvs]
+    output = [p.get() for p in results]
+    ionbotout=pd.concat(output)
+    ionbotout.to_csv(outfile,index=False)
+    return('finished')
 
 #run twice, one for varfree and one for varcontaining
 main(sys.argv[1],sys.argv[2],sys.argv[3])

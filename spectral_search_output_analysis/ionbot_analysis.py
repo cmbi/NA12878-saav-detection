@@ -796,13 +796,13 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
         if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
             # hit_mut+=1
-            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_theoretical, mut_cpdt_observed,isOpenmut)
+            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
             for i in ids: 
                 mutated.add(get_id(i))
         # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
         #     print(scanid)
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
-            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_theoretical,mut_cpdt_observed,isOpenmut)
+            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
     #create the figures
     # print("number of hits with detected variant = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
     # print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))

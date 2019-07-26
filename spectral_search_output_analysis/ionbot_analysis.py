@@ -717,8 +717,8 @@ def determine_snv(peptide,plist):
                 if aa!=peptide[idx]:
                     mismatch+=1
             if mismatch==1:
-                return(True)
-    return(False)
+                return(pep)
+    return('')
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut):
     for isi in ids:

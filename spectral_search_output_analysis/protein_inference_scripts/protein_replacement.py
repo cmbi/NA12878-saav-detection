@@ -69,7 +69,7 @@ def file_list(path):
 
 def main(ibcsvpath,percolatordir,outfile):
     '''do replacements per csv file to speed up the search, concatenates it all at the end'''
-    pool=mp.Pool(processes=20)
+    pool=mp.Pool(processes=10)
     list_csvs=file_list(ibcsvpath)
     results=[pool.apply_async(main_replacement,args=(percolatordir,x,ibcsvpath)) for x in list_csvs]
     output = [p.get() for p in results]
@@ -79,3 +79,4 @@ def main(ibcsvpath,percolatordir,outfile):
 
 #run twice, one for varfree and one for varcontaining
 main(sys.argv[1],sys.argv[2],sys.argv[3])
+main(sys.argv[4],sys.argv[5],sys.argv[6])

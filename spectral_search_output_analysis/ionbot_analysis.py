@@ -78,7 +78,7 @@ def detected_proteins(ids,pco):
         proteins_covered[idu]+=1
     return(proteins_covered)
 
-def import_cpdt(cpdt):
+def import_cpdt(cpdt,fullSeq):
     ''' read the cpdt files into a data structure
     this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
     {protein_ID:{pep1:0, pep2:0, pep3:0}}
@@ -98,21 +98,23 @@ def import_cpdt(cpdt):
                 cpdt_pep[key][lp]=0
             elif 'PEPTIDE' not in line:
                 full_seqs[key]=line.strip()
-    return(cpdt_pep, full_seqs)
-
-def import_cpdt_simple(cpdt):
-    cpdt_pep={}
-    with open(cpdt) as c:
-        for line in c:
-            if line.startswith('>'):
-                key=line.strip()[1:]
-                key=get_id(key)
-                cpdt_pep[key]=set()
-            elif 'PEPTIDE' in line:
-                lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')[0]
-                cpdt_pep[key].add(lp)
+    if fullSeq:
+        return(cpdt_pep, full_seqs)
     return(cpdt_pep)
+
+# def import_cpdt_simple(cpdt):
+#     cpdt_pep={}
+#     with open(cpdt) as c:
+#         for line in c:
+#             if line.startswith('>'):
+#                 key=line.strip()[1:]
+#                 key=get_id(key)
+#                 cpdt_pep[key]=set()
+#             elif 'PEPTIDE' in line:
+#                 lp=line.split('PEPTIDE ')[1]
+#                 lp=lp.split(':')[0]
+#                 cpdt_pep[key].add(lp)
+#     return(cpdt_pep)
 
 def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
@@ -263,7 +265,7 @@ def counter_translator(counterobj):
             ct_prots[ct]+=1
     return(ct_prots)
 
-def fill_cpdt(pep,mod,ids,old_cpdt_pep):
+def fill_cpdt(pep,ids,old_cpdt_pep):
     '''fill the data structure to match predicted (mutated) peptides to observed
     
     how many unique variant peptides are detected, from how many unique proteins?
@@ -285,7 +287,7 @@ def fill_cpdt(pep,mod,ids,old_cpdt_pep):
                         ispeplist[p]=ct
                         found=True
                 cpdt_pep[poss]=ispeplist
-                break
+                # break #only counting the first of the 2 haplotypes- my choices are to pick one or double count, better to double count?
             if not found:
                 notfound+=1
                 ##this recovers a lot of peptides that would otherwise be filtered out
@@ -440,6 +442,7 @@ def calc_nsaf_protein(pepdict_singleprot,lenprot,sumnsaf):
     return(nsaf)
 
 def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
+    '''this function calculates the abundance of the protein and returns that along with the count of the (non)mutant peptide'''
     mut_pep_abundance=[]
     nonmut_pep_abundance=[]
     #nr_mutant=[]
@@ -462,22 +465,36 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
                     mut_proteins_detected.add(prot)
                     num_occurences+=ct
                     num_peptides+=1
-                    mut_pep_abundance.append((nsafnonmut,ct))
+                    # mut_pep_abundance.append((nsafnonmut,ct)) #uncomment to calculate frequencies per peptide instead of per protein
             #calculate count of non-mutant peptides
-            # for normpep,normct in cpdtpep[stem].items():
-            #     sum_nonmut+=normct
-            # lennonmut=len(fullseqs[stem])
             for normpep,normct in cpdtpep[stem].items():
-                # sum_nonmut+=normct
-                nonmut_pep_abundance.append((nsafnonmut,normct))
+                sum_nonmut+=normct
+            lennonmut=len(fullseqs[stem])
+            for normpep,normct in cpdtpep[stem].items():
+                sum_nonmut+=normct
+                # nonmut_pep_abundance.append((nsafnonmut,normct)) #uncomment to calculate frequencies per peptide instead of per protein
             # nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
-            # nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
-            # if sum_mut>0: #only record the proteins with at least 1 detected variant peptide
-            #     #nr_mutant.append(sum_mut)
-            #     mut_pep_abundance.append((nsafnonmut,sum_mut))
-            #     #mut_pep_abundance.append(sum_mut+sum_nonmut)
+            nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
+            if sum_mut>0: #only record the proteins with at least 1 detected variant peptide
+                #nr_mutant.append(sum_mut)
+                mut_pep_abundance.append((nsafnonmut,sum_mut))
+                #mut_pep_abundance.append(sum_mut+sum_nonmut)
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
+
+def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
+    '''directly measure the observed counts of the saav peptides and their reference counterparts
+    for later implementation: coloring similar to the direct comparison discrepant peptide graph, with colors corresponding to the abundance of peptides
+    '''
+    counts=[]
+    for prot,peps in mutant_cpdtpep.items():
+        peps_cpt=counterpart_cpdtpep[prot]
+        for pep in peps:
+            cpt_pep=determine_snv(pep,peps_cpt)
+            tuptoadd=(peps[pep],peps_cpt[cpt_pep])
+            if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
+                counts.append(tuptoadd)
+    return(counts)
 
 def calculate_correlation(mut_pep_abundance,nonmut_pep_abundance):
     dt=np.dtype('float,int')
@@ -508,6 +525,19 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.savefig(figname)
     plt.close()
     return('done')
+
+def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
+    counts=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure('measure direct counterparts')
+    plt.scatter(*zip(*counts),c='b',alpha=1)
+    plt.xlabel('Variant peptide count')
+    plt.ylabel('Reference counterpart count')
+    plt.title('Variant vs. non-variant peptide abundance')
+    plt.savefig(figname)
+    plt.close()
+    return(0)
 
 def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
     '''check out the differences in identifications between the 2 combination dictionaries
@@ -589,7 +619,8 @@ def plot_unexpected_mods(mods_om,mods_pg):
     chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(20)),orient='index')
     combi=pd.concat([chist_pg,chist_om],axis=1,sort=False)
     combi.fillna(0)
-    combi.plot(kind='bar',legend=False,title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
+    combi.columns=['Variant-containing','Variant-free']
+    combi.plot(kind='bar',title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")
     plt.legend()
@@ -674,20 +705,22 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.close()
     return('plotted final venns')
 
-def make_report(hits_df):
-    '''report general information collected about the hits, including quality control measures
-    which includes:
-    - how many matched peptides above threshold
-    - how many unique peptides are found
-    - how many unique proteins are found (and how many are in transcriptome v reference)
-    - inventory PTMs (including how many SNVs there are)
-    - how many hits were removed with the quality filter
-    - how many hits passing the quality threshold were not included because not matching with a theoretical peptide
+def determine_snv(peptide,plist):
+    ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid
+    input: a peptide and a list of peptides
+    output: boolean
     '''
-    uniquepeptides=hits_df['peptide'].nunique()
-    return("report written")
+    mismatch=0
+    for pep in plist:
+        if len(pep)==len(peptide):
+            for idx,aa in enumerate(pep):
+                if aa!=peptide[idx]:
+                    mismatch+=1
+            if mismatch==1:
+                return(True)
+    return(False)
 
-def detect_mut_peptides(pep,ids,cpdt_pep,isOpenmut):
+def detect_peptides(pep,ids,cpdt_pep,isOpenmut):
     for isi in ids:
         i=get_id(isi)
         found=False
@@ -715,25 +748,29 @@ def contains(small, big):
             return(True)
     return(False)
 
-def add_to_observed_mutdict(mut_prot,pep,olddict):
-    newdict=olddict
-    if mut_prot not in newdict:
-        newdict[mut_prot]=Counter()
-    newdict[mut_prot][pep]+=1
+def add_to_observed(pep,ids,cpdtpep,isOpenmut):
+    mut_prot,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut)
+    #add mutant peptide to observed
+    newdict=cpdtpep
+    if mut_prot!='':
+        # if mut_prot not in newdict:
+        #     newdict[mut_prot]=Counter()
+        newdict[mut_prot][mut_pep]+=1
     return(newdict)
     
-def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,isOpenmut):
+def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,mut_cpdt_counterparts,isOpenmut):
     # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
     ont_only=set() #scan ids in the ont set
     both=set() #scan ids that matched to both ref and ont proteins
-    hits_missed=0
-    hit_mut=0
-    hits_missed_mut=0
+    # hits_missed=0
+    # hit_mut=0
+    # hits_missed_mut=0
     chrom_dist=Counter() # 1 chromosome location per scan id
     strand_dist=Counter()
-    mut_cpdt_observed={}
+    mut_cpdt_observed=mut_cpdt_theoretical
+    mut_counterparts_observed=mut_cpdt_counterparts
     protein_support=Counter()
     unamb_protsupport=Counter()
     for row in tqdm(combidict.iterrows()):
@@ -750,45 +787,37 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
             ids=[prot_ids]
             unamb_protsupport[get_id(prot_ids)]+=1
         # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
-        cpdt_pep,notfound=fill_cpdt(pep,mod,ids,cpdt_pep) #what peptides are detected, how many, and what proteins they come from
-        hits_missed+=notfound
+        cpdt_pep=add_to_observed(pep,ids,cpdt_pep,False) #what peptides are detected, how many, and what proteins they come from
+        mut_counterparts_observed=add_to_observed(pep,ids,mut_counterparts_observed,isOpenmut) #note the occurences of "reference" versions of the SAAV peptides
         chrom_origin=find_chrom(ids,chromdict)
         strand_origin=find_strand(ids,stranddict)
         chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
         strand_dist[strand_origin]+=1 #which strand does the peptide belong to
         ref_only,ont_only,both=bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)
         if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
-            hit_mut+=1
-            #mut_cpdt_pep,notfound_mut=fill_cpdt()
-            mut_prot,mut_pep=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
-            #add mutant peptide to observed
-            if mut_prot!='':
-                mut_cpdt_observed=add_to_observed_mutdict(mut_prot,mut_pep,mut_cpdt_observed)
-            #hits_missed_mut+=notfound_mut
+            # hit_mut+=1
+            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_theoretical, mut_cpdt_observed,isOpenmut)
             for i in ids: 
                 mutated.add(get_id(i))
-            #mutdict_id,pep
         # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
         #     print(scanid)
         elif not isOpenmut: #check if mutant peptide if not open mutation settings
-            mutcand,mut_pep=detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
-            if mutcand!='': 
-                if pep in mut_cpdt_theoretical[mutcand]:
-                    mut_cpdt_observed=add_to_observed_mutdict(mutcand,mut_pep,mut_cpdt_observed)
+            mut_cpdt_observed=add_to_observed(pep,ids,mut_cpdt_theoretical,mut_cpdt_observed,isOpenmut)
     #create the figures
-    print("number of hits with detected variant = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
-    print("number of hits that were not counted because they were not predicted by in silico digest: "+str(hits_missed))
-    print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
+    # print("number of hits with detected variant = " +str(hit_mut)+ " matched to "+str(len(mutated))+ " proteins.")
+    # print("number of mutant peptides not matched to predicted mutant peptides = " +str(hits_missed_mut))
     #create checkpoint- save the results from above so that whole analysis does not need to be repeated to re-create the graphs
     if isOpenmut:
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
+        plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
         plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
+        plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
@@ -830,20 +859,21 @@ def main(args):
 
     #import other data
     print('importing helper data')
-    cpdt_pep,full_seqs=import_cpdt(args['cpdtvf']) #import cpdt will all peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
-    mut_cpdt_theoretical=import_cpdt_simple(args['cpdtvar']) #import the cpdt file with all snv peptides
+    cpdt_pep,full_seqs=import_cpdt(args['cpdtvf'],True) #import cpdt will all non-variant-containing peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
+    mut_cpdt=import_cpdt(args['cpdtvar'],False) #import the cpdt file with all snv peptides
+    mut_cpdt_counterparts=import_cpdt(args['cpdtctp'],False)
     chromdict,stranddict=create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
     
     #iterate to fill the data structures
     print("doing analysis...")
-    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,True)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt,mut_cpdt_counterparts,True)
     plt.clf()
-    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,False)
+    mut_observed_classic,chromdist_classic,stranddist_classic=combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt,mut_cpdt_counterparts,False)
     plt.clf()
     discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plot_strand_dist(stranddist_classic,stranddist_openmut)
-    plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt_theoretical,mutprotset)
+    plot_final_venns(mut_observed_classic,mut_observed_openmut,mut_cpdt,mutprotset)
     return("Finished")
     
 parser = argparse.ArgumentParser(description='Ionbot output analysis')
@@ -852,6 +882,7 @@ parser.add_argument('--ref', help='Directory GENCODE reference ionbot output fil
 parser.add_argument('--cvc', help='Directory combi variant-containing', required=True)
 parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
 parser.add_argument('--cpdtvar', help='CPDT file of selected SAAV peptides', required=True)
+parser.add_argument('--cpdtctp', help='CPDT file of non-mutated counterparts of the selected SAAV peptides', required=True)
 parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', required=True)
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)

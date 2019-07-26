@@ -61,7 +61,10 @@ def determine_snv(peptide,plist):
         if len(pep)==len(peptide):
             for idx,aa in enumerate(pep):
                 if aa!=peptide[idx]:
-                    mismatch+=1
+                    situation1= aa=='I' and peptide[idx]=='L'
+                    situation2= aa=='L' and peptide[idx]=='I'
+                    if not situation1 and not situation2:
+                        mismatch+=1
             if mismatch==1:
                 return (True,pep)
     return (False,'')

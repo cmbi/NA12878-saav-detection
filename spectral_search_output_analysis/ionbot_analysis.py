@@ -510,7 +510,7 @@ def calculate_correlation(mut_pep_abundance,nonmut_pep_abundance):
 def count_muts(full_cpdt_dict):
     allmuts=Counter()
     for prot,mutct in full_cpdt_dict.items(): #no open mutation
-        for pepi,pepct in mutct:
+        for pepi,pepct in mutct.items():
             if pepct>0:
                 allmuts[pepi]+=pepct
     return(allmuts)

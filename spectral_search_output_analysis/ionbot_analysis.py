@@ -574,6 +574,7 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
     list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
     list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
+    print(list_intersection_varfree)
     plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
     return(0)
 
@@ -607,7 +608,7 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Ionbot score')
     sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Ionbot score')
     if len(intersectionom)>0:
-        sns.distplot(intersectionom, hist=False, label='Intersection variant-free',axlabel='Ionbot score')
+        sns.distplot(intersectionom, hist=False, label='Intersection variant-free')
     plt.legend()
     plt.title('Ionbot scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")

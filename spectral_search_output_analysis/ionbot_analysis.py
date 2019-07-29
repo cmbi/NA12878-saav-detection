@@ -507,6 +507,14 @@ def calculate_correlation(mut_pep_abundance,nonmut_pep_abundance):
     print("correlation between non-variant peptide abundance and total peptide abundance: "+str(cor_nonvar[1][0]))
     return(0)
 
+def count_muts(full_cpdt_dict):
+    allmuts=Counter()
+    for prot,mutct in full_cpdt_dict.items(): #no open mutation
+        for pepi,pepct in mutct:
+            if pepct>0:
+                allmuts[pepi]+=pepct
+    return(allmuts)
+
 def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
@@ -539,17 +547,11 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
     plt.close()
     return(0)
 
-def discrepancy_check(mut_peptide_dict_classic,mut_peptide_dict_openmut,ibdf_combi,ibdf_combi_pg):
+def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
     plot unexpected modifications of the missed peptides (more unexpected modifications than average?)'''
-    allmuts_classic=Counter()
-    allmuts_openmut=Counter()
-    for prot,mutct in mut_peptide_dict_classic.items(): #no open mutation
-        allmuts_classic+=mutct
-    for prott,muti in mut_peptide_dict_openmut.items():
-        allmuts_openmut+=muti
     discrepancy=set(allmuts_classic).difference(set(allmuts_openmut))
     agreement=set(allmuts_classic).intersection(set(allmuts_openmut))
     ibonly=set(allmuts_openmut).difference(set(allmuts_classic))
@@ -666,15 +668,7 @@ def gather_counts(peptide_counter):
         length_counter[len(pep)]+=peptide_counter[pep]
     return(length_counter)
 
-def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_theoretical,mutprotset):
-    allmuts_classic=Counter()
-    allmuts_openmut=Counter()
-    #go through each dictionary and concatenate counters so one large counter object with peptides
-    for prot,mutct in mut_peptide_dict_classic.items(): #no open mutation
-        allmuts_classic+=mutct
-    for prott,muti in mut_peptide_dict_openmut.items():
-        allmuts_openmut+=muti
-    # print(set(allmuts_classic).difference(set(allmuts_openmut))) #TESTING PURPOSES
+def plot_final_venns(allmuts_classic,allmuts_openmut,mut_cpdt_theoretical,mutprotset):
     #create diagrams
     plt.figure('venn mutant peptides')
     vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
@@ -686,7 +680,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.savefig('overlap_detected_mut_peps.png')
     plt.clf()
     plt.figure('venn mutant proteins')
-    vdb=venn2_unweighted([mut_peptide_dict_classic.keys(),mut_peptide_dict_openmut.keys()],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
+    vdb=venn2_unweighted([set(allmuts_classic),set(allmuts_openmut)],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with observed variant peptides",fontsize=26)
     for text in vdb.set_labels:
         text.set_fontsize(26)
@@ -695,7 +689,7 @@ def plot_final_venns(mut_peptide_dict_classic,mut_peptide_dict_openmut,mut_cpdt_
     plt.savefig('overlap_detected_mut_prots.png')
     plt.clf()
     plt.figure('venn proteins all')
-    vdb=venn3([set(mut_peptide_dict_classic.keys()),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
+    vdb=venn3([set(allmuts_classic),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with variant peptides",fontsize=26)
     # for text in vdb.set_labels:
     #     text.set_fontsize(26)
@@ -822,8 +816,8 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
     if isOpenmut:
-        return(mut_cpdt_observed,mutated,chrom_dist,strand_dist)
-    return(mut_cpdt_observed,chrom_dist,strand_dist)
+        return(count_muts(mut_cpdt_observed),mutated,chrom_dist,strand_dist)
+    return(count_muts(mut_cpdt_observed),chrom_dist,strand_dist)
 
 
 def create_chromosome_reference(gfffile,bedfile):

@@ -605,8 +605,9 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     plt.figure("ionbot scores discrepant hits")
     sns.distplot(ibonly, hist=False, label='Variant-free only',axlabel='Ionbot score')
     sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Ionbot score')
-    sns.distplot(intersectionom, hist=False, label='Intersection variant-free',axlabel='Ionbot score')
     sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Ionbot score')
+    if len(intersectionom)>0:
+        sns.distplot(intersectionom, hist=False, label='Intersection variant-free',axlabel='Ionbot score')
     plt.legend()
     plt.title('Ionbot scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")
@@ -674,18 +675,18 @@ def gather_counts(peptide_counter):
 
 def plot_final_venns(allmuts_classic,allmuts_openmut,mut_cpdt_theoretical,mutprotset):
     #create diagrams
-    plt.figure('venn mutant peptides')
+    plt.figure('venn mutant psms')
     vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
-    plt.title("Unique observed variant peptides",fontsize=26)
+    plt.title("Observed variant PSMs",fontsize=26)
     for text in vda.set_labels:
         text.set_fontsize(26)
     for text in vda.subset_labels:
         text.set_fontsize(20)
     plt.savefig('overlap_detected_mut_peps.png')
     plt.clf()
-    plt.figure('venn mutant proteins')
+    plt.figure('venn mutant peptides')
     vdb=venn2_unweighted([set(allmuts_classic),set(allmuts_openmut)],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
-    plt.title("Unique proteins associated with observed variant peptides",fontsize=26)
+    plt.title("Unique observed variant peptides",fontsize=26)
     for text in vdb.set_labels:
         text.set_fontsize(26)
     for text in vdb.subset_labels:

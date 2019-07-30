@@ -528,6 +528,7 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     plt.xlabel('Protein abundance (NSAF normalized)')
     plt.xlim(0,0.0002)
     plt.ylabel('Number mutant peptides detected')
+    plt.ylim(0,8000)
     plt.title('Peptide abundance vs total protein abundance')
     plt.legend(loc='upper right')
     plt.savefig(figname)
@@ -542,6 +543,7 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
     plt.scatter(*zip(*counts),c='b',alpha=1)
     plt.xlabel('Variant peptide count')
     plt.ylabel('Reference counterpart count')
+    plt.ylim(0,700)
     plt.title('Variant vs. non-variant peptide abundance')
     plt.savefig(figname)
     plt.close()
@@ -574,7 +576,6 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
     list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
     list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
-    print(list_intersection_varfree)
     plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
     return(0)
 

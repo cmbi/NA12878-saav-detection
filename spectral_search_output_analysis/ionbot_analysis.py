@@ -564,6 +564,7 @@ def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     plt.figure('mutant peptides')
     # plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
     # plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
+    print(mut_pep_abundance)
     sns.regplot(*zip(*mut_pep_abundance),scatter=True,fit_reg=True, color='r',label='Variant peptide')
     sns.regplot(*zip(*nonmut_pep_abundance),scatter=True,fit_reg=True,color='b',label='Normal peptide')
     plt.xlabel('Protein abundance (NSAF normalized)')

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import stats
 from tqdm import tqdm
 from collections import Counter
 import json
@@ -488,24 +489,60 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
     for later implementation: coloring similar to the direct comparison discrepant peptide graph, with colors corresponding to the abundance of peptides
     '''
     counts=[]
+    all_subs=initiate_counter()
+    observed_subs=all_subs
     for prot,peps in mutant_cpdtpep.items():
         peps_cpt=counterpart_cpdtpep[prot]
         for pep in peps:
-            cpt_pep=determine_snv(pep,peps_cpt)
+            cpt_pep,sub=determine_snv(pep,peps_cpt)
+            all_subs[sub]+=1
             tuptoadd=(peps[pep],peps_cpt[cpt_pep])
             if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
                 counts.append(tuptoadd)
-    return(counts)
+                observed_subs[sub]+=1
+    return(counts,counter_to_df(all_subs),counter_to_df(observed_subs))
 
-def calculate_correlation(mut_pep_abundance,nonmut_pep_abundance):
+def initiate_counter():
+    '''generate all possible AA subsititutions and put them in a counter'''
+    all_aa=["A", "R", "N", "D", "C", "E", "Q", "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
+    all_list=list(itertools.product(all_aa,all_aa))
+    all_counter=Counter()
+    for l in all_list:
+        all_counter[l]=0
+    return(all_counter)
+
+def counter_to_df(countersubs):
+    '''create the df that will be used in the heatmap figure'''
+    ser = pd.Series(list(countersubs.values()),index=pd.MultiIndex.from_tuples(countersubs.keys()))
+    df = ser.unstack().fillna(0)
+    return(df)
+
+def plot_heatmaps(df,prefix,suffix):
+    '''plot the types of substitutions that occur'''
+    outfile=prefix+suffix
+    plt.figure("heatmap")
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    sns.heatmap(df)
+    # plt.title("Substitutions")
+    plt.ylabel("Original")
+    plt.xlabel("Variant")
+    plt.tight_layout()
+    plt.savefig(outfile)
+    plt.close()
+    return(0)
+
+def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
     dt=np.dtype('float,int')
     variant = np.array(mut_pep_abundance,dtype=dt)
     nonvariant=np.array(nonmut_pep_abundance,dtype=dt)
     cor_var= np.corrcoef(variant['f0'],variant['f1'])
+    cor_cpt=np.corrcoef(variant['f0'],variant['f1'])
     cor_nonvar= np.corrcoef(nonvariant['f0'],nonvariant['f1'])
     # cor_var_nonvar=np.corrcoef(variant['f0'],nonvariant['f0'])
-    print("correlation between variant peptides abundance and total peptide abundance: "+str(cor_var[1][0]))
-    print("correlation between non-variant peptide abundance and total peptide abundance: "+str(cor_nonvar[1][0]))
+    print("correlation between variant peptides abundance and total protein abundance: "+str(cor_var[1][0]))
+    print("correlation between counterpart peptide abundance and total protein abundance:"+str(cor_cpt[1][0]))
+    print("correlation between non-variant peptide abundance and total protein abundance: "+str(cor_nonvar[1][0]))
     return(0)
 
 def count_muts(full_cpdt_dict):
@@ -516,20 +553,23 @@ def count_muts(full_cpdt_dict):
                 allmuts[pepi]+=pepct
     return(allmuts)
 
-def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
+def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
-    calculate_correlation(mut_pep_abundance,nonmut_pep_abundance)
+    cpt_pep_abundance,nmpa=calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
+    calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
     #make plot
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('mutant peptides')
-    plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
-    plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
+    # plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
+    # plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
+    sns.regplot(*zip(*mut_pep_abundance),scatter=True,fit_reg=True, c='r',label='Variant peptide',alpha=1)
+    sns.regplot(*zip(*nonmut_pep_abundance),scatter=True,fit_reg=True,c='b',label='Normal peptide',alpha=0.25)
     plt.xlabel('Protein abundance (NSAF normalized)')
     plt.xlim(0,0.0002)
     plt.ylabel('Number mutant peptides detected')
-    plt.ylim(0,8000)
+    plt.ylim(-10,1000)
     plt.title('Peptide abundance vs total protein abundance')
     plt.legend(loc='upper right')
     plt.savefig(figname)
@@ -537,18 +577,24 @@ def plot_mut(mutant_cpdtpep,cpdtpep,fullseqs,figname):
     return('done')
 
 def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
-    counts=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
+    counts,asdf,osdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
+    plot_heatmaps(asdf,'heatmap_all_subs',figname)
+    plot_heatmaps(osdf,'heatmap_observed_subs',figname)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')
-    plt.scatter(*zip(*counts),c='b',alpha=1)
+    # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,c='b',alpha=1)
+    sns.jointplot(*zip(*counts), kind="reg", stat_func=r2)
     plt.xlabel('Variant peptide count')
     plt.ylabel('Reference counterpart count')
-    plt.ylim(0,700)
+    plt.ylim(-10,700)
     plt.title('Variant vs. non-variant peptide abundance')
     plt.savefig(figname)
     plt.close()
     return(0)
+
+def r2(x, y):
+    return(stats.pearsonr(x, y)[0] ** 2)
 
 def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     '''check out the differences in identifications between the 2 combination dictionaries
@@ -569,8 +615,8 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     unexp_mod_pg=ibdf_combi_pg.loc[ibdf_combi_pg["scan_id"].isin(scanids),"unexpected_modification"].tolist()
     plot_unexpected_mods(unexp_mod_om,unexp_mod_pg) #plot what modifications they contained
     #direct comparison of scores of peptides found with variant-containing but not variant-free
-    scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","ionbot_psm_score"]]#.tolist()
-    scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","ionbot_psm_score","matched_peptide"]] #added matched peptide for length dimension
+    scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","ionbot_psm_score","matched_peptide"]]#.tolist()
+    scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","ionbot_psm_score"]] #added matched peptide for length dimension
     plot_ib_scores_directcomp(scores_om,scores_pg) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"ionbot_psm_score"].tolist()
@@ -588,6 +634,7 @@ def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     plt.figure("ionbot scores discrepant hits")
     #inner join the 2
     combi=pd.merge(varfree_scores,varcont_scores,on="scan_id",suffixes=("_varfree","_varcont"))
+    combi.groupby("matched_peptide").mean() #make sure don't have groups of dots per unique peptide
     combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     combi.plot.scatter(x="ionbot_psm_score_varfree",y="ionbot_psm_score_varcont",c="pep_length",colormap='viridis')
     # sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Ionbot score')
@@ -623,8 +670,8 @@ def plot_unexpected_mods(mods_om,mods_pg):
     mod_ct_om=categorize_mods(mods_om)
     mod_ct_pg=categorize_mods(mods_pg)
     plt.figure('discrepant peptide lengths')
-    chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(20)),orient='index')
-    chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(20)),orient='index')
+    chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(10)),orient='index')
+    chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(10)),orient='index')
     combi=pd.concat([chist_pg,chist_om],axis=1,sort=False)
     combi.fillna(0)
     combi.columns=['Variant-containing','Variant-free']
@@ -709,6 +756,14 @@ def plot_final_venns(allmuts_classic,allmuts_openmut,mut_cpdt_theoretical,mutpro
     plt.close()
     return('plotted final venns')
 
+def other_mutation_analyses(allmuts_classic,allmuts_openmut):
+    #graph a bar plot of how many of each variant peptide there is?
+
+    #graph a sort of heat map showing what aa substitutions are most found (maybe group by aa properties?). normalize by how many there are in the dictionary
+    allmuts=set(allmuts_classic).union(set(allmuts_openmut))
+
+    return(0)
+
 def determine_snv(peptide,plist):
     ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid
     input: a peptide and a list of peptides
@@ -717,12 +772,16 @@ def determine_snv(peptide,plist):
     mismatch=0
     for pep in plist:
         if len(pep)==len(peptide):
+            original=''
+            sub=''
             for idx,aa in enumerate(pep):
                 if aa!=peptide[idx]:
+                    original=aa
+                    sub=peptide[x]
                     mismatch+=1
             if mismatch==1:
-                return(pep)
-    return('')
+                return(pep,(original,sub))
+    return('','')
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut):
     for isi in ids:
@@ -814,13 +873,13 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
     if isOpenmut:
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
-        plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
+        plot_mut(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
         plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varfree.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
         plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
-        plot_mut(mut_cpdt_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
+        plot_mut(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
         plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varcont.png")
         plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)

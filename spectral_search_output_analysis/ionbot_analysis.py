@@ -240,6 +240,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.figure('support')
     recountpev=counter_translator(prot_evidence)
     recountunamb=counter_translator(unamb_prot_evidence)
+    print("count #proteins with higher than 20 peptide evidence:"+str(recountpev['20+']))
     new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'20+']
     pev= pd.DataFrame.from_dict(recountpev,orient='index')
     punamb= pd.DataFrame.from_dict(recountunamb,orient='index')

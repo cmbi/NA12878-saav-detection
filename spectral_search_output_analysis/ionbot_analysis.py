@@ -779,7 +779,7 @@ def determine_snv(peptide,plist):
             for idx,aa in enumerate(pep):
                 if aa!=peptide[idx]:
                     original=aa
-                    sub=peptide[x]
+                    sub=peptide[idx]
                     mismatch+=1
             if mismatch==1:
                 return(pep,(original,sub))

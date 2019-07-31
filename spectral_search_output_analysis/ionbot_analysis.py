@@ -514,9 +514,14 @@ def initiate_counter():
 
 def counter_to_df(allc, observed):
     '''create the df that will be used in the heatmap figure, use normalization (min-max)'''
-    df_all = pd.DataFrame(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()),columns=['values'])
     serall=pd.Series(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()))
     dfall=serall.unstack()
+    df=get_normalized_matrix(allc,observed)
+    print(dfall)
+    return(df,dfall)
+
+def get_normalized_matrix(allc,observed):
+    df_all = pd.DataFrame(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()),columns=['values'])
     df_observed = pd.DataFrame(list(observed.values()),index=pd.MultiIndex.from_tuples(observed.keys()),columns=['values'])
     df_all['normalized']=(df_all['values']-df_all['values'].min())/(df_all['values'].max()-df_all['values'].min()) # if want to do min-max normalization
     df_observed['normalized']=(df_observed['values']-df_observed['values'].min())/(df_observed['values'].max()-df_observed['values'].min()) # if want to do min-max normalization
@@ -524,7 +529,7 @@ def counter_to_df(allc, observed):
     #df['normalized']=(df['values']-df['values'].mean())/df['values'].std() # if want to do standard normalization
     ser=pd.Series(df_combi)
     df = ser.unstack()#.fillna(0)
-    return(df,df_all)
+    return(df)
 
 def plot_heatmaps(df,prefix,suffix):
     '''plot the types of substitutions that occur'''

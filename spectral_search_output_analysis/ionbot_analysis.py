@@ -500,9 +500,8 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
             if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
                 counts.append(tuptoadd)
                 observed_subs[sub]+=1
-    print(all_subs)
-    print(observed_subs)
-    return(counts,counter_to_df(all_subs,observed_subs))
+    df,dfall=counter_to_df(all_subs,observed_subs)
+    return(counts,df,dfall)
 
 def initiate_counter():
     '''generate all possible AA subsititutions and put them in a counter'''
@@ -516,6 +515,8 @@ def initiate_counter():
 def counter_to_df(allc, observed):
     '''create the df that will be used in the heatmap figure, use normalization (min-max)'''
     df_all = pd.DataFrame(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()),columns=['values'])
+    serall=pd.Series(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()))
+    dfall=serall.unstack()
     df_observed = pd.DataFrame(list(observed.values()),index=pd.MultiIndex.from_tuples(observed.keys()),columns=['values'])
     df_all['normalized']=(df_all['values']-df_all['values'].min())/(df_all['values'].max()-df_all['values'].min()) # if want to do min-max normalization
     df_observed['normalized']=(df_observed['values']-df_observed['values'].min())/(df_observed['values'].max()-df_observed['values'].min()) # if want to do min-max normalization
@@ -523,7 +524,7 @@ def counter_to_df(allc, observed):
     #df['normalized']=(df['values']-df['values'].mean())/df['values'].std() # if want to do standard normalization
     ser=pd.Series(df_combi)
     df = ser.unstack()#.fillna(0)
-    return(df)
+    return(df,df_all)
 
 def plot_heatmaps(df,prefix,suffix):
     '''plot the types of substitutions that occur'''
@@ -589,8 +590,9 @@ def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     return('done')
 
 def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
-    counts,osdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
-    plot_heatmaps(osdf,'heatmap_observed_subs',figname)
+    counts,diffdf,asdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
+    plot_heatmaps(diffdf,'heatmap_observed_subs',figname)
+    plot_heatmaps(asdf,'heatmap_all_subs',figname)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')

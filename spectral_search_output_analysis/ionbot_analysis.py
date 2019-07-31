@@ -500,7 +500,7 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
             if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
                 counts.append(tuptoadd)
                 observed_subs[sub]+=1
-    return(counts,counter_to_df(all_subs),counter_to_df(observed_subs))
+    return(counts,counter_to_df(all_subs,observed_subs))
 
 def initiate_counter():
     '''generate all possible AA subsititutions and put them in a counter'''
@@ -511,10 +511,17 @@ def initiate_counter():
         all_counter[l]=0
     return(all_counter)
 
-def counter_to_df(countersubs):
-    '''create the df that will be used in the heatmap figure'''
-    ser = pd.Series(list(countersubs.values()),index=pd.MultiIndex.from_tuples(countersubs.keys()))
-    df = ser.unstack().fillna(0)
+def counter_to_df(allc, observed):
+    '''create the df that will be used in the heatmap figure, use normalization (min-max)'''
+    df_all = pd.DataFrame(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()),columns=['values'])
+    df_observed = pd.DataFrame(list(observed.values()),index=pd.MultiIndex.from_tuples(observed.keys()),columns=['values'])
+    df_all['normalized']=(df_all['values']-df_all['values'].min())/(df_all['values'].max()-df_all['values'].min()) # if want to do min-max normalization
+    df_observed['normalized']=(df_observed['values']-df_observed['values'].min())/(df_observed['values'].max()-df_observed['values'].min()) # if want to do min-max normalization
+    df_combi=df_observed['normalized']-df_all['normalized']
+    #df['normalized']=(df['values']-df['values'].mean())/df['values'].std() # if want to do standard normalization
+    ser=pd.Series(df_combi)
+    df = ser.unstack()#.fillna(0)
+    print(df)
     return(df)
 
 def plot_heatmaps(df,prefix,suffix):
@@ -555,7 +562,9 @@ def count_muts(full_cpdt_dict):
 
 def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
+    print("variant peptides:")
     mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
+    print("non-variant counterparts:")
     cpt_pep_abundance,nmpa=calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
     calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
     #make plot
@@ -579,8 +588,7 @@ def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     return('done')
 
 def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
-    counts,asdf,osdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
-    plot_heatmaps(asdf,'heatmap_all_subs',figname)
+    counts,osdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
     plot_heatmaps(osdf,'heatmap_observed_subs',figname)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
@@ -590,7 +598,8 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
     plt.xlabel('Variant peptide count')
     plt.ylabel('Reference counterpart count')
     plt.ylim(-10,700)
-    plt.title('Variant vs. non-variant peptide abundance')
+    # plt.title('Variant vs. non-variant peptide abundance')
+    plt.tight_layout()
     plt.savefig(figname)
     plt.close()
     return(0)
@@ -758,13 +767,6 @@ def plot_final_venns(allmuts_classic,allmuts_openmut,mut_cpdt_theoretical,mutpro
     plt.close()
     return('plotted final venns')
 
-def other_mutation_analyses(allmuts_classic,allmuts_openmut):
-    #graph a bar plot of how many of each variant peptide there is?
-
-    #graph a sort of heat map showing what aa substitutions are most found (maybe group by aa properties?). normalize by how many there are in the dictionary
-    allmuts=set(allmuts_classic).union(set(allmuts_openmut))
-
-    return(0)
 
 def determine_snv(peptide,plist):
     ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid

@@ -500,6 +500,8 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
             if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
                 counts.append(tuptoadd)
                 observed_subs[sub]+=1
+    print(all_subs)
+    print(observed_subs)
     return(counts,counter_to_df(all_subs,observed_subs))
 
 def initiate_counter():
@@ -521,7 +523,6 @@ def counter_to_df(allc, observed):
     #df['normalized']=(df['values']-df['values'].mean())/df['values'].std() # if want to do standard normalization
     ser=pd.Series(df_combi)
     df = ser.unstack()#.fillna(0)
-    print(df)
     return(df)
 
 def plot_heatmaps(df,prefix,suffix):

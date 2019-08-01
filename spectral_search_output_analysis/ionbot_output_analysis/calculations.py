@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+
+import re, os,sys, itertools
+import numpy as np
+from scipy import stats
+import helper_functions
+
+def coverage_measure(cpdt_pep,full_seqs):
+    #high_cov_vert={}
+    high_cov_hor={}
+    perc_cov_dist=[]
+    vert_cov=[]
+    for p,peps in cpdt_pep.items():
+        seq=full_seqs[p]
+        remains=seq
+        count_pep=0
+        if len(peps.keys())>0:
+            for s,c in peps.items():
+                if c>5: #what constitutes a "true" hit
+                    count_pep+=c
+                    if s in remains:
+                        remains=remains.replace(s,'')
+                    else:
+                        prefix=re.split('R|K',s)
+                        for p in prefix:
+                            if len(p)>3 and p in remains:
+                                remains=remains.replace(p,'')
+            perc_cov=float((len(seq)-len(remains))/len(seq))*100
+            perc_cov_dist.append(perc_cov)
+            vert=float(count_pep/len(peps.keys()))
+            if vert>0:
+                vert_cov.append(vert)
+            if perc_cov>50:
+                high_cov_hor[p]=peps
+            # if count_pep>100:
+            #     high_cov_vert[p]=peps
+    return(high_cov_hor,vert_cov,perc_cov_dist)
+
+def calc_nsaf_standard(cpdt_pep,fullseqs):
+    '''after cpdt_pep has been filled, find the sum nsaf in order to standardize the abundance scores in calc_mut_abundances'''
+    nsaf=0
+    for prot,peps in cpdt_pep.items():
+        count_peps=0
+        for p,ct in peps.items():
+            count_peps+=ct
+        length_prot=len(fullseqs[prot])
+        nsaf+=float(count_peps/length_prot)
+    return(nsaf)
+
+def calc_nsaf_protein(pepdict_singleprot,lenprot,sumnsaf):
+    sum_nonmut=0
+    for normpep,normct in pepdict_singleprot.items():
+        sum_nonmut+=normct
+    nsaf=float(float(sum_nonmut/lenprot)/sumnsaf)
+    return(nsaf)
+
+def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
+    '''this function calculates the abundance of the protein and returns that along with the count of the (non)mutant peptide'''
+    mut_pep_abundance=[]
+    nonmut_pep_abundance=[]
+    #nr_mutant=[]
+    mut_proteins_detected=set()
+    num_peptides=0
+    num_occurences=0
+    sumnsaf=calc_nsaf_standard(cpdtpep,fullseqs)
+    for prot,peps in mutant_cpdtpep.items():
+        if '_h' in prot:
+            stem=prot.split('_h')[0]
+        else:
+            stem=prot
+        if stem in cpdtpep:
+            nsafnonmut=calc_nsaf_protein(cpdtpep[stem],len(fullseqs[stem]),sumnsaf)
+            sum_mut=0 #total number of detected mutant peptides
+            sum_nonmut=0
+            for pep,ct in peps.items():
+                sum_mut+=ct
+                if ct>0:
+                    mut_proteins_detected.add(prot)
+                    num_occurences+=ct
+                    num_peptides+=1
+                    # mut_pep_abundance.append((nsafnonmut,ct)) #uncomment to calculate frequencies per peptide instead of per protein
+            #calculate count of non-mutant peptides
+            for normpep,normct in cpdtpep[stem].items():
+                sum_nonmut+=normct
+            lennonmut=len(fullseqs[stem])
+            for normpep,normct in cpdtpep[stem].items():
+                sum_nonmut+=normct
+                # nonmut_pep_abundance.append((nsafnonmut,normct)) #uncomment to calculate frequencies per peptide instead of per protein
+            # nsafnonmut=float(float(sum_nonmut/lennonmut)/sumnsaf)
+            nonmut_pep_abundance.append((nsafnonmut,sum_nonmut))
+            if sum_mut>0: #only record the proteins with at least 1 detected variant peptide
+                #nr_mutant.append(sum_mut)
+                mut_pep_abundance.append((nsafnonmut,sum_mut))
+                #mut_pep_abundance.append(sum_mut+sum_nonmut)
+    print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
+    return(mut_pep_abundance,nonmut_pep_abundance)
+
+def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
+    '''directly measure the observed counts of the saav peptides and their reference counterparts
+    for later implementation: coloring similar to the direct comparison discrepant peptide graph, with colors corresponding to the abundance of peptides
+    '''
+    counts=[]
+    all_subs=helper_functions.initiate_counter()
+    observed_subs=all_subs
+    for prot,peps in mutant_cpdtpep.items():
+        peps_cpt=counterpart_cpdtpep[prot]
+        for pep in peps:
+            cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
+            all_subs[sub]+=1
+            tuptoadd=(peps[pep],peps_cpt[cpt_pep])
+            if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
+                counts.append(tuptoadd)
+                observed_subs[sub]+=1
+    df,dfall=helper_functions.counter_to_df(all_subs,observed_subs)
+    return(counts,df,dfall)
+
+def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
+    dt=np.dtype('float,int')
+    variant = np.array(mut_pep_abundance,dtype=dt)
+    nonvariant=np.array(nonmut_pep_abundance,dtype=dt)
+    cor_var= np.corrcoef(variant['f0'],variant['f1'])
+    cor_cpt=np.corrcoef(variant['f0'],variant['f1'])
+    cor_nonvar= np.corrcoef(nonvariant['f0'],nonvariant['f1'])
+    # cor_var_nonvar=np.corrcoef(variant['f0'],nonvariant['f0'])
+    print("correlation between variant peptides abundance and total protein abundance: "+str(cor_var[1][0]))
+    print("correlation between counterpart peptide abundance and total protein abundance:"+str(cor_cpt[1][0]))
+    print("correlation between non-variant peptide abundance and total protein abundance: "+str(cor_nonvar[1][0]))
+    return(0)
+
+
+def r2(x, y):
+    return(stats.pearsonr(x, y)[0] ** 2)

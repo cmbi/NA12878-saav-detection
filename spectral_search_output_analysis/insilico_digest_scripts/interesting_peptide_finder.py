@@ -30,7 +30,7 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
                     for pep in dif:
                         if len(pep)>2 and isQualified(pep,ref): #need to check if unique peptide
                             prob=pepdict[pep] #fetch probability
-                            if float(prob)>=0.05:
+                            if float(prob)>=0.05: #higher than cutoff probability
                                 isSNV,counterpart=determine_snv(pep,r_peplist)
                                 if isSNV:
                                     if key in newsnv:
@@ -58,7 +58,7 @@ def determine_snv(peptide,plist):
     '''
     mismatch=0
     for pep in plist:
-        if len(pep)==len(peptide):
+        if len(pep)==len(peptide) and pep!=peptide:
             for idx,aa in enumerate(pep):
                 if aa!=peptide[idx]:
                     situation1= aa=='I' and peptide[idx]=='L'

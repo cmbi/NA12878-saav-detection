@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-
+import os
+import pandas as pd
+import helper_functions
 
 
 def concatenate_csvs(csvpath):
@@ -62,7 +64,7 @@ def import_cpdt(cpdt,fullSeq):
         for line in c:
             if line.startswith('>'):
                 key=line.strip()[1:]
-                key=get_id(key)
+                key=helper_functions.get_id(key)
                 cpdt_pep[key]={}
                 full_seqs[key]=''
             elif 'PEPTIDE' in line:

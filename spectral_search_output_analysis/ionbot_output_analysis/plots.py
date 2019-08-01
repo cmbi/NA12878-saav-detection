@@ -4,6 +4,9 @@ import matplotlib, re, os,sys, itertools, argparse
 from matplotlib_venn import venn2,venn2_unweighted,venn3, venn3_unweighted
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+import calculations
+import helper_functions
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
 matplotlib.rcParams['axes.titlesize'] = 'xx-large'
@@ -15,8 +18,8 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     how many proteins have 1,2,3... peptides supporting their existence? unambiguously?
     1 counter that counts all peptides, another counter that counts only unique peptides'''
     plt.figure('support')
-    recountpev=counter_translator(prot_evidence)
-    recountunamb=counter_translator(unamb_prot_evidence)
+    recountpev=helper_functions.counter_translator(prot_evidence)
+    recountunamb=helper_functions.counter_translator(unamb_prot_evidence)
     print("count #proteins with higher than 20 peptide evidence:"+str(recountpev['20+']))
     new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,'20+']
     pev= pd.DataFrame.from_dict(recountpev,orient='index')
@@ -131,7 +134,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     - horizontal coverage
     - chromosome distribution
     '''
-    high_cov_hor,cov_vert,perc_cov_dist=coverage_measure(cpdt_pep,fullseqs)
+    high_cov_hor,cov_vert,perc_cov_dist=calculations.coverage_measure(cpdt_pep,fullseqs)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     #horizontal coverage
@@ -174,10 +177,10 @@ def plot_heatmaps(df,prefix,suffix):
 def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     print("variant peptides:")
-    mut_pep_abundance,nonmut_pep_abundance=calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
+    mut_pep_abundance,nonmut_pep_abundance=calculations.calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
     print("non-variant counterparts:")
-    cpt_pep_abundance,nmpa=calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
-    calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
+    cpt_pep_abundance,nmpa=calculations.calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
+    calculations.calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
     #make plot
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
@@ -199,14 +202,14 @@ def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     return('done')
 
 def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
-    counts,diffdf,asdf=calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
+    counts,diffdf,asdf=calculations.calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
     plot_heatmaps(diffdf,'heatmap_observed_subs',figname)
     plot_heatmaps(asdf,'heatmap_all_subs',figname)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')
     # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,color='b',alpha=1)
-    sns.jointplot(*zip(*counts), kind="reg", stat_func=r2)
+    sns.jointplot(*zip(*counts), kind="reg", stat_func=helper_functions.r2)
     plt.xlabel('Variant peptide count')
     plt.ylabel('Reference counterpart count')
     plt.ylim(-10,700)
@@ -257,8 +260,8 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     return("Scores plot made")
 
 def plot_unexpected_mods(mods_om,mods_pg):
-    mod_ct_om=categorize_mods(mods_om)
-    mod_ct_pg=categorize_mods(mods_pg)
+    mod_ct_om=helper_functions.categorize_mods(mods_om)
+    mod_ct_pg=helper_functions.categorize_mods(mods_pg)
     plt.figure('discrepant peptide lengths')
     chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(10)),orient='index')
     chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(10)),orient='index')
@@ -275,8 +278,8 @@ def plot_unexpected_mods(mods_om,mods_pg):
     return(0)
 
 def plot_peplengths(peptide_counter_pg,peptide_counter_om):
-    lenct_pg=gather_counts(peptide_counter_pg)
-    lenct_om=gather_counts(peptide_counter_om)
+    lenct_pg=helper_functions.gather_counts(peptide_counter_pg)
+    lenct_om=helper_functions.gather_counts(peptide_counter_om)
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_pg=pd.DataFrame.from_dict(lenct_pg,orient='index',columns=["Combi variant-containing only"]).sort_index()

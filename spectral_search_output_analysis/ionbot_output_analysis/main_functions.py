@@ -63,10 +63,10 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
         if '||' in prot_ids:
             ids=prot_ids.split('||')
             for i in ids:
-                protein_support[get_id(i)]+=1
+                protein_support[helper_functions.get_id(i)]+=1
         else: #unambiguous assignment!
             ids=[prot_ids]
-            unamb_protsupport[get_id(prot_ids)]+=1
+            unamb_protsupport[helper_functions.get_id(prot_ids)]+=1
         # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
         cpdt_pep=helper_functions.add_to_observed(pep,ids,cpdt_pep,False) #what peptides are detected, how many, and what proteins they come from
         mut_counterparts_observed=helper_functions.add_to_observed(pep,ids,mut_counterparts_observed,isOpenmut) #note the occurences of "reference" versions of the SAAV peptides

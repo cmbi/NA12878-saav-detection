@@ -145,7 +145,10 @@ def determine_snv(peptide,plist):
                 if aa!=peptide[idx]:
                     original=aa
                     sub=peptide[idx]
-                    mismatch+=1
+                    situation1= original=='I' and sub=='L'
+                    situation2= original=='L' and sub=='I'
+                    if not situation1 and not situation2:
+                        mismatch+=1
             if mismatch==1:
                 return(pep,(original,sub))
     return('','')

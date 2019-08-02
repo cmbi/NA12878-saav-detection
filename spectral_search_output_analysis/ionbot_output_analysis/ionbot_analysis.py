@@ -46,8 +46,8 @@ def main(args):
     #iterate to fill the data structures
     print("doing analysis...")
     theoretical_saav= calculations.theoretical_saav_counts(mut_cpdt,mut_cpdt_counterparts)
-    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,theoretical_saav,mut_pep_probs,full_seqs,mut_cpdt,mut_cpdt_counterparts,True)
-    mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,theoretical_saav,mut_pep_probs,full_seqs,mut_cpdt,mut_cpdt_counterparts,False)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,True)
+    mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,False)
     main_functions.discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plots.plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plots.plot_strand_dist(stranddist_classic,stranddist_openmut)

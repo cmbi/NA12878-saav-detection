@@ -39,14 +39,15 @@ def main(args):
     #import other data
     print('importing helper data')
     cpdt_pep,full_seqs=file_import.import_cpdt(args['cpdtvf'],True) #import cpdt will all non-variant-containing peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage
-    mut_cpdt=file_import.import_cpdt(args['cpdtvar'],False) #import the cpdt file with all snv peptides
-    mut_cpdt_counterparts=file_import.import_cpdt(args['cpdtctp'],False)
+    mut_cpdt,mut_pep_probs=file_import.import_cpdt(args['cpdtvar'],False) #import the cpdt file with all snv peptides
+    mut_cpdt_counterparts,counterpart_pep_probs=file_import.import_cpdt(args['cpdtctp'],False)
     chromdict,stranddict=file_import.create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
     
     #iterate to fill the data structures
     print("doing analysis...")
-    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt,mut_cpdt_counterparts,True)
-    mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt,mut_cpdt_counterparts,False)
+    theoretical_saav= calculations.theoretical_saav_counts(mut_cpdt,mut_cpdt_counterparts)
+    mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,theoretical_saav,mut_pep_probs,full_seqs,mut_cpdt,mut_cpdt_counterparts,True)
+    mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,theoretical_saav,mut_pep_probs,full_seqs,mut_cpdt,mut_cpdt_counterparts,False)
     main_functions.discrepancy_check(mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg)
     plots.plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plots.plot_strand_dist(stranddist_classic,stranddist_openmut)

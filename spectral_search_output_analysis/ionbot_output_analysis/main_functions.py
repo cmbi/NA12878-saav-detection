@@ -39,7 +39,7 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     plots.plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
     return(0)
     
-def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpdt_theoretical,mut_cpdt_counterparts,isOpenmut):
+def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saavs,mut_pep_probs,mut_cpdt_theoretical,mut_cpdt_counterparts,isOpenmut):
     # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
     ref_only=set() #scan ids in the reference set
@@ -91,14 +91,14 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,mut_cpd
     if isOpenmut:
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
-        plots.plot_mut(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
-        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varfree.png")
+        plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
+        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"_varfree.png")
         plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plots.plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut)
         plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
-        plots.plot_mut(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
-        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,"variant_vs_nonvariant_varcont.png")
+        plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
+        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"variant_vs_nonvariant_varcont.png")
         plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plots.plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')

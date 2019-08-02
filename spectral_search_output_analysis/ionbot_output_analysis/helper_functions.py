@@ -124,12 +124,10 @@ def initiate_counter():
         all_counter[l]=0
     return(all_counter)
 
-def counter_to_df(allc, observed):
-    '''create the df that will be used in the heatmap figure, use normalization (min-max)'''
-    serall=pd.Series(list(allc.values()),index=pd.MultiIndex.from_tuples(allc.keys()))
-    dfall=serall.unstack()
-    df=get_normalized_matrix(allc,observed)
-    return(df,dfall)
+# def counter_to_df(allc, observed):
+#     '''create the df that will be used in the heatmap figure, use normalization (min-max)'''
+#     df=get_normalized_matrix(allc,observed)
+#     return(df,dfall)
 
 def determine_snv(peptide,plist):
     ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid

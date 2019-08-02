@@ -159,9 +159,14 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.close()
     return("Plotted coverage")
 
-def plot_heatmaps(df,prefix,suffix):
+def plot_heatmaps(counter,prefix,suffix):
     '''plot the types of substitutions that occur'''
     outfile=prefix+suffix
+    if type(counter)==Counter:
+        ser=pd.Series(list(counter.values()),index=pd.MultiIndex.from_tuples(counter.keys()))
+        df=ser.unstack()
+    else:
+        df=counter
     plt.figure("heatmap")
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
@@ -174,7 +179,7 @@ def plot_heatmaps(df,prefix,suffix):
     plt.close()
     return(0)
 
-def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
+def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
     print("variant peptides:")
     mut_pep_abundance,nonmut_pep_abundance=calculations.calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs)
@@ -201,10 +206,25 @@ def plot_mut(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     plt.close()
     return('done')
 
-def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
-    counts,diffdf,asdf=calculations.calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep)
-    plot_heatmaps(diffdf,'heatmap_observed_subs',figname)
-    plot_heatmaps(asdf,'heatmap_all_subs',figname)
+def plot_mut_vs_prob(counts,figname):
+    '''plot variant observed count vs CPDT probability for that peptide'''
+    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set_style(style='white')
+    plt.figure('measure probability vs observed peptides')
+    sns.jointplot(*zip(*counts), kind="reg", stat_func=calculations.r2)
+    plt.xlabel('Variant peptide theoretical detectability')
+    plt.ylabel('Variant peptide observed count')
+    plt.tight_layout()
+    plt.savefig(figname)
+    plt.close()
+    return(0)
+
+def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var_probs,suffix):
+    counts,probs,observed=calculations.calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,var_probs)
+    plot_heatmaps(observed,'heatmap_observed_subs',suffix)
+    comparison=helper_functions.get_normalized_matrix(theoretical_counts,observed)
+    plot_heatmaps(comparison,'heatmap_all_subs',suffix)
+    plot_mut_vs_prob(probs,'probability_detection_vs_count'+suffix)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')
@@ -215,7 +235,7 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,figname):
     plt.ylim(-10,700)
     # plt.title('Variant vs. non-variant peptide abundance')
     plt.tight_layout()
-    plt.savefig(figname)
+    plt.savefig("variant_vs_nonvariant"+suffix)
     plt.close()
     return(0)
 

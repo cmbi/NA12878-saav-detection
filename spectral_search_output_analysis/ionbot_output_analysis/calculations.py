@@ -3,6 +3,7 @@
 import re, os,sys, itertools
 import numpy as np
 from scipy import stats
+import pandas as pd
 import helper_functions
 
 def coverage_measure(cpdt_pep,full_seqs):
@@ -95,24 +96,36 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
 
-def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep):
+def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
     '''directly measure the observed counts of the saav peptides and their reference counterparts
     for later implementation: coloring similar to the direct comparison discrepant peptide graph, with colors corresponding to the abundance of peptides
     '''
     counts=[]
+    probs=[]
+    observed_subs=helper_functions.initiate_counter()
+    for prot,peps in mutant_cpdtpep.items():
+        peps_cpt=counterpart_cpdtpep[prot]
+        for pep in peps:
+            cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
+            tuptoadd=(peps[pep],peps_cpt[cpt_pep])
+            probtup=(mutant_probs[pep],peps[pep])
+            if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
+                counts.append(tuptoadd)
+                probs.append(probtup)
+                observed_subs[sub]+=1
+    # df,dfall=helper_functions.counter_to_df(observed_subs)
+    return(counts,probs,observed_subs)
+
+def theoretical_saav_counts(mutant_cpdtpep,counterpart_cpdtpep):
     all_subs=helper_functions.initiate_counter()
-    observed_subs=all_subs
     for prot,peps in mutant_cpdtpep.items():
         peps_cpt=counterpart_cpdtpep[prot]
         for pep in peps:
             cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
             all_subs[sub]+=1
-            tuptoadd=(peps[pep],peps_cpt[cpt_pep])
-            if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
-                counts.append(tuptoadd)
-                observed_subs[sub]+=1
-    df,dfall=helper_functions.counter_to_df(all_subs,observed_subs)
-    return(counts,df,dfall)
+    # serall=pd.Series(list(all_subs.values()),index=pd.MultiIndex.from_tuples(all_subs.keys()))
+    # dfall=serall.unstack()
+    return(all_subs)
 
 def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
     dt=np.dtype('float,int')

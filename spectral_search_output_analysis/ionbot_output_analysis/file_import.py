@@ -56,9 +56,11 @@ def import_coding_transcriptids(sources):
 def import_cpdt(cpdt,fullSeq):
     ''' read the cpdt files into a data structure
     this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
-    {protein_ID:{pep1:0, pep2:0, pep3:0}}
+    {protein_ID:{pep1:0, pep2:0, pep3:0}} #counts
+    {pep1:prob, pep2:prob, pep3:prob} #probabilities
     '''
     cpdt_pep={}
+    cpdt_probs={}
     full_seqs={}
     with open(cpdt) as c:
         for line in c:
@@ -69,13 +71,14 @@ def import_cpdt(cpdt,fullSeq):
                 full_seqs[key]=''
             elif 'PEPTIDE' in line:
                 lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')[0]
-                cpdt_pep[key][lp]=0
+                lp=lp.split(':')
+                cpdt_pep[key][lp[0]]=0
+                cpdt_probs[lp[0]]=float(lp[1].strip())
             elif 'PEPTIDE' not in line:
                 full_seqs[key]=line.strip()
     if fullSeq:
         return(cpdt_pep, full_seqs)
-    return(cpdt_pep)
+    return(cpdt_pep,cpdt_probs)
 
 def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution

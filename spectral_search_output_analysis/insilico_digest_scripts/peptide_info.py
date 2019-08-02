@@ -2,7 +2,6 @@
 
 import re,sys
 from sets import Set
-import pandas as pd
 from numpy import median
 from __builtin__ import True
 from collections import Counter
@@ -66,7 +65,7 @@ def discriminant_peptide_finder(transcriptome_cpdt,ref_cpdt,output):
     output: de novo dictionary printed to a .cpdt file
     '''
     de_novo_dict=cpdt_reader(transcriptome_cpdt)
-    info_extractor(de_novo_dict)
+    ref_dict=cpdt_reader(ref_cpdt)
     #first make a long string with all the full length proteins in ref
     ens_seqs=''
     with open(ref_cpdt) as ref:

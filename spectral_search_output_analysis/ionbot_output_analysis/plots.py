@@ -16,7 +16,7 @@ matplotlib.rcParams['axes.titlesize'] = 'xx-large'
 matplotlib.rcParams['axes.labelsize'] = 'x-large'
 matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
 
-def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Search result'):
+def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title='Search result'):
     """
     Plot for a given search engine output the target/decoy score distributions,
     the relation between the q_values and the PSM scores and a PP plot between
@@ -39,8 +39,8 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
 
     # Score distribution plot
     df['DB']=df['DB']=='D'
-    score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['ionbot_psm_score']
-    plot_list = [list(x) for x in [df[df['DB']]['ionbot_psm_score'], df[~df['DB']]['ionbot_psm_score']]]
+    score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score']
+    plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score'], df[~df['DB']]['percolator_psm_score']]]
     axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
     axes[0].vlines(x=score_cutoff, ymin=0, ymax=axes[0].get_ylim()[1], linestyles='dashed')
     axes[0].legend()
@@ -49,7 +49,7 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
     #axes[0].set_xlim(0, 1)
 
     # Q value plot
-    axes[1].plot(df.sort_values('q_value')['ionbot_psm_score'], df.sort_values('q_value')['q_value'])
+    axes[1].plot(df.sort_values('percolator_psm_score')['percolator_psm_score'], df.sort_values('percolator_psm_score')['q_value'])
     axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
     axes[1].set_ylabel('q-value')
     axes[1].set_xlabel(score_name)
@@ -57,9 +57,9 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
 
     # PP plot
     ratio = df['DB'].value_counts()[True] / df['DB'].value_counts()[False]
-    Ft = ECDF(df[~df['DB']]['ionbot_psm_score'])
-    Fd = ECDF(df[df['DB']]['ionbot_psm_score'])
-    x = df[~df['DB']]['ionbot_psm_score']
+    Ft = ECDF(df[~df['DB']]['percolator_psm_score'])
+    Fd = ECDF(df[df['DB']]['percolator_psm_score'])
+    x = df[~df['DB']]['percolator_psm_score']
     Fdp = Fd(x)
     Ftp = Ft(x)
     axes[2].scatter(Fdp, Ftp, s=4)

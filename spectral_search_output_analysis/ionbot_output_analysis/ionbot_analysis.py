@@ -29,7 +29,7 @@ def main(args):
     plots.plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
     plots.plot_target_decoy(ibdf_combi.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_combi_pg.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
-    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_combi_pg,'Combi variant-free':ibdf_combi})
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_combi_pg,'Combi variant-free':ibdf_combi},fdr_levels=[0.01])
 
     #filter badly scoring hits
     ibdf_ontonly = file_import.chunk_preprocessing(ibdf_ontonly)

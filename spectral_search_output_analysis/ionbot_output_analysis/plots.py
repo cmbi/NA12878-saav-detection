@@ -49,7 +49,7 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
     #axes[0].set_xlim(0, 1)
 
     # Q value plot
-    axes[1].plot(df.sort_values('ionbot_psm_score')['ionbot_psm_score'], df.sort_values('ionbot_psm_score')['q_value'])
+    axes[1].plot(df.sort_values('q_value')['ionbot_psm_score'], df.sort_values('q_value')['q_value'])
     axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
     axes[1].set_ylabel('q-value')
     axes[1].set_xlabel(score_name)

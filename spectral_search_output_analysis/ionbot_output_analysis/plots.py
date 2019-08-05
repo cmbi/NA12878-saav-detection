@@ -5,6 +5,8 @@ from matplotlib_venn import venn2,venn2_unweighted,venn3, venn3_unweighted
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
+from statsmodels.distributions.empirical_distribution import ECDF
 from collections import Counter
 import calculations
 import helper_functions
@@ -13,6 +15,90 @@ import helper_functions
 matplotlib.rcParams['axes.titlesize'] = 'xx-large'
 matplotlib.rcParams['axes.labelsize'] = 'x-large'
 matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
+
+def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Search result'):
+    """
+    Plot for a given search engine output the target/decoy score distributions,
+    the relation between the q_values and the PSM scores and a PP plot between
+    the target and the decoy distribution.
+
+    Positional arguments:
+    df - Pandas DataFrame containing all rank 1 PSMs
+    score_col - Name of the column containing the search engine scores
+    decoy_col - Name of the column marking decoy PSMs as True and target PSMs as
+    False
+    qval_col - Name of the column containing each PSMs q-value
+
+    Keyword arguments:
+    score_name - score name used in axis labels
+    plot_title - Plot title
+    save_as - If not None, but string, save file to this filename
+    """
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+
+    # Score distribution plot
+    score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['ionbot_psm_score']
+    plot_list = [list(x) for x in [df[df['DB']]['ionbot_psm_score'], df[~df['DB']]['ionbot_psm_score']]]
+    axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
+    axes[0].vlines(x=score_cutoff, ymin=0, ymax=axes[0].get_ylim()[1], linestyles='dashed')
+    axes[0].legend()
+    axes[0].set_ylabel("Number of matches")
+    axes[0].set_xlabel(score_name)
+    #axes[0].set_xlim(0, 1)
+
+    # Q value plot
+    axes[1].plot(df.sort_values('ionbot_psm_score')['ionbot_psm_score'], df.sort_values('ionbot_psm_score')['q_value'])
+    axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
+    axes[1].set_ylabel('q-value')
+    axes[1].set_xlabel(score_name)
+    #axes[1].set_xlim(0, 1)
+
+    # PP plot
+    ratio = df['DB'].value_counts()['D'] / df['DB'].value_counts()['T']
+    Ft = ECDF(df[~df['DB']]['ionbot_psm_score'])
+    Fd = ECDF(df[df['DB']]['ionbot_psm_score'])
+    x = df[~df['DB']]['ionbot_psm_score']
+    Fdp = Fd(x)
+    Ftp = Ft(x)
+    axes[2].scatter(Fdp, Ftp, s=4)
+    axes[2].plot((0, 1), (0, ratio), color='r')
+    axes[2].set_xlabel('Decoy percentile')
+    axes[2].set_ylabel('Target percentile')
+
+    plt.suptitle(plot_title)
+    sns.despine()
+    plt.savefig(save_as, facecolor='white', transparent=False)
+
+
+def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_levels=None, title=''):
+    """
+    Plot number of identifications at all q-values for multiple datasets.
+
+    df_dict: dict of `name -> dataframe`, with each dataframe containing
+    q-values and booleans indicating whether the q-value belongs to
+    a target or decoy PSM.
+    q_value_col: Name of q-value column
+    decoy_col: Name of decoy column
+    fdr_levels: List of FDR float values to plot as vertical lines
+    """
+    d={'T':False,'D':True}
+    for label, df_in in df_dict.items():
+        df = df_in.reset_index(drop=True).sort_values(q_value_col, ascending=True).copy()
+        df[decoy_col]=df[decoy_col].map(d)
+        df['count'] = (~df[decoy_col]).cumsum()
+        plt.plot(df[q_value_col], df['count'], label=label, alpha=0.5)
+
+    for fdr in fdr_levels:
+	    plt.plot([fdr]*2, np.linspace(0, np.max(df['count']), 2), linestyle='--', color='black', label='{} FDR'.format(fdr))
+    plt.ylabel('Number of identified spectra')
+    plt.xlabel('FDR (log scale)')
+    #plt.xscale("log", nonposy='clip')
+    plt.xscale("log")
+    plt.xlim(0.00001, 1)
+    plt.legend()
+    plt.title(title)
+    plt.savefig('qval_comparison.png')
 
 def plot_support(prot_evidence,unamb_prot_evidence,figname):
     '''look into the support for proteins

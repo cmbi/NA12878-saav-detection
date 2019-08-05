@@ -6,6 +6,7 @@ from scipy import stats
 import pandas as pd
 import helper_functions
 
+
 def coverage_measure(cpdt_pep,full_seqs):
     #high_cov_vert={}
     high_cov_hor={}

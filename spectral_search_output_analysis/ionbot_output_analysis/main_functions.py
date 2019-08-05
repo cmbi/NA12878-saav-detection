@@ -98,7 +98,7 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,theoret
         plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png')
     else:
         plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
-        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"variant_vs_nonvariant_varcont.png")
+        plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"_varcont.png")
         plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plots.plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')

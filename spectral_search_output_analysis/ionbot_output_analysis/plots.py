@@ -224,7 +224,7 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
     counts,probs,observed=calculations.calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,var_probs)
     plot_heatmaps(observed,'heatmap_observed_subs',suffix)
     comparison=helper_functions.get_normalized_matrix(theoretical_counts,observed)
-    plot_heatmaps(comparison,'heatmap_all_subs',suffix)
+    plot_heatmaps(comparison,'heatmap_difference',suffix)
     plot_mut_vs_prob(probs,'probability_detection_vs_count'+suffix)
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')

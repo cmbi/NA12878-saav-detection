@@ -31,7 +31,7 @@ def read_df_in_chunks(directory, chunksize):
 
 def chunk_preprocessing(df_chunk):
     new_chunk=df_chunk[(df_chunk['ri_126.1277']>0) & (df_chunk['q_value']<=0.01) & (df_chunk['DB']=='T')]
-    new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','ionbot_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids']]
+    new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids']]
     return(new_chunk)
 
 def import_coding_transcriptids(sources):

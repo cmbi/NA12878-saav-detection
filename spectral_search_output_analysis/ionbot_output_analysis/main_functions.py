@@ -28,14 +28,14 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     unexp_mod_pg=ibdf_combi_pg.loc[ibdf_combi_pg["scan_id"].isin(scanids),"unexpected_modification"].tolist()
     plots.plot_unexpected_mods(unexp_mod_om,unexp_mod_pg) #plot what modifications they contained
     #direct comparison of scores of peptides found with variant-containing but not variant-free
-    scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","ionbot_psm_score","matched_peptide"]]#.tolist()
-    scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","ionbot_psm_score"]] #added matched peptide for length dimension
+    scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","percolator_psm_score","matched_peptide"]]#.tolist()
+    scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","percolator_psm_score"]] #added matched peptide for length dimension
     plots.plot_ib_scores_directcomp(scores_om,scores_pg) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
-    list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"ionbot_psm_score"].tolist()
-    list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
-    list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"ionbot_psm_score"].tolist()
-    list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"ionbot_psm_score"].tolist()
+    list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"percolator_psm_score"].tolist()
+    list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"percolator_psm_score"].tolist()
+    list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"percolator_psm_score"].tolist()
+    list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"percolator_psm_score"].tolist()
     plots.plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
     return(0)
     

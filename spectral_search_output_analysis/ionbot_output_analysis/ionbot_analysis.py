@@ -37,6 +37,11 @@ def main(args):
     ibdf_combi = file_import.chunk_preprocessing(ibdf_combi)
     ibdf_combi_pg= file_import.chunk_preprocessing(ibdf_combi_pg)
 
+    ##########
+    #idea: move data into SQL database and move the quality control plots above to another script to cut down on processing time, since the quality control steps are the only ones that need all, unfiltered data
+    #insert here an SQL query here to import data that meets preprocessing cutoffs
+    #########
+
     #import other data
     print('importing helper data')
     cpdt_pep,full_seqs=file_import.import_cpdt(args['cpdtvf'],True) #import cpdt will all non-variant-containing peptides (cat gencode and flair beforehand). full seqs for calculating horizontal coverage

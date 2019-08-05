@@ -68,11 +68,13 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     axes[2].set_ylabel('Target percentile')
 
     plt.suptitle(plot_title)
+    plt.tight_layout()
     sns.despine()
     plt.savefig(save_as, facecolor='white', transparent=False)
+    plt.close()
 
 
-def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_levels=None, title=''):
+def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_levels=None):
     """
     Plot number of identifications at all q-values for multiple datasets.
 
@@ -97,7 +99,8 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     plt.xscale("log")
     plt.xlim(0.00001, 1)
     plt.legend()
-    plt.title(title)
+    plt.title('q-value comparison search dictionaries')
+    plt.tight_layout()
     plt.savefig('qval_comparison.png')
 
 def plot_support(prot_evidence,unamb_prot_evidence,figname):
@@ -129,9 +132,9 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution")
-    sns.distplot(ibdf_refonly['ionbot_psm_score'], hist=False, label='Human reference only',axlabel='Ionbot score')
-    sns.distplot(ibdf_ontonly['ionbot_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Ionbot score')
+    sns.distplot(ibdf_refonly['percolator_psm_score'], hist=False, label='Human reference only',axlabel='Percolator score')
+    sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
+    sns.distplot(ibdf_combi['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
@@ -143,8 +146,8 @@ def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['ionbot_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_pgvsopenmut.png")
@@ -156,8 +159,8 @@ def plot_scores_decoy(ibdf_combi,figname):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['ionbot_psm_score'], label='Target',axlabel='Ionbot score')
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='D']['ionbot_psm_score'], label='Decoy',axlabel='Ionbot score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
+    sns.distplot(ibdf_combi[ibdf_combi['DB']=='D']['percolator_psm_score'], label='Decoy',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
@@ -328,40 +331,40 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
 
 def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
-    what is the ionbot score distribution from each respective results list'''
+    what is the Percolator score distribution from each respective results list'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    plt.figure("ionbot scores discrepant hits")
+    plt.figure("Percolator scores discrepant hits")
     #inner join the 2
     combi=pd.merge(varfree_scores,varcont_scores,on="scan_id",suffixes=("_varfree","_varcont"))
     combi.groupby("matched_peptide").mean() #make sure don't have groups of dots per unique peptide
     combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
-    combi.plot.scatter(x="ionbot_psm_score_varfree",y="ionbot_psm_score_varcont",c="pep_length",colormap='viridis')
-    # sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Ionbot score')
-    # sns.distplot(varcont_scores, hist=False, label='Variant-containing',axlabel='Ionbot score')
+    combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
+    # sns.distplot(varfree_scores, hist=False, label='Variant-free',axlabel='Percolator score')
+    # sns.distplot(varcont_scores, hist=False, label='Variant-containing',axlabel='Percolator score')
     plt.ylabel("Scores variant-containing")
     plt.xlabel("Scores variant-free")
     plt.legend()
-    plt.title('Ionbot scores for discrepant peptides found only in the variant-containing search')
+    plt.title('Percolator scores for discrepant peptides found only in the variant-containing search')
     plt.savefig("discrepant_peptide_direct_comparison.png")
     plt.close()
     return("Scores plot made")
 
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
-    what is the ionbot score distribution from each respective results list'''
+    what is the Percolator score distribution from each respective results list'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    plt.figure("ionbot scores discrepant hits")
-    # sns.distplot(ibonly, hist=False, label='Variant-free only',axlabel='Ionbot score')
-    # sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Ionbot score')
-    # sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Ionbot score')
+    plt.figure("Percolator scores discrepant hits")
+    # sns.distplot(ibonly, hist=False, label='Variant-free only',axlabel='Percolator score')
+    # sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Percolator score')
+    # sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Percolator score')
     # if len(intersectionom)>0:
     #     sns.distplot(intersectionom, hist=False, label='Intersection variant-free')
     plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom])
     plt.xticks([1,2,3,4],['Variant-free only','Variant-containing only','Intersection variant-containing','Intersection variant-free'])
     # plt.legend()
-    plt.title('Ionbot scores for detected variant peptides')
+    plt.title('Percolator scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")
     plt.close()
     return("Scores plot made")

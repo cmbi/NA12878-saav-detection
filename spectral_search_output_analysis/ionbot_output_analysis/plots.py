@@ -56,7 +56,7 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
     #axes[1].set_xlim(0, 1)
 
     # PP plot
-    ratio = df['DB'].value_counts()['D'] / df['DB'].value_counts()['T']
+    ratio = df['DB'].value_counts()[True] / df['DB'].value_counts()[False]
     Ft = ECDF(df[~df['DB']]['ionbot_psm_score'])
     Fd = ECDF(df[df['DB']]['ionbot_psm_score'])
     x = df[~df['DB']]['ionbot_psm_score']
@@ -83,10 +83,9 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     decoy_col: Name of decoy column
     fdr_levels: List of FDR float values to plot as vertical lines
     """
-    d={'T':False,'D':True}
     for label, df_in in df_dict.items():
         df = df_in.reset_index(drop=True).sort_values(q_value_col, ascending=True).copy()
-        df[decoy_col]=df[decoy_col].map(d)
+        df[decoy_col]=df[decoy_col]=='D'
         df['count'] = (~df[decoy_col]).cumsum()
         plt.plot(df[q_value_col], df['count'], label=label, alpha=0.5)
 

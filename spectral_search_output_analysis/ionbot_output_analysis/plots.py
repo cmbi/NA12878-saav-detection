@@ -38,6 +38,7 @@ def plot_target_decoy(df, save_as, score_name='Ionbot psm score', plot_title='Se
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     # Score distribution plot
+    df['DB']=df['DB']=='D'
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['ionbot_psm_score']
     plot_list = [list(x) for x in [df[df['DB']]['ionbot_psm_score'], df[~df['DB']]['ionbot_psm_score']]]
     axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)

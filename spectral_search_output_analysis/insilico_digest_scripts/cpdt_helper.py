@@ -2,8 +2,8 @@
 
 import re,sys
 from sets import Set
-import pandas as pd
-from numpy import median
+#import pandas as pd
+#from numpy import median
 from __builtin__ import True
 from collections import Counter
 

@@ -134,11 +134,11 @@ def determine_snv(peptide,plist):
     input: a peptide and a list of peptides
     output: boolean
     '''
-    mismatch=0
     for pep in plist:
         if len(pep)==len(peptide):
             original=''
             sub=''
+            mismatch=0
             for idx,aa in enumerate(pep):
                 if aa!=peptide[idx]:
                     original=aa

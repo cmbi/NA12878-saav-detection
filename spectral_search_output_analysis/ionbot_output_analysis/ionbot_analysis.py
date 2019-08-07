@@ -23,13 +23,16 @@ def main(args):
     ibdf_combi=file_import.concatenate_csvs(args['cvf'])
     ibdf_combi_pg=file_import.concatenate_csvs(args['cvc'])
 
-    #qc function
+    #QC and FDR re-estimation
     print("plotting initial QC")
     plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
     plots.plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
     plots.plot_target_decoy(ibdf_combi.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_combi_pg.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
     plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_combi_pg,'Combi variant-free':ibdf_combi},fdr_levels=[0.01])
+    if 'decoy' in args or 'varpeps' in args:
+        print('FDR re-estimation for variant peptides')
+
 
     #filter badly scoring hits
     ibdf_ontonly = file_import.chunk_preprocessing(ibdf_ontonly)
@@ -70,6 +73,8 @@ parser.add_argument('--cpdtctp', help='CPDT file of non-mutated counterparts of 
 parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', required=True)
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
+parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=False)
+parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
 args = vars(parser.parse_args()) 
 main(args)
     

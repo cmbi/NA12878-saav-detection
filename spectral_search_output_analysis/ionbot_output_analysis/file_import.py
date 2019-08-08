@@ -11,7 +11,8 @@ def concatenate_csvs(csvpath):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
             temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
-            temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files
+            temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname.split('.')[0] #make scan ids unique again when concatenating all files
+            temp["title"]=csvname.split('.')[0]
             ionbotout=pd.concat([ionbotout,temp])
     return(ionbotout)
 

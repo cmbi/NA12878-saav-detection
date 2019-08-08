@@ -30,6 +30,9 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     #direct comparison of scores of peptides found with variant-containing but not variant-free
     scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","percolator_psm_score","matched_peptide"]]#.tolist()
     scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","percolator_psm_score"]] #added matched peptide for length dimension
+    scores_all=scores_pg.merge(scores_om, on=('scan_id'),suffixes=('_vc','_vf'))
+    scores_all=scores_all.loc[scores_all["percolator_psm_score_vc"]>scores_all["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
+    scores_all.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv
     plots.plot_ib_scores_directcomp(scores_om,scores_pg) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"percolator_psm_score"].tolist()
@@ -37,6 +40,7 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     list_intersection_varcont=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(agreement),"percolator_psm_score"].tolist()
     list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"percolator_psm_score"].tolist()
     plots.plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
+    #to explore: return scan ids and check the ids that were not identified with variant free method in a later function
     return(0)
     
 def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saavs,mut_pep_probs,mut_cpdt_theoretical,mut_cpdt_counterparts,isOpenmut):

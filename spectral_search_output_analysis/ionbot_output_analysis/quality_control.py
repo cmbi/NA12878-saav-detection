@@ -13,6 +13,7 @@ def concatenate_csvs(csvpath):
         if csvname.endswith('.csv'):
             temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
             temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname #make scan ids unique again when concatenating all files
+            temp["title"]=temp["title"].astype(str).split('""')[1]
             ionbotout=pd.concat([ionbotout,temp])
     return(ionbotout)
 

@@ -8,11 +8,13 @@ variant-containing: import cpdt files from the variant peptide and decoy script,
 
 generate qq plots as i go to check if the decoy sets are good or not
 '''
+import os,sys,re
 import pandas as pd
 import numpy as np
 import file_import
 import calculations
 import plots
+import helper_functions
 
 def variant_free(df_in,list_var_peps):
     '''
@@ -31,7 +33,7 @@ def variant_free(df_in,list_var_peps):
         pep=row[1][3]
         decoy=row[1][6]
         for v in list_var_peps:
-            if helper_functions.equivalence_check(pep,v):
+            if helper_functions.equivalent_check(pep,v):
                 out_df=out_df.append(row[1],ignore_index=True)
     return(out_df)
 
@@ -49,13 +51,26 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
     for row in df_in.iterrows():
         pep=row[1][3]
         decoy=row[1][6]
-        if decoy=='D':
-            cpdt=cpdt_rev_var
+        prot_ids=row[1][9]
+        if decoy:
+            # cpdt=cpdt_rev_var
+            print(prot_ids)
+            sys.exit()
+            cpdt=[]
+            if '||' in prot_ids:
+                ids=prot_ids.split('||')
+            else:
+                prot_ids=[prot_ids]
+            for i in ids:
+                i=helper_functions.get_id(i)
+                if i in cpdt_rev_var:
+                    cpdt+=cpdt_rev_var[i]
         else:
             cpdt=cpdt_var
-        for v in cpdt.values():
-            if helper_functions.equivalence_check(pep,v):
-                df=df.append(row[1],ignore_index=True)
+        for v in cpdt:
+            if helper_functions.equivalent_check(pep,v):
+                df=df.append(df_in.loc[[row[0]]])
+    print(df)
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
     plots.plot_target_decoy(df,'variant_containing_ppplot.png')
     indices=np.argwhere(df['q_value']<0.01)
@@ -80,14 +95,16 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     # args = vars(parser.parse_args()) 
 
     # directory_= os.fsencode(csvpath)
-    cpdt_rev=file_import.import_cpdt(cpdt_rev_var_file,False)
+    cpdt_rev=file_import.import_cpdt_simple(cpdt_rev_var_file)
+    # rev_list=[item for sublist in cpdt_rev.values() for item in sublist]
     # cpdt=file_import.import_cpdt(args['cpdt'],False)
+    sys.exit()
     vf=pd.DataFrame()
     vc=pd.DataFrame()
     for csvname in combi_vf["title"].unique(): #calc FDR in a dataset-specific manner
         df=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
         vf=pd.concat([vf,variant_free(df,list(cpdt_var_vf))])
-        vc=pd.concat([vc,variant_containing(df,cpdt_var_vc,cpdt_rev)])
+        vc=pd.concat([vc,variant_containing(df,list(cpdt_var_vc),cpdt_rev)])
     #then go through the list and make a new counter
     vfc=Counter(dict(vf['matched_peptide'].value_counts()))
     vcc=Counter(dict(vc['matched_peptide'].value_counts()))

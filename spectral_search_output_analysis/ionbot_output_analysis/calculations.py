@@ -34,7 +34,10 @@ def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
     """
     df = df_in.sort_values(score_col, ascending=lower_score_is_better)
     df.reset_index(drop=True)
-    df[decoy_col]=df[decoy_col]=='D'
+    # if not df[decoy_col].isin(['D']).empty:
+    #     df=df.reset_index(drop=True)
+    #     df=df.drop(df[(df[decoy_col]!='D') & (df[decoy_col]!='T')].index)
+    #     df[decoy_col]=df[decoy_col].map({'D':True,'T':False})
     df['decoy_cumsum'] = df[decoy_col].cumsum()
     df['target_cumsum'] = (~df[decoy_col]).cumsum()
     df['q_value'] = (df['decoy_cumsum'] / df['target_cumsum'])
@@ -177,4 +180,7 @@ def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
 
 
 def r2(x, y):
-    return(stats.pearsonr(x, y)[0] ** 2)
+    # return(stats.pearsonr(x, y)[0] ** 2)
+    tup=stats.pearsonr(x, y)
+    rsq=tup[0] ** 2
+    return(rsq,tup[1])

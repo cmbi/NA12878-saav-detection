@@ -38,8 +38,11 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     # Score distribution plot
-    if not df['DB'].isin(['D']).empty:
-        df['DB']=df['DB']=='D'
+    # if not df['DB'].isin(['D']).empty:
+    #     # df=df.reset_index(drop=True)
+    #     # df=df.drop(df[(df["DB"]!='D') & (df["DB"]!='T')].index)
+    #     df['DB']=df['DB'].map({'D':True,'T':False})
+    #     df=df.dropna().reset_index(drop=True)
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score']
     plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score'], df[~df['DB']]['percolator_psm_score']]]
     axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
@@ -302,7 +305,7 @@ def plot_mut_vs_prob(counts,figname):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure probability vs observed peptides')
-    sns.jointplot(*zip(*counts), kind="reg", stat_func=calculations.r2)
+    sns.jointplot(*zip(*counts))
     plt.xlabel('Variant peptide theoretical detectability')
     plt.ylabel('Variant peptide observed count')
     plt.tight_layout()

@@ -13,6 +13,7 @@ def concatenate_csvs(csvpath):
             temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
             temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname.split('.')[0] #make scan ids unique again when concatenating all files
             temp["title"]=csvname.split('.')[0]
+            temp["DB"]=temp["DB"].map({'D':True,'T':False})
             ionbotout=pd.concat([ionbotout,temp])
     return(ionbotout)
 
@@ -31,7 +32,7 @@ def read_df_in_chunks(directory, chunksize):
     return(df_concat)
 
 def chunk_preprocessing(df_chunk):
-    new_chunk=df_chunk[(df_chunk['ri_126.1277']>0) & (df_chunk['q_value']<=0.01) & (df_chunk['DB']=='T')]
+    new_chunk=df_chunk[(df_chunk['ri_126.1277']>0) & (df_chunk['q_value']<=0.01) & (df_chunk['DB']==False)]
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids']]
     return(new_chunk)
 
@@ -112,17 +113,17 @@ def create_chromosome_reference(gfffile,bedfile):
     stranddict={**stranddict_ont,**stranddict_ref} #combine the 2 dictionaries
     return(chromdict,stranddict)
 
-# def import_cpdt_simple(cpdt):
-#     cpdt_pep={}
-#     with open(cpdt) as c:
-#         for line in c:
-#             if line.startswith('>'):
-#                 key=line.strip()[1:]
-#                 key=get_id(key)
-#                 cpdt_pep[key]=set()
-#             elif 'PEPTIDE' in line:
-#                 lp=line.split('PEPTIDE ')[1]
-#                 lp=lp.split(':')[0]
-#                 cpdt_pep[key].add(lp)
-#     return(cpdt_pep)
+def import_cpdt_simple(cpdt):
+    cpdt_pep={}
+    with open(cpdt) as c:
+        for line in c:
+            if line.startswith('>'):
+                key=line.strip()[1:]
+                key=helper_functions.get_id(key)
+                cpdt_pep[key]=[]
+            elif 'PEPTIDE' in line:
+                lp=line.split('PEPTIDE ')[1]
+                lp=lp.split(':')[0]
+                cpdt_pep[key].append(lp)
+    return(cpdt_pep)
 

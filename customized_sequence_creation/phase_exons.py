@@ -15,8 +15,14 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
     
     input: fasta file of exons created from getfasta, vcf file of heterozygous variants excluding header
     output: new fasta files of exons, with 0 and 1 haplotypes for the exons that include one or more heterozygous variants
+
+    also print out report of what exons have what variants to make it easier to trace. This report will be tab delimited and consist of:
+        - chr start-stop in the previous format
+        - chromosomal position of variant
+        - ref base
     '''
     f=open(outputfile,'w')
+    report=open('report.txt','w')
     print "loading variants..."
     variants=vcf.Reader(filename=vcf_gz)
     #variants=pd.read_csv(vcf, sep="\t", names=["chrom","pos","id","ref","alt","qual","filter","info","format","na12878"])
@@ -39,7 +45,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                     #parse header
                     head=re.split(':|-',header[1:].strip())
                     chr,start,end=head[0],int(head[1]),int(head[2])
-                    if chr!='chrY' and chr!='chrM': #the sample is a female
+                    if chr!='chrY' and chr!='chrM': #the sample is a female, and there are no mitochondial variants in the vcf file
                         #retrieve appropriate vcf lines
                         vcf_fetch=variants.fetch(chr,start-1,end) #since the vcf file is 1-based
                         var_pos_end=0
@@ -60,22 +66,27 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
+                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
                                     entry_0+=vari.REF
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|0":
                                     het=True
+                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=vari.REF
                                 elif vari.genotype('NA12878')['GT']=="1|2":
                                     het=True
+                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[1])
                                 elif vari.genotype('NA12878')['GT']=="2|1":
                                     het=True
+                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
                                     entry_0+=str(vari.ALT[1])
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|1":
                                     var=True
+                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[0])
                                 else:

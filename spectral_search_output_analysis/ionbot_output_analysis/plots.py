@@ -287,15 +287,15 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     # plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
     # plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
     x,y=zip(*mut_pep_abundance)
-    sns.regplot(x=list(x),y=list(y),dropna=False,scatter=True,fit_reg=True, color='r',label='Variant peptide')
-    x,y=zip(*nonmut_pep_abundance)
-    sns.regplot(x=list(x),y=list(y),dropna=False,scatter=True,fit_reg=True,color='b',label='Normal peptide')
-    plt.xlabel('Protein abundance (NSAF normalized)')
+    sns.regplot(x=list(x),y=list(y),dropna=False,scatter=True,fit_reg=True, color='b')
+    # x,y=zip(*nonmut_pep_abundance)
+    # sns.regplot(x=list(x),y=list(y),dropna=False,scatter=True,fit_reg=True,color='b',label='Normal peptide')
+    plt.xlabel('Non-variant peptide abundance (NSAF normalized)')
     plt.xlim(0,0.0002)
-    plt.ylabel('Number mutant peptides detected')
-    plt.ylim(-10,1000)
-    plt.title('Peptide abundance vs total protein abundance')
-    plt.legend(loc='upper right')
+    plt.ylabel('Count variant peptides')
+    # plt.ylim(-10,1000)
+    plt.title('Variant peptide abundance vs non-variant peptide abundance')
+    # plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.close()
     return('done')
@@ -318,7 +318,7 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
     plot_heatmaps(observed,'heatmap_observed_subs',suffix)
     comparison=helper_functions.get_normalized_matrix(theoretical_counts,observed)
     plot_heatmaps(comparison,'heatmap_difference',suffix)
-    plot_mut_vs_prob(probs,'probability_detection_vs_count'+suffix)
+    # plot_mut_vs_prob(probs,'probability_detection_vs_count'+suffix) #this plot doesn't make sense unless real cpdt output is put in
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')
@@ -354,7 +354,7 @@ def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
     plt.close()
     return("Scores plot made")
 
-def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
+def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
     what is the Percolator score distribution from each respective results list'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
@@ -365,8 +365,8 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom):
     # sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Percolator score')
     # if len(intersectionom)>0:
     #     sns.distplot(intersectionom, hist=False, label='Intersection variant-free')
-    plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom])
-    plt.xticks([1,2,3,4],['Variant-free only','Variant-containing only','Intersection variant-containing','Intersection variant-free'])
+    plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf])
+    plt.xticks([1,2,3,4,5,6],['Variant-free only','Variant-containing only','Intersection variant-containing','Intersection variant-free','Non-variant VF','Non-variant VC'])
     # plt.legend()
     plt.title('Percolator scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")
@@ -391,20 +391,24 @@ def plot_unexpected_mods(mods_om,mods_pg):
     plt.close()
     return(0)
 
-def plot_peplengths(peptide_counter_pg,peptide_counter_om):
+def plot_peplengths(peptide_counter_pg,peptide_counter_om,nonmut_counter_pg,nonmut_counter_om):
     lenct_pg=helper_functions.gather_counts(peptide_counter_pg)
     lenct_om=helper_functions.gather_counts(peptide_counter_om)
+    lenct_nonmut_pg=helper_functions.gather_counts(nonmut_counter_pg)
+    lenct_nonmut_om=helper_functions.gather_counts(nonmut_counter_om)
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_pg=pd.DataFrame.from_dict(lenct_pg,orient='index',columns=["Combi variant-containing only"]).sort_index()
+    chist_nonmut_pg=pd.DataFrame.from_dict(lenct_nonmut_pg,orient='index',columns=["Normal peptides VC"]).sort_index()
     if len(lenct_om)>0:
         chist_om=pd.DataFrame.from_dict(lenct_om,orient='index',columns=["Combi variant-free only"]).sort_index()
-        combi=pd.concat([chist_pg,chist_om],axis=1)
+        chist_nonmut_om=pd.DataFrame.from_dict(lenct_nonmut_om,orient='index',columns=["Normal peptides VF"]).sort_index()
+        combi=pd.concat([chist_pg,chist_om,chist_nonmut_pg,chist_nonmut_om],axis=1)
         combi.fillna(0)
     else:
         combi=chist_pg
         combi["Combi variant-free only"]=0
-    combi.plot(kind='bar',legend=False,title="Length of discrepant peptides (found by one method and not the other)")
+    combi.plot(kind='bar',legend=False,title="Length of variant and normal peptides from combination search dictionaries")
     # combi=combi.reindex(new_index)
     plt.ylabel("Density")
     plt.xlabel("Length peptide")

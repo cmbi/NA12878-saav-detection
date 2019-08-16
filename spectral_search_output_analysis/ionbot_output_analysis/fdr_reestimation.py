@@ -15,6 +15,7 @@ import file_import
 import calculations
 import plots
 import helper_functions
+from collections import Counter
 
 def variant_free(df_in,list_var_peps):
     '''
@@ -54,8 +55,6 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
         prot_ids=row[1][9]
         if decoy:
             # cpdt=cpdt_rev_var
-            print(prot_ids)
-            sys.exit()
             cpdt=[]
             if '||' in prot_ids:
                 ids=prot_ids.split('||')
@@ -70,7 +69,6 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
         for v in cpdt:
             if helper_functions.equivalent_check(pep,v):
                 df=df.append(df_in.loc[[row[0]]])
-    print(df)
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
     plots.plot_target_decoy(df,'variant_containing_ppplot.png')
     indices=np.argwhere(df['q_value']<0.01)
@@ -98,13 +96,13 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     cpdt_rev=file_import.import_cpdt_simple(cpdt_rev_var_file)
     # rev_list=[item for sublist in cpdt_rev.values() for item in sublist]
     # cpdt=file_import.import_cpdt(args['cpdt'],False)
-    sys.exit()
     vf=pd.DataFrame()
     vc=pd.DataFrame()
     for csvname in combi_vf["title"].unique(): #calc FDR in a dataset-specific manner
-        df=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
-        vf=pd.concat([vf,variant_free(df,list(cpdt_var_vf))])
-        vc=pd.concat([vc,variant_containing(df,list(cpdt_var_vc),cpdt_rev)])
+        dfvf=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
+        vf=pd.concat([vf,variant_free(dfvf,list(cpdt_var_vf))])
+        dfvc=combi_vc.loc[combi_vc["title"]==csvname.split('.')[0]]
+        vc=pd.concat([vc,variant_containing(dfvc,list(cpdt_var_vc),cpdt_rev)])
     #then go through the list and make a new counter
     vfc=Counter(dict(vf['matched_peptide'].value_counts()))
     vcc=Counter(dict(vc['matched_peptide'].value_counts()))

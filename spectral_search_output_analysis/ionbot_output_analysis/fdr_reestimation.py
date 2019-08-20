@@ -106,4 +106,9 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     #then go through the list and make a new counter
     vfc=Counter(dict(vf['matched_peptide'].value_counts()))
     vcc=Counter(dict(vc['matched_peptide'].value_counts()))
+    #print reports of which proteins they matched to - output both peptide and protein id
+    out_df=vf[['proteins','matched_peptide']]
+    out_df=out_df.append(vc[['proteins','matched_peptide']])
+    out_df=out_df.drop_duplicates()
+    out_df.to_csv('variant_pep_report.txt',sep='\t',index=False,header=True)
     return(vfc,vcc)

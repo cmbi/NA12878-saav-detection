@@ -31,7 +31,9 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     #Compare unexpected modifications
     unexp_mod_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),"unexpected_modification"].tolist()
     unexp_mod_pg=ibdf_combi_pg.loc[ibdf_combi_pg["scan_id"].isin(scanids),"unexpected_modification"].tolist()
-    plots.plot_unexpected_mods(unexp_mod_om,unexp_mod_pg) #plot what modifications they contained
+    unexp_mod_nonmut_om=ibdf_combi_nonmut["unexpected_modification"].tolist()
+    unexp_mod_nonmut_pg=ibdf_combi_pg_nonmut["unexpected_modification"].tolist()
+    plots.plot_unexpected_mods(unexp_mod_om,unexp_mod_pg,unexp_mod_nonmut_om,unexp_mod_nonmut_pg) #plot what modifications they contained
     #direct comparison of scores of peptides found with variant-containing but not variant-free
     scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","percolator_psm_score","matched_peptide"]]#.tolist()
     scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","percolator_psm_score"]] #added matched peptide for length dimension

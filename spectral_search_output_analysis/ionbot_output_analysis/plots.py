@@ -373,15 +373,19 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
     plt.close()
     return("Scores plot made")
 
-def plot_unexpected_mods(mods_om,mods_pg):
+def plot_unexpected_mods(mods_om,mods_pg,mods_nonmut_om,mods_nonmut_pg):
     mod_ct_om=helper_functions.categorize_mods(mods_om)
     mod_ct_pg=helper_functions.categorize_mods(mods_pg)
+    mods_nonmut_om_ct=helper_functions.categorize_mods(mods_nonmut_om)
+    mods_nonmut_pg_ct=helper_functions.categorize_mods(mods_nonmut_pg)
     plt.figure('discrepant peptide lengths')
     chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(10)),orient='index')
     chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(10)),orient='index')
+    chist_pg_nonmut=pd.DataFrame.from_dict(dict(mods_nonmut_pg_ct.most_common(10)),orient='index')
+    chist_om_nonmut=pd.DataFrame.from_dict(dict(mods_nonmut_om_ct.most_common(10)),orient='index')
     combi=pd.concat([chist_pg,chist_om],axis=1,sort=False)
     combi.fillna(0)
-    combi.columns=['Variant-containing','Variant-free']
+    combi.columns=['Variant VC','Variant VF', 'Nonvariant VC', 'Nonvariant VF']
     combi.plot(kind='bar',title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")

@@ -2,7 +2,6 @@
 
 import re, collections, sys, vcf
 from sets import Set
-import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
@@ -22,7 +21,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
         - ref base
     '''
     f=open(outputfile,'w')
-    report=open('report.txt','w')
+    r=open('reportvariantreplacement.txt','w')
     print "loading variants..."
     variants=vcf.Reader(filename=vcf_gz)
     #variants=pd.read_csv(vcf, sep="\t", names=["chrom","pos","id","ref","alt","qual","filter","info","format","na12878"])
@@ -66,27 +65,27 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
-                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
+                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=vari.REF
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|0":
                                     het=True
-                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
+                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=vari.REF
                                 elif vari.genotype('NA12878')['GT']=="1|2":
                                     het=True
-                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
+                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[1])
                                 elif vari.genotype('NA12878')['GT']=="2|1":
                                     het=True
-                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
+                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[1])
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|1":
                                     var=True
-                                    report.writelines('\t'.join[header[1:].strip(),vari.POS,vari.REF]+'\n')
+                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[0])
                                 else:
@@ -113,4 +112,4 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
     return 'number total variants replaced = '+str(varall)+'. total border variants that were skipped = '+str(bordervar)
 
 
-print phase_exons(sys.argv[1], sys.argv[2],sys.argv[3])
+print phase_exons(sys.argv[1], sys.argv[2],sys.argv[3]) #fasta_exons,vcf_gz,outputfile

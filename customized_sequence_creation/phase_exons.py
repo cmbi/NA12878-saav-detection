@@ -62,7 +62,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                             #add a check that the base(s) that I am replacing are what they should be
                             ref_allele=seq[var_pos:var_pos_end]
                             if ref_allele==vari.REF: #only if the sequence that is being replaced matches what is written in the vcf file. this discludes all border
-                                v.append(var_pos)
+                                v.append(str(var_pos))
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
@@ -96,11 +96,11 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         entry_0+=seq[var_pos_end:end] #add last chunk of sequence
                         entry_1+=seq[var_pos_end:end]
                         if het: 
-                            header_0=header.strip()+' haplotype:0 pos:'+','.join(str(v))
-                            header_1=header.strip()+' haplotype:1 pos:'+','.join(str(v))
+                            header_0=header.strip()+' haplotype:0 pos:'+','.join(v)
+                            header_1=header.strip()+' haplotype:1 pos:'+','.join(v)
                             f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  
-                        elif var: 
-                            f.writelines(header.strip()+' pos:'+','.join(str(v))+entry_0+'\n')
+                        elif var:
+                            f.writelines(header.strip()+' pos:'+','.join(v)+'\n'+entry_0+'\n')
                         else: #no variant positions in the exon
                             f.writelines(header+line)
     f.close()

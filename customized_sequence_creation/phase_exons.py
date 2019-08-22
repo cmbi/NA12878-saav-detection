@@ -21,7 +21,6 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
         - ref base
     '''
     f=open(outputfile,'w')
-    r=open('reportvariantreplacement.txt','w')
     print "loading variants..."
     variants=vcf.Reader(filename=vcf_gz)
     #variants=pd.read_csv(vcf, sep="\t", names=["chrom","pos","id","ref","alt","qual","filter","info","format","na12878"])
@@ -52,6 +51,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         entry_0,entry_1='',''
                         het=False
                         var=False
+                        variants=[]
                         for vari in vcf_fetch:
                             var_pos=max(0,vari.POS-start-1) #start position on the sequence string, don't allow neagtive
                             entry_0+=seq[var_pos_end:var_pos] #add portion between old end position and new start position
@@ -62,30 +62,26 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                             #add a check that the base(s) that I am replacing are what they should be
                             ref_allele=seq[var_pos:var_pos_end]
                             if ref_allele==vari.REF: #only if the sequence that is being replaced matches what is written in the vcf file. this discludes all border
+                                variants.append(var_pos)
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
-                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=vari.REF
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|0":
                                     het=True
-                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=vari.REF
                                 elif vari.genotype('NA12878')['GT']=="1|2":
                                     het=True
-                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[1])
                                 elif vari.genotype('NA12878')['GT']=="2|1":
                                     het=True
-                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[1])
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|1":
                                     var=True
-                                    r.writelines('\t'.join([header[1:].strip(),str(vari.POS),vari.REF,str(var_pos),seq])+'\n')
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[0])
                                 else:
@@ -100,12 +96,11 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         entry_0+=seq[var_pos_end:end] #add last chunk of sequence
                         entry_1+=seq[var_pos_end:end]
                         if het: 
-                            header_0=header.strip()+' haplotype:0'
-                            header_1=header.strip()+' haplotype:1'
+                            header_0=header.strip()+' haplotype:0 pos:'+','.join(variants)
+                            header_1=header.strip()+' haplotype:1 pos:'+','.join(variants)
                             f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  
                         elif var: 
-                            #if i want to keep track of the exons that had any other variation in them I should edit this part, add "var=T" in the header and then fix the parsing in the next script
-                            f.writelines(header+entry_0+'\n')
+                            f.writelines(header.strip()+' pos:'+','.join(variants)+entry_0+'\n')
                         else: #no variant positions in the exon
                             f.writelines(header+line)
     f.close()

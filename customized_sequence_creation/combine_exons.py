@@ -7,6 +7,7 @@ import numpy as np
 #from enum import Enum
 from Bio.Seq import Seq
 from tqdm import tqdm
+import multiprocessing as mp
 
 '''
 combine exons: given "phased" exon sequences from phase_exons, put the exons back together (per haplotype) to create full length transcripts
@@ -21,9 +22,7 @@ def combine_exons(hap_exons,gff,isBed,outfile):
     
     ''' 
     f=open(outfile,'w')
-    sequence_zero=''
-    sequence_one=''
-    to_add=''
+    r=open('reportvariantreplacement.txt','w')
     count_allele_specific=0
     print 'Reading in haplotype-specific exons...'
     exon_frame=read_exons_into_frame(hap_exons)
@@ -32,47 +31,96 @@ def combine_exons(hap_exons,gff,isBed,outfile):
     transcripts=junction_frame.transcript.unique()
     killed=0
     print 'building transcripts'
-    for transcript in tqdm(transcripts): #iterate through unique transcript ids
-        kill=False
-        AS=False
-        trans_info=junction_frame[junction_frame["transcript"]==transcript] #get junction information for the transcript
-        trans_info=trans_info.sort_values(by="rank") #sort them in the correct order
-        for tidx,trow in trans_info.iterrows(): #iterate through each junction and get the sequence
-            sense=trow["sense"]
-            seq_rows=exon_frame[(exon_frame["chromosome"]==trow["chromosome"]) & (exon_frame["end"]==trow["end"]) & (exon_frame["start"]==trow["start"])]
-            if len(seq_rows.index)==1: #if no heterozygous variants in exon
-                if sense=='-':
-                    to_add=make_complement(seq_rows.iloc[0]["sequence"])
-                else:
-                    to_add=seq_rows.iloc[0]["sequence"]
-                sequence_zero+=to_add
-                sequence_one+=to_add
-            elif len(seq_rows.index)==2: #if heterozygous variants in exon
-                AS=True
-                seq_row_hz=seq_rows[seq_rows["haplotype"]==0]
-                seq_row_ho=seq_rows[seq_rows["haplotype"]==1]
-                if sense=='-':
-                    sequence_zero+=make_complement(seq_row_hz.iloc[0]["sequence"])
-                    sequence_one+=make_complement(seq_row_ho.iloc[0]["sequence"])
-                else:
-                    sequence_zero+=seq_row_hz.iloc[0]["sequence"]
-                    sequence_one+=seq_row_ho.iloc[0]["sequence"]
-            else:
-                print 'exon not found'
-                print trans_info
-                kill=True
-                killed+=1
-        #write transcript to fasta
-        if not kill:
-            if AS:
-                count_allele_specific+=1
-                f.writelines('>'+transcript+'_h0'+'\n'+sequence_zero+'\n')
-                f.writelines('>'+transcript+'_h1'+'\n'+sequence_one+'\n')
-            else:
-                f.writelines('>'+transcript+'\n'+sequence_zero+'\n')
-        sequence_zero=''
-        sequence_one=''
+    pool=mp.Pool(processes=10)
+    results=[pool.apply_async(worker_process,args=(transcript,exon_frame,junction_frame)) for transcript in transcripts]
+    output = [p.get() for p in results] #list of tuplies
+    #write transcript to fasta
+    for o in output:
+        for l in o[0]:
+            f.write(l)
+        report_material=o[1]
+        if len(o[0])>1:
+            r.writelines(report_material[-1]+'_h0\t'+report_material[0]+'\n')
+            r.writelines(report_material[-1]+'_h1\t'+report_material[1]+'\n')
+        elif len(report_material[0])>0:
+            r.writelines(report_material[-1]+'\t'+report_material[0]+'\n')
     return 'number of allele specific transcripts: '+str(count_allele_specific)+ '. number exons not found= '+str(killed)
+
+def worker_process(transcript,exon_frame,junction_frame)
+    sequence_zero=''
+    sequence_one=''
+    to_add=''
+    kill=False
+    AS=False
+    variants=[[],[],transcript]
+    to_write=[]
+    trans_info=junction_frame[junction_frame["transcript"]==transcript] #get junction information for the transcript
+    trans_info=trans_info.sort_values(by="rank") #sort them in the correct order
+    for tidx,trow in trans_info.iterrows(): #iterate through each junction and get the sequence
+        sense=trow["sense"]
+        seq_rows=exon_frame[(exon_frame["chromosome"]==trow["chromosome"]) & (exon_frame["end"]==trow["end"]) & (exon_frame["start"]==trow["start"])]
+        if len(seq_rows.index)==1: #if no heterozygous variants in exon
+            #gather variants
+            v=seq_rows.iloc[0]["position"]
+            v=process_variant(v)
+            if sense=='-':
+                to_add=make_complement(seq_rows.iloc[0]["sequence"])
+                if v!='NA':
+                    v=[len(to_add)-x for x in v]
+            else:
+                to_add=seq_rows.iloc[0]["sequence"]
+            len_existingz,len_existingo=len(sequence_zero),len(sequence_one)
+            variants[0].extend([x+len_existingz for x in v])
+            variants[1].extend([x+len_existingo for x in v])
+            sequence_zero+=to_add
+            sequence_one+=to_add
+        elif len(seq_rows.index)==2: #if heterozygous variants in exon
+            AS=True
+            seq_row_hz=seq_rows[seq_rows["haplotype"]==0]
+            seq_row_ho=seq_rows[seq_rows["haplotype"]==1]
+            vz=seq_rows_hz.iloc[0]["position"]
+            vo=seq_row_ho.iloc[0]["position"]
+            vz=process_variant(vz)
+            vo=process_variant(vo)
+            to_add_z=make_complement(seq_row_hz.iloc[0]["sequence"])
+            to_add_o=make_complement(seq_row_ho.iloc[0]["sequence"])
+            len_existingz,len_existingo=len(sequence_zero),len(sequence_one)
+            if sense=='-':
+                sequence_zero+=make_complement(to_add_z)
+                sequence_one+=make_complement(to_add_o)
+                if vz!='NA':
+                    vz=[len(to_add_z)-x for x in vz]
+                if vo!='NA':
+                    vo=[len(to_add_o)-x for x in vo]
+            else:
+                sequence_zero+=seq_row_hz.iloc[0]["sequence"]
+                sequence_one+=seq_row_ho.iloc[0]["sequence"]
+            variants[0].extend([x+len_existingz for x in vz])
+            variants[1].extend([x+len_existingo for x in vo])
+        else:
+            print 'exon not found'
+            print trans_info
+            kill=True
+            killed+=1
+    if not kill:
+        if AS:
+            # count_allele_specific+=1
+            l1='>'+transcript+'_h0'+'\n'+sequence_zero+'\n'
+            l2='>'+transcript+'_h1'+'\n'+sequence_one+'\n'
+            to_write=[l1,l2]
+        else:
+            l='>'+transcript+'\n'+sequence_zero+'\n'
+            to_write=[l]
+    return(to_write,variants)
+
+def process_variant(v):
+    if v!='NA':
+        if ',' in v:
+            v=v.split(',')
+            v=map(int,v)
+        else:
+            v=[int(v)]
+    return(v)
 
 def make_complement(sequence):
     '''helper function to combine_exons
@@ -85,7 +133,7 @@ def read_exons_into_frame(hap_exons):
     reads exon file and stores into data frame
     this function contains the correction for the 0/1 coordinates in variable "true_start"
     '''                
-    exon_dict={'chromosome':[],'start':[],'end':[],'haplotype':[],'sequence':[]}
+    exon_dict={'chromosome':[],'start':[],'end':[],'haplotype':[],'position':[],'sequence':[]}
     with open(hap_exons) as he:
         for line in he:
             if line.startswith('>'):
@@ -93,10 +141,19 @@ def read_exons_into_frame(hap_exons):
                     if 'haplotype' in line:
                         info=line.strip().split(' ')
                         hap=info[1].split(':')[1]
+                        pos=info[2].split(':')[1]
                         exon_dict['haplotype'].append(int(hap))
+                        exon_dict['position'].append(pos)
+                        info=re.split(':|-',info[0])
+                    elif 'pos' in line:
+                        info=line.strip().split(' ')
+                        pos=info[1].split(':')[1]
+                        exon_dict['position'].append(pos)
+                        exon_dict['haplotype'].append(9)
                         info=re.split(':|-',info[0])
                     else:
                         exon_dict['haplotype'].append(9)
+                        exon_dict['position'].append('NA')
                         info=re.split(':|-',line.strip())
                     chrom=info[0]
                     exon_dict['chromosome'].append(chrom[1:])

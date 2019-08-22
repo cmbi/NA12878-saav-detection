@@ -56,7 +56,9 @@ def main():
     args=parser.parse_args()
 
     #read in the observed
-    obs=pd.read_csv(args.observed,sep='\t')
+    obs=pd.read_csv(args.observed,sep='\t') #proteins \t peptide
     obs=obs.str.split(',',expand=True).stack()
-    cds_ont=read_filter_cds(args.cdsont,obs)
+    cds_ont=read_filter_cds(args.cdsont,obs) #protein \t cds
     cds_ref=read_filter_cds(args.cdsref,obs)
+    #need protein to exon mapping- with ref there is 1 line per exon mapping. with ont there is bed12
+    report=read_csv #chr:pos-pos \t chromosomal variant position \t reference allele \t position on the exon sequence \t exon sequence

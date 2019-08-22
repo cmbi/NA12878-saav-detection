@@ -25,7 +25,8 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     #plot lengths of the peptides caught by one method but not the other
     non_mut_peplen_vf=Counter(dict(ibdf_combi_nonmut['matched_peptide'].value_counts()))
     non_mut_peplen_vc=Counter(dict(ibdf_combi_pg_nonmut['matched_peptide'].value_counts()))
-    plots.plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om,non_mut_peplen_vc,non_mut_peplen_vf)
+    plots.plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om,variant=True)
+    plots.plot_peplengths(non_mut_peplen_vc,non_mut_peplen_vf,variant=False)
     #get the scan ids corresponding to all the variant peptides that are in one set but not the other
     scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
     #Compare unexpected modifications
@@ -33,7 +34,8 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     unexp_mod_pg=ibdf_combi_pg.loc[ibdf_combi_pg["scan_id"].isin(scanids),"unexpected_modification"].tolist()
     unexp_mod_nonmut_om=ibdf_combi_nonmut["unexpected_modification"].tolist()
     unexp_mod_nonmut_pg=ibdf_combi_pg_nonmut["unexpected_modification"].tolist()
-    plots.plot_unexpected_mods(unexp_mod_om,unexp_mod_pg,unexp_mod_nonmut_om,unexp_mod_nonmut_pg) #plot what modifications they contained
+    plots.plot_unexpected_mods(unexp_mod_om,unexp_mod_pg,variant=True) #plot what modifications they contained
+    plots.plot_unexpected_mods(unexp_mod_nonmut_om,unexp_mod_nonmut_pg,variant=False) #plot what modifications they contained
     #direct comparison of scores of peptides found with variant-containing but not variant-free
     scores_pg=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),["scan_id","percolator_psm_score","matched_peptide"]]#.tolist()
     scores_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),["scan_id","percolator_psm_score"]] #added matched peptide for length dimension
@@ -50,7 +52,7 @@ def discrepancy_check(allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
     list_nonmut_vc=ibdf_combi_pg_nonmut["percolator_psm_score"].tolist()
     print(len(list_intersection_varcont))
     list_pgonly=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"percolator_psm_score"].tolist()
-    plots.plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree)
+    plots.plot_ib_scores(list_ibonly,list_pgonly,list_intersection_varcont,list_intersection_varfree,list_nonmut_vc,list_nonmut_vf)
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function
     return(0)
     

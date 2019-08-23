@@ -75,12 +75,20 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1])
 
-def worker_task(csvname,combi_vc,combi_vf,cpdt_var_vc,cpdt_var_vf,cpdt_rev):
+def worker_task(csvname):
     dfvf=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
     vf=variant_free(dfvf,list(cpdt_var_vf))
     dfvc=combi_vc.loc[combi_vc["title"]==csvname.split('.')[0]]
     vc=variant_containing(dfvc,list(cpdt_var_vc),cpdt_rev)
     return(vf,vc)
+
+def child_initialize(_combi_vc,_combi_vf,_cpdt_var_vc,_cpdt_var_vf,_cpdt_rev):
+     global combi_vc, combi_vf, cpdt_var_vc, cpdt_var_vf, cpdt_rev
+     combi_vc = _combi_vc
+     combi_vf = _combi_vf
+     cpdt_var_vc = _cpdt_var_vc
+     cpdt_var_vf = _cpdt_var_vf
+     cpdt_rev = _cpdt_rev
 
 def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     '''
@@ -105,8 +113,8 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     # cpdt=file_import.import_cpdt(args['cpdt'],False)
     vf=pd.DataFrame()
     vc=pd.DataFrame()
-    pool=mp.Pool(processes=12)
-    results=[pool.apply_async(worker_task,args=(csvname,combi_vc,combi_vf,cpdt_var_vc,cpdt_var_vf,cpdt_rev)) for csvname in combi_vf["title"].unique()]
+    pool=mp.Pool(processes=14,initializer=child_initialize, initargs=(combi_vc,combi_vf,cpdt_var_vc,cpdt_var_vf,cpdt_rev))
+    results=[pool.apply_async(worker_task,args=(csvname,)) for csvname in combi_vf["title"].unique()]
     output = [p.get() for p in results]
     for o in output:
         vf=pd.concat([vf,o[0]])

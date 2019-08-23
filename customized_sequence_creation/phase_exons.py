@@ -52,6 +52,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         het=False
                         var=False
                         v=[]
+                        o=[]
                         for vari in vcf_fetch:
                             var_pos=max(0,vari.POS-start-1) #start position on the sequence string, don't allow neagtive
                             entry_0+=seq[var_pos_end:var_pos] #add portion between old end position and new start position
@@ -63,6 +64,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                             ref_allele=seq[var_pos:var_pos_end]
                             if ref_allele==vari.REF: #only if the sequence that is being replaced matches what is written in the vcf file. this discludes all border
                                 v.append(str(var_pos))
+                                o.append(chr+'|'+str(vari.POS))
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
@@ -96,11 +98,11 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         entry_0+=seq[var_pos_end:end] #add last chunk of sequence
                         entry_1+=seq[var_pos_end:end]
                         if het: 
-                            header_0=header.strip()+' haplotype:0 pos:'+','.join(v)
-                            header_1=header.strip()+' haplotype:1 pos:'+','.join(v)
+                            header_0=header.strip()+' haplotype:0 pos:'+','.join(v)+' orig:'+','.join(o)
+                            header_1=header.strip()+' haplotype:1 pos:'+','.join(v)+' orig:'+','.join(o)
                             f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  
                         elif var:
-                            f.writelines(header.strip()+' pos:'+','.join(v)+'\n'+entry_0+'\n')
+                            f.writelines(header.strip()+' pos:'+','.join(v)+' orig:'+','.join(o)+'\n'+entry_0+'\n')
                         else: #no variant positions in the exon
                             f.writelines(header+line)
     f.close()

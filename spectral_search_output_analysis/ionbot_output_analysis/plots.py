@@ -293,7 +293,7 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     plt.xlabel('Non-variant peptide abundance (NSAF normalized)')
     plt.xlim(0,0.0002)
     plt.ylabel('Count variant peptides')
-    # plt.ylim(-10,1000)
+    plt.ylim(-10,1000)
     plt.title('Variant peptide abundance vs non-variant peptide abundance')
     # plt.legend(loc='upper right')
     plt.savefig(figname)

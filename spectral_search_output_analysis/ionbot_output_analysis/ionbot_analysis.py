@@ -58,12 +58,16 @@ def main(args):
     mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,False)
     #here do a re-calculation of FDR for variant peps (look into what functions from combidict_analysis need to be moved to after this recalculation)
     print("recalculating FDR for variant peptides...")
+    print(str(sum(mut_observed_classic.values()))+' variant containing and '+str(sum(mut_observed_openmut.values())+' variant free observed variants before FDR correction...'))
     var_vf,var_vc=fdr_reestimation.main(ibdf_combi_original.dropna(),ibdf_combi_pg_original.dropna(),mut_observed_openmut,mut_observed_classic,args["decoy"])
+    #get variant groupings
+    abrv_vc,ref_abrv_vc=helper_functions.abbreviate_peps(var_vc)
+    abrv_vf,ref_abrv_vf=helper_functions.abbreviate_peps(var_vf)
     print("making final plots...")
-    main_functions.discrepancy_check(var_vc,var_vf, ibdf_combi, ibdf_combi_pg)
+    main_functions.discrepancy_check(ref_abrv_vc,ref_abrv_vf,var_vc,var_vf, ibdf_combi, ibdf_combi_pg)
     plots.plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plots.plot_strand_dist(stranddist_classic,stranddist_openmut)
-    plots.plot_final_venns(var_vc,var_vf,mut_cpdt,mutprotset)
+    plots.plot_final_venns(abrv_vc,abrv_vf,mut_cpdt,mutprotset)
     return("Finished")
     
 parser = argparse.ArgumentParser(description='Ionbot output analysis')

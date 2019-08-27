@@ -100,7 +100,7 @@ def write_cpdt(d,outfile):
             f.writelines('\t'+'PEPTIDE '+pep+': '+prob+'\n')
     return 'new CPDT file written to '+outfile
 
-alldiffpeps,snvdiffpeps,snvdiffcounterparts=insilico_digest_diff(sys.argv[1],sys.argv[2])
+alldiffpeps,snvdiffpeps,snvdiffcounterparts=insilico_digest_diff(sys.argv[1],sys.argv[2]) #first ref then custom
 print write_cpdt(alldiffpeps,sys.argv[3])
 print write_cpdt(snvdiffpeps,sys.argv[4])
 print write_cpdt(snvdiffcounterparts,sys.argv[5])

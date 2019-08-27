@@ -179,6 +179,55 @@ def contains(small, big):
             return(True)
     return(False)
 
+def abbreviate_peps(counter_varpep):
+    set_varpep=set(counter_varpep)
+    vp=list(set_varpep).sort(key=len) #short to long
+    accounted_for=set()
+    abbreviated=Counter()
+    abbr_dict={}
+    for p in vp:
+        if p not in accounted_for:
+            rest=set_varpep.difference(accounted_for)
+            rest.discard(p)
+            add=True
+            for r in rest:
+                if len(p)>len(r) and contains(r,p):
+                    print('something wrong')
+                elif len(r)>len(p) and contains(p,r):
+                    if p in abbreviated:
+                        abbreviated[p]+=counter_varpep[r]
+                        abbr_dict[p].append(r)
+                    else:
+                        abbreviated[p]=counter_varpep[r]+counter_varpep[p]
+                        abbr_dict[p]=[r]
+                    accounted_for.add(r)
+                    accounted_for.add(p)
+                # for a in abbreviated:
+                #     if len(a)>len(r) and contains(r,a):
+                #         adtn_ct=counter_varpep[a]
+    return(abbreviated,abbr_dict)
+
+def unpack_grouped_variants(set_shortpeps,reference_dict):
+    ''' return set of all possible peptides with a particular variant given a set of the shortest peptides for a set of variants
+    '''
+    concat=set()
+    for pep in set_shortpeps:
+        if pep in reference_dict:
+            concat=concat.union(set(reference_dict[pep]))
+    return(concat)
+
+def concat_dicts(x,y):
+    c={}
+    all_keys=set(x.keys()).union(set(y.keys()))
+    for a in all_keys:
+        if a in x and a in y:
+            c[a]=set(x[a]).union(set(y[a]))
+        elif a in x:
+            c[a]=set(x[a])
+        else:
+            c[a]=set(y[a])
+    return(c)
+
 def add_to_observed(pep,ids,cpdtpep,isOpenmut):
     mut_prot,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut)
     #add mutant peptide to observed

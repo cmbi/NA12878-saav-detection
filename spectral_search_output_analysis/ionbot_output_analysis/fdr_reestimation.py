@@ -122,6 +122,7 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     #then go through the list and make a new counter
     vfc=Counter(dict(vf['matched_peptide'].value_counts()))
     vcc=Counter(dict(vc['matched_peptide'].value_counts()))
+    print(str(sum(vfc.values()))+' variant containing and '+str(sum(vcc.values())+' variant free variant remaining after FDR correction.'))
     #print reports of which proteins they matched to - output both peptide and protein id
     out_df=vf[['proteins','matched_peptide']]
     out_df=out_df.append(vc[['proteins','matched_peptide']])

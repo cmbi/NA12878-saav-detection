@@ -432,28 +432,28 @@ def plot_peplengths(peptide_counter_pg,peptide_counter_om,variant=False):
     plt.close()
     return(0)
 
-def plot_final_venns(allmuts_classic,allmuts_openmut,mut_cpdt_theoretical,mutprotset):
+def plot_final_venns(vc,vf,mut_cpdt_theoretical,mutprotset):
     #create diagrams
     plt.figure('venn mutant psms')
-    vda=venn2_unweighted([allmuts_classic,allmuts_openmut],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
+    vda=venn2_unweighted([vc,vf],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
     plt.title("Observed variant PSMs",fontsize=26)
     for text in vda.set_labels:
         text.set_fontsize(26)
     for text in vda.subset_labels:
         text.set_fontsize(20)
-    plt.savefig('overlap_detected_mut_peps.png')
+    plt.savefig('overlap_detected_mut_psms.png')
     plt.clf()
     plt.figure('venn mutant peptides')
-    vdb=venn2_unweighted([set(allmuts_classic),set(allmuts_openmut)],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
+    vdb=venn2_unweighted([set(vc),set(vf)],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
     plt.title("Unique observed variant peptides",fontsize=26)
     for text in vdb.set_labels:
         text.set_fontsize(26)
     for text in vdb.subset_labels:
         text.set_fontsize(20)
-    plt.savefig('overlap_detected_mut_prots.png')
+    plt.savefig('overlap_detected_mut_peps.png')
     plt.clf()
     plt.figure('venn proteins all')
-    vdb=venn3([set(allmuts_classic),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
+    vdb=venn3([set(vc),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
     plt.title("Unique proteins associated with variant peptides",fontsize=26)
     # for text in vdb.set_labels:
     #     text.set_fontsize(26)

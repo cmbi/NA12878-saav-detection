@@ -27,7 +27,6 @@ def variant_free(df_in,list_var_peps):
     #filter by predicted to have mutation
     df=df_in.loc[df_in["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)]
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
-    plots.plot_target_decoy(df,'variant_free_ppplot.png') #if this plot is bad, the results are also bad
     indices=np.argwhere(df['q_value']<0.01)
     new_df=df[:int(indices[-1][0])+1] #threshold cut
     out_df=pd.DataFrame()
@@ -37,7 +36,7 @@ def variant_free(df_in,list_var_peps):
         for v in list_var_peps:
             if helper_functions.equivalent_check(pep,v):
                 out_df=out_df.append(row[1],ignore_index=True)
-    return(out_df)
+    return(out_df,df)
 
 def variant_containing(df_in,cpdt_var,cpdt_rev_var):
     '''
@@ -71,16 +70,15 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
             if helper_functions.equivalent_check(pep,v):
                 df=df.append(df_in.loc[[row[0]]])
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
-    plots.plot_target_decoy(df,'variant_containing_ppplot.png')
     indices=np.argwhere(df['q_value']<0.01)
-    return(df[:int(indices[-1][0])+1])
+    return(df[:int(indices[-1][0])+1],df)
 
 def worker_task(csvname):
     dfvf=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
-    vf=variant_free(dfvf,list(cpdt_var_vf))
+    vf,vff=variant_free(dfvf,list(cpdt_var_vf))
     dfvc=combi_vc.loc[combi_vc["title"]==csvname.split('.')[0]]
-    vc=variant_containing(dfvc,list(cpdt_var_vc),cpdt_rev)
-    return(vf,vc)
+    vc,vcf=variant_containing(dfvc,list(cpdt_var_vc),cpdt_rev)
+    return([vf,vc,vff,vcf])
 
 def child_initialize(_combi_vc,_combi_vf,_cpdt_var_vc,_cpdt_var_vf,_cpdt_rev):
      global combi_vc, combi_vf, cpdt_var_vc, cpdt_var_vf, cpdt_rev
@@ -113,12 +111,18 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     # cpdt=file_import.import_cpdt(args['cpdt'],False)
     vf=pd.DataFrame()
     vc=pd.DataFrame()
+    full_vf=pd.DataFrame()
+    full_vc=pd.DataFrame()
     pool=mp.Pool(processes=14,initializer=child_initialize, initargs=(combi_vc,combi_vf,cpdt_var_vc,cpdt_var_vf,cpdt_rev))
     results=[pool.apply_async(worker_task,args=(csvname,)) for csvname in combi_vf["title"].unique()]
     output = [p.get() for p in results]
     for o in output:
         vf=pd.concat([vf,o[0]])
         vc=pd.concat([vc,o[1]])
+        full_vf=pd.concat([full_vf,o[2]])
+        full_vc=pd.concat([full_vc,o[3]])
+    plots.plot_target_decoy(full_vf,'variant_free_ppplot.png') #if this plot is bad, the results are also bad
+    plots.plot_target_decoy(full_vc,'variant_containing_ppplot.png')
     #then go through the list and make a new counter
     vfc=Counter(dict(vf['matched_peptide'].value_counts()))
     vcc=Counter(dict(vc['matched_peptide'].value_counts()))

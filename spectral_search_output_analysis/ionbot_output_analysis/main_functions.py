@@ -15,10 +15,10 @@ def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmu
     plot lengths of the missed/caught peptides (longer than average?)
     plot unexpected modifications of the missed peptides (more unexpected modifications than average?)'''
     combined_ref=helper_functions.concat_dicts(dict_saavs_vc,dict_saavs_vf)
-    discrepancy=unpack_grouped_variants(set(dict_saavs_vc.keys()).difference(set(dict_saavs_vf.keys())),dict_saavs_vc)
-    agreement=unpack_grouped_variants(set(dict_saavs_vc.keys()).intersection(set(dict_saavs_vf.keys())),combined_ref)
-    union=unpack_grouped_variants(set(dict_saavs_vc.keys()).union(set(dict_saavs_vf.keys())),combined_ref)
-    ibonly=unpack_grouped_variants(set(dict_saavs_vf.keys()).difference(set(dict_saavs_vc.keys())),dict_saavs_vf)
+    discrepancy=helper_functions.unpack_grouped_variants(set(dict_saavs_vc.keys()).difference(set(dict_saavs_vf.keys())),dict_saavs_vc)
+    agreement=helper_functions.unpack_grouped_variants(set(dict_saavs_vc.keys()).intersection(set(dict_saavs_vf.keys())),combined_ref)
+    union=helper_functions.unpack_grouped_variants(set(dict_saavs_vc.keys()).union(set(dict_saavs_vf.keys())),combined_ref)
+    ibonly=helper_functions.unpack_grouped_variants(set(dict_saavs_vf.keys()).difference(set(dict_saavs_vc.keys())),dict_saavs_vf)
     discrepancy_ct_pg=allmuts_classic-allmuts_openmut
     discrepancy_ct_om=allmuts_openmut-allmuts_classic
     ibdf_combi_nonmut=ibdf_combi.loc[~ibdf_combi["matched_peptide"].isin(union)]

@@ -181,7 +181,7 @@ def contains(small, big):
 
 def abbreviate_peps(counter_varpep):
     set_varpep=set(counter_varpep)
-    vp=list(set_varpep).sort(key=len) #short to long
+    vp=sorted(set_varpep,key=len) #short to long
     accounted_for=set()
     abbreviated=Counter()
     abbr_dict={}

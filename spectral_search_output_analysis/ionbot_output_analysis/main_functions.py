@@ -29,7 +29,6 @@ def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmu
     plots.plot_peplengths(discrepancy_ct_pg,discrepancy_ct_om,variant=True)
     plots.plot_peplengths(non_mut_peplen_vc,non_mut_peplen_vf,variant=False)
     #get the scan ids corresponding to all the variant peptides that are in one set but not the other
-    print(discrepancy)
     scanids=ibdf_combi_pg.loc[ibdf_combi_pg["matched_peptide"].isin(discrepancy),"scan_id"].tolist()
     #Compare unexpected modifications
     unexp_mod_om=ibdf_combi.loc[ibdf_combi["scan_id"].isin(scanids),"unexpected_modification"].tolist()

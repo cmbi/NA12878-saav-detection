@@ -189,7 +189,7 @@ def abbreviate_peps(counter_varpep):
         if p not in accounted_for:
             rest=set_varpep.difference(accounted_for)
             rest.discard(p)
-            add=True
+            added=False
             for r in rest:
                 if len(p)>len(r) and contains(r,p):
                     print('something wrong')
@@ -199,9 +199,14 @@ def abbreviate_peps(counter_varpep):
                         abbr_dict[p].append(r)
                     else:
                         abbreviated[p]=counter_varpep[r]+counter_varpep[p]
-                        abbr_dict[p]=[r]
+                        abbr_dict[p]=[p,r]
                     accounted_for.add(r)
                     accounted_for.add(p)
+                    added=True
+            if not added:
+                abbreviated[p]=counter_varpep[p]
+                abbr_dict[p]=[p]
+                accounted_for.add(p)
                 # for a in abbreviated:
                 #     if len(a)>len(r) and contains(r,a):
                 #         adtn_ct=counter_varpep[a]

@@ -41,15 +41,15 @@ def workertask(pid,peplist,ref,custom):
                             if isSNV:
                                 if key in newsnv:
                                     newsnv[key][pep]=prob
-                                    snvcounterpart[key][counterpart]=peplist[counterpart]
+                                    # snvcounterpart[key][counterpart]=peplist[counterpart]
                                 else:
                                     newsnv[key]={pep:prob}
-                                    snvcounterpart[key]={counterpart:peplist[counterpart]}
+                                    # snvcounterpart[key]={counterpart:peplist[counterpart]}
                             if key in newall:
                                 newall[key][pep]=prob
                             else:
                                 newall[key]={pep:prob}
-    return [newsnv,newall,snvcounterpart]
+    return (newsnv,newall)
 
 def combine_output(process_output):
     '''
@@ -124,11 +124,12 @@ def main():
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--ref', help='Reference cpdt file', required=True)
     parser.add_argument('--var', help='Variant containing cpdt file', required=True)
-    parser.add_argument('--outall', help='Output file all differing', required=True)
+    parser.add_argument('--outall', help='Output file all differing', required=False)
     parser.add_argument('--outsnp', help='Output file snv differing', required=True)
-    parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=True)
-    args=parser.parse_args()
-    alldiffpeps,snvdiffpeps,snvdiffcounterparts=insilico_digest_diff(args.ref,args.var)
-    write_cpdt(alldiffpeps,args.outall)
-    write_cpdt(snvdiffpeps,args.outsnp)
-    write_cpdt(snvdiffcounterparts,args.outctp)
+    # parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=True)
+    args=vars(parser.parse_args())
+    alldiffpeps,snvdiffpeps=insilico_digest_diff(args['ref'],args['var'])
+    if 'outall' in args:
+        write_cpdt(alldiffpeps,args['outall'])
+    write_cpdt(snvdiffpeps,args['outsnp'])
+    # write_cpdt(snvdiffcounterparts,args.outctp)

@@ -3,6 +3,7 @@
 import re, collections, sys
 from sets import Set
 import multiprocessing as mp
+import argparse
 
 def insilico_digest_diff(cpdtref,cpdtcustom):
     '''this script will find peptides that vary between two cpdt files
@@ -10,12 +11,17 @@ def insilico_digest_diff(cpdtref,cpdtcustom):
     '''
     ref=read_cpdt(cpdtref)
     custom=read_cpdt(cpdtcustom)
-    pool=mp.Pool(processes=10)
-    results=[pool.apply_async(workertask,args=(percolatordir,x,ibcsvpath)) for pid,peplist in ref.iteritems()]
+    pool=mp.Pool(processes=10,initializer=child_initialize, initargs=(ref,custom))
+    results=[pool.apply_async(snvfinder,args=(pid,peplist,)) for pid,peplist in ref.iteritems()]
     output = [p.get() for p in results] #list of tuplies of dictionaries
     return combine_output(output)
 
-def workertask(pid,peplist,ref,custom):
+def child_initialize(_ref,_custom):
+     global ref, custom
+     ref = _ref
+     custom = _custom
+    
+def snvfinder(pid,peplist):
     idho=pid+'_h1'
     idhz=pid+'_h0'
     keys=[]
@@ -55,12 +61,17 @@ def combine_output(process_output):
     '''
     takes the multiprocessing output and concatenates the appropriate libraries
     '''
-    newsnv,newall,snvcounterpart={},{},{}
+    newsnv,newall={},{}
     for l in process_output:
-        newsnv={**newsnv,**l[0]}
-        newall={**newall,**l[1]}
-        snvcounterpart={**snvcounterpart,**l[2]}
-    return newsnv,newall,snvcounterpart
+        newsnv=merge_two_dicts(newsnv, l[0])
+        newall=merge_two_dicts(newall,l[1])
+        # snvcounterpart={**snvcounterpart,**l[2]}
+    return newsnv,newall
+
+def merge_two_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
 
 def isQualified(peptide,reference_pepdict):
     for pid,peplist in reference_pepdict.iteritems():
@@ -125,11 +136,15 @@ def main():
     parser.add_argument('--ref', help='Reference cpdt file', required=True)
     parser.add_argument('--var', help='Variant containing cpdt file', required=True)
     parser.add_argument('--outall', help='Output file all differing', required=False)
-    parser.add_argument('--outsnp', help='Output file snv differing', required=True)
+    parser.add_argument('--outsnp', help='Output file snv differing', required=False)
     # parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=True)
     args=vars(parser.parse_args())
     alldiffpeps,snvdiffpeps=insilico_digest_diff(args['ref'],args['var'])
-    if 'outall' in args:
+    if args['outall']:
         write_cpdt(alldiffpeps,args['outall'])
-    write_cpdt(snvdiffpeps,args['outsnp'])
+    if args['outsnp']:
+        write_cpdt(snvdiffpeps,args['outsnp'])
     # write_cpdt(snvdiffcounterparts,args.outctp)
+
+if __name__ == "__main__":
+    main()

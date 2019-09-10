@@ -8,9 +8,13 @@ this script will use as input:
 
 will return the SNP information (first file) from those variants that were found in the peptides (last file)
 
-1. parse CDS (only include observed) from ANGEL output (suffix "final.cds")
-2. add column to the report with protein ids
-3. get sequence
+1. read in CDS (only include observed) from ANGEL output (suffix "final.cds")
+2. match CDS with transcript sequence on record
+3. renumber the variant position to CDS
+4. renumber the variant position to protein
+5. find appropriate peptide
+6. result: peptide - SNP linked
+
 '''
 
 def read_filter_cds(cdsfile,prots):

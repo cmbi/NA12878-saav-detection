@@ -157,10 +157,11 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
 def theoretical_saav_counts(mutant_cpdtpep,counterpart_cpdtpep):
     all_subs=helper_functions.initiate_counter()
     for prot,peps in mutant_cpdtpep.items():
-        peps_cpt=counterpart_cpdtpep[prot]
-        for pep in peps:
-            cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-            all_subs[sub]+=1
+        if prot in counterpart_cpdtpep:
+            peps_cpt=counterpart_cpdtpep[prot]
+            for pep in peps:
+                cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
+                all_subs[sub]+=1
     # serall=pd.Series(list(all_subs.values()),index=pd.MultiIndex.from_tuples(all_subs.keys()))
     # dfall=serall.unstack()
     return(all_subs)

@@ -336,17 +336,23 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
     plt.close()
     return(0)
 
-def plot_ib_scores_directcomp(varfree_scores,varcont_scores):
+def plot_ib_scores_directcomp(varfree_scores,varcont_scores,retentiontime):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
-    what is the Percolator score distribution from each respective results list'''
+    what is the Percolator score distribution from each respective results list
+    color by retention time prediction instead of length
+    '''
+    rt=pd.read_csv(retentiontime)
+    rt.columns=['matched_peptide','predicted_retention_time']
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
     #inner join the 2
     combi=pd.merge(varfree_scores,varcont_scores,on="scan_id",suffixes=("_varfree","_varcont"))
     combi.groupby("matched_peptide").mean() #make sure don't have groups of dots per unique peptide
-    combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
-    combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
+    # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
+    combi=pd.merge(combi,rt,on='matched_peptide')
+    # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
+    combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="predicted_retention_time",colormap='viridis')
     left, right = plt.xlim()
     x = np.linspace(left,right)
     plt.plot(x, x)

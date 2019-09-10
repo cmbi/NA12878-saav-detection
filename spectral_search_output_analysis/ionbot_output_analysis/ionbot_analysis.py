@@ -50,6 +50,7 @@ def main(args):
     mut_cpdt,mut_pep_probs=file_import.import_cpdt(args['cpdtvar'],False) #import the cpdt file with all snv peptides
     mut_cpdt_counterparts,counterpart_pep_probs=file_import.import_cpdt(args['cpdtctp'],False)
     chromdict,stranddict=file_import.create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
+    # rt=pd.read_csv(args['rt'])
     
     #iterate to fill the data structures
     print("doing analysis...")
@@ -64,7 +65,7 @@ def main(args):
     abrv_vc,ref_abrv_vc=helper_functions.abbreviate_peps(var_vc)
     abrv_vf,ref_abrv_vf=helper_functions.abbreviate_peps(var_vf)
     print("making final plots...")
-    main_functions.discrepancy_check(ref_abrv_vc,ref_abrv_vf,var_vc,var_vf, ibdf_combi, ibdf_combi_pg)
+    main_functions.discrepancy_check(ref_abrv_vc,ref_abrv_vf,var_vc,var_vf, ibdf_combi, ibdf_combi_pg,args['rt'])
     plots.plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plots.plot_strand_dist(stranddist_classic,stranddist_openmut)
     plots.plot_final_venns(abrv_vc,abrv_vf,mut_cpdt,mutprotset)
@@ -81,6 +82,7 @@ parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', r
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
 parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
+parser.add_argument('--rt', help='retention time prediction',required=True)
 # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
 args = vars(parser.parse_args()) 
 main(args)

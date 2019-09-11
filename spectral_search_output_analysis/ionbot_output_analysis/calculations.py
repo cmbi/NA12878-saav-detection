@@ -142,15 +142,16 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
     probs=[]
     observed_subs=helper_functions.initiate_counter()
     for prot,peps in mutant_cpdtpep.items():
-        peps_cpt=counterpart_cpdtpep[prot]
-        for pep in peps:
-            cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-            tuptoadd=(peps[pep],peps_cpt[cpt_pep])
-            probtup=(mutant_probs[pep],peps[pep])
-            if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
-                counts.append(tuptoadd)
-                probs.append(probtup)
-                observed_subs[sub]+=1
+        if prot in counterpart_cpdtpep:
+            peps_cpt=counterpart_cpdtpep[prot]
+            for pep in peps:
+                cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
+                tuptoadd=(peps[pep],peps_cpt[cpt_pep])
+                probtup=(mutant_probs[pep],peps[pep])
+                if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
+                    counts.append(tuptoadd)
+                    probs.append(probtup)
+                    observed_subs[sub]+=1
     # df,dfall=helper_functions.counter_to_df(observed_subs)
     return(counts,probs,observed_subs)
 

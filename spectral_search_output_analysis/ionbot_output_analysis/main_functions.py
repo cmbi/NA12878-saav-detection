@@ -9,7 +9,7 @@ import plots
 import helper_functions
 
 
-def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg):
+def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg,rt):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
@@ -43,7 +43,7 @@ def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmu
     scores_all=scores_pg.merge(scores_om, on=('scan_id'),suffixes=('_vc','_vf'))
     scores_all=scores_all.loc[scores_all["percolator_psm_score_vc"]>scores_all["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
     scores_all.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv
-    plots.plot_ib_scores_directcomp(scores_om,scores_pg) #direct comparison plot: what scores they had in each of the libraries
+    plots.plot_ib_scores_directcomp(scores_om,scores_pg,rt) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     list_ibonly=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(ibonly),"percolator_psm_score"].tolist()
     list_intersection_varfree=ibdf_combi.loc[ibdf_combi["matched_peptide"].isin(agreement),"percolator_psm_score"].tolist()

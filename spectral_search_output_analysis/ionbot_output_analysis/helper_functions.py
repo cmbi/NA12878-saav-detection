@@ -135,7 +135,7 @@ def determine_snv(peptide,plist):
     output: boolean
     '''
     for pep in plist:
-        if len(pep)==len(peptide):
+        if len(pep)==len(peptide) and pep!=peptide:
             original=''
             sub=''
             mismatch=0
@@ -151,7 +151,7 @@ def determine_snv(peptide,plist):
                 return(pep,(original,sub))
     return('','')
 
-def detect_peptides(pep,ids,cpdt_pep,isOpenmut):
+def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug):
     for isi in ids:
         i=get_id(isi)
         found=False
@@ -163,6 +163,9 @@ def detect_peptides(pep,ids,cpdt_pep,isOpenmut):
             if poss in cpdt_pep.keys():
                 for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
                     if pep in p or equivalent_check(pep,p):
+                        if debug:
+                            print(pep,cpdt_pep[poss])
+                            sys.exit()
                         return(poss,p)
     return('','')
 
@@ -180,6 +183,9 @@ def contains(small, big):
     return(False)
 
 def abbreviate_peps(counter_varpep):
+    '''
+    change the counter to only have one peptide per SAAV to simplify analysis later on
+    '''
     set_varpep=set(counter_varpep)
     vp=sorted(set_varpep,key=len) #short to long
     accounted_for=set()
@@ -233,8 +239,8 @@ def concat_dicts(x,y):
             c[a]=set(y[a])
     return(c)
 
-def add_to_observed(pep,ids,cpdtpep,isOpenmut):
-    mut_prot,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut)
+def add_to_observed(pep,ids,cpdtpep,isOpenmut,debug=False):
+    mut_prot,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut,debug)
     #add mutant peptide to observed
     newdict=cpdtpep
     if mut_prot!='':

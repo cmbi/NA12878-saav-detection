@@ -146,12 +146,13 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
             peps_cpt=counterpart_cpdtpep[prot]
             for pep in peps:
                 cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-                tuptoadd=(peps[pep],peps_cpt[cpt_pep])
-                probtup=(mutant_probs[pep],peps[pep])
-                if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
-                    counts.append(tuptoadd)
-                    probs.append(probtup)
-                    observed_subs[sub]+=1
+                if cpt_pep in peps_cpt:
+                    tuptoadd=(peps[pep],peps_cpt[cpt_pep])
+                    probtup=(mutant_probs[pep],peps[pep])
+                    if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
+                        counts.append(tuptoadd)
+                        probs.append(probtup)
+                        observed_subs[sub]+=1
     # df,dfall=helper_functions.counter_to_df(observed_subs)
     return(counts,probs,observed_subs)
 
@@ -162,7 +163,8 @@ def theoretical_saav_counts(mutant_cpdtpep,counterpart_cpdtpep):
             peps_cpt=counterpart_cpdtpep[prot]
             for pep in peps:
                 cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-                all_subs[sub]+=1
+                if sub!='':
+                    all_subs[sub]+=1
     # serall=pd.Series(list(all_subs.values()),index=pd.MultiIndex.from_tuples(all_subs.keys()))
     # dfall=serall.unstack()
     return(all_subs)

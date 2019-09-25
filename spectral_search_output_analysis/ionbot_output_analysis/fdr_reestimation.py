@@ -69,7 +69,9 @@ def variant_containing(df_in,cpdt_var,cpdt_rev_var):
         for v in cpdt:
             if helper_functions.equivalent_check(pep,v):
                 df=df.append(df_in.loc[[row[0]]])
+                break
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
+    df.to_csv('test.csv')
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1],df)
 

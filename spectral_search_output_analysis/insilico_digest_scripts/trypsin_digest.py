@@ -44,6 +44,7 @@ def main():
 		name, seq = fasta.id, str(fasta.seq)
 		pep_list[name] = []
 		f.writelines('>'+name+'\n')
+		f.writelines(seq+'\n')
 		#seq_cut = cleave(seq, expasy_rules['trypsin'], int(args.missed_cleavages))
 		seq_cut = cleave(seq, '[KR]', int(args.missed_cleavages))
 		#start = 0

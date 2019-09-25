@@ -47,26 +47,26 @@ def snvfinder(pid,peplist):
                             if isSNV:
                                 if key in newsnv:
                                     newsnv[key][pep]=prob
-                                    # snvcounterpart[key][counterpart]=peplist[counterpart]
+                                    snvcounterpart[key][counterpart]=peplist[counterpart]
                                 else:
                                     newsnv[key]={pep:prob}
-                                    # snvcounterpart[key]={counterpart:peplist[counterpart]}
+                                    snvcounterpart[key]={counterpart:peplist[counterpart]}
                             if key in newall:
                                 newall[key][pep]=prob
                             else:
                                 newall[key]={pep:prob}
-    return (newsnv,newall)
+    return [newsnv,newall,snvcounterpart]
 
 def combine_output(process_output):
     '''
     takes the multiprocessing output and concatenates the appropriate libraries
     '''
-    newsnv,newall={},{}
+    newsnv,newall,snvcounterpart={},{},{}
     for l in process_output:
         newsnv=merge_two_dicts(newsnv, l[0])
         newall=merge_two_dicts(newall,l[1])
-        # snvcounterpart={**snvcounterpart,**l[2]}
-    return newsnv,newall
+        snvcounterpart=merge_two_dicts(snvcounterpart,l[2])
+    return newsnv,newall,snvcounterpart
 
 def merge_two_dicts(x, y):
     z = x.copy()   # start with x's keys and values
@@ -137,14 +137,15 @@ def main():
     parser.add_argument('--var', help='Variant containing cpdt file', required=True)
     parser.add_argument('--outall', help='Output file all differing', required=False)
     parser.add_argument('--outsnp', help='Output file snv differing', required=False)
-    # parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=True)
+    parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=False)
     args=vars(parser.parse_args())
-    alldiffpeps,snvdiffpeps=insilico_digest_diff(args['ref'],args['var'])
+    alldiffpeps,snvdiffpeps,snvcounterpart=insilico_digest_diff(args['ref'],args['var'])
     if args['outall']:
         write_cpdt(alldiffpeps,args['outall'])
     if args['outsnp']:
         write_cpdt(snvdiffpeps,args['outsnp'])
-    # write_cpdt(snvdiffcounterparts,args.outctp)
+    if args['outcpt']:
+        write_cpdt(snvcounterpart,args['outcpt'])
 
 if __name__ == "__main__":
     main()

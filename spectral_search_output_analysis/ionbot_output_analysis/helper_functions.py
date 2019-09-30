@@ -166,8 +166,8 @@ def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug):
                         if debug:
                             print(pep,cpdt_pep[poss])
                             sys.exit()
-                        return(poss,p)
-    return('','')
+                        return(True,p)
+    return(False,'')
 
 def equivalent_check(querypep,pep):
     chunks=re.split('I|L',pep)
@@ -239,14 +239,16 @@ def concat_dicts(x,y):
             c[a]=set(y[a])
     return(c)
 
-def add_to_observed(pep,ids,cpdtpep,isOpenmut,debug=False):
-    mut_prot,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut,debug)
+def add_to_observed(pep,ids,cpdtpep,isOpenmut,variant_check=False,debug=False):
+    mut,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut,debug)
     #add mutant peptide to observed
     newdict=cpdtpep
-    if mut_prot!='':
-        # if mut_prot not in newdict:
-        #     newdict[mut_prot]=Counter()
-        newdict[mut_prot][mut_pep]+=1
+    if mut:
+        for isi in ids:
+            i=get_id(isi)
+            newdict[i][mut_pep]+=1
+    if variant_check:
+        return(newdict,mut)
     return(newdict)
 
 
@@ -293,3 +295,14 @@ def gather_counts(peptide_counter):
     for pep in peptide_counter:
         length_counter[len(pep)]+=peptide_counter[pep]
     return(length_counter)
+
+def remove_empty(variant_pep_dict):
+    '''remove empty entries from the variant peptide dictionary'''
+    newdict={}
+    for prot,peplist in variant_pep_dict.items():
+        for pep,ct in peplist.items():
+            if ct>0:
+                if prot not in newdict:
+                    newdict[prot]={}
+                newdict[prot][pep]=ct
+    return(newdict)

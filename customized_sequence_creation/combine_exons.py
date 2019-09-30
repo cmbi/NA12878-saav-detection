@@ -149,7 +149,7 @@ def read_exons_into_frame(hap_exons):
     with open(hap_exons) as he:
         for line in he:
             if line.startswith('>'):
-                if 'chrY' not in line and 'chrM' not in line:
+                if 'chrY' not in line and 'chrM' not in line: #why did i block out the M chromosome again?
                     if 'haplotype' in line:
                         info=line.strip().split(' ')
                         hap=info[1].split(':')[1]

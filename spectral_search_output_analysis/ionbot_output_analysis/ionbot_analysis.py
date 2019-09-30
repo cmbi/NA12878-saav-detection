@@ -33,11 +33,11 @@ def main(args):
     plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly_original,'Ref only':ibdf_refonly_original,'Combi variant-containing':ibdf_combi_pg_original,'Combi variant-free':ibdf_combi_original},fdr_levels=[0.01])
 
 
-    #filter badly scoring hits
-    ibdf_ontonly = file_import.chunk_preprocessing(ibdf_ontonly_original)
-    ibdf_refonly = file_import.chunk_preprocessing(ibdf_refonly_original)
-    ibdf_combi = file_import.chunk_preprocessing(ibdf_combi_original)
-    ibdf_combi_pg= file_import.chunk_preprocessing(ibdf_combi_pg_original)
+    #filter badly scoring hits and decoys
+    # ibdf_ontonly = file_import.post_filtering(ibdf_ontonly_original)
+    # ibdf_refonly = file_import.post_filtering(ibdf_refonly_original)
+    # ibdf_combi = file_import.post_filtering(ibdf_combi_original)
+    # ibdf_combi_pg= file_import.post_filtering(ibdf_combi_pg_original)
 
     ##########
     #idea: move data into SQL database and move the quality control plots above to another script to cut down on processing time, since the quality control steps are the only ones that need all, unfiltered data
@@ -50,17 +50,20 @@ def main(args):
     mut_cpdt,mut_pep_probs=file_import.import_cpdt(args['cpdtvar'],False) #import the cpdt file with all snv peptides
     mut_cpdt_counterparts,counterpart_pep_probs=file_import.import_cpdt(args['cpdtctp'],False)
     chromdict,stranddict=file_import.create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC)
+    cpdt_rev=file_import.import_cpdt_simple(args['decoy']) #import information about variant decoys
+    cpdt_rev_ctp=file_import.import_cpdt_simple(args['decoyctp'])
     # rt=pd.read_csv(args['rt'])
     
     #iterate to fill the data structures
     print("doing analysis...")
     theoretical_saav= calculations.theoretical_saav_counts(mut_cpdt,mut_cpdt_counterparts)
     mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_combi,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,True)
-    mut_observed_classic,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,False)
+    mut_observed_classic,raw_vc,chromdist_classic,stranddist_classic=main_functions.combidict_analysis(ibdf_combi_pg,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,False)
     #here do a re-calculation of FDR for variant peps (look into what functions from combidict_analysis need to be moved to after this recalculation)
     print("recalculating FDR for variant peptides...")
+    print(mut_observed_classic)
     print(str(sum(mut_observed_classic.values()))+' variant containing and '+str(sum(mut_observed_openmut.values()))+' variant free observed variants before FDR correction...')
-    var_vf,var_vc=fdr_reestimation.main(ibdf_combi_original.dropna(),ibdf_combi_pg_original.dropna(),mut_observed_openmut,mut_observed_classic,args["decoy"])
+    var_vf,var_vc=fdr_reestimation.main(ibdf_combi_original.dropna(),ibdf_combi_pg_original.dropna(),raw_vc,mut_observed_classic,args["decoy"])
     #get variant groupings
     abrv_vc,ref_abrv_vc=helper_functions.abbreviate_peps(var_vc)
     abrv_vf,ref_abrv_vf=helper_functions.abbreviate_peps(var_vf)
@@ -82,6 +85,7 @@ parser.add_argument('--cpdtvf', help='CPDT file of entire combi variant-free', r
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
 parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
+parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
 parser.add_argument('--rt', help='retention time prediction',required=True)
 # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
 args = vars(parser.parse_args()) 

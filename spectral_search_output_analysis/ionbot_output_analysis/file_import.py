@@ -24,17 +24,21 @@ def read_df_in_chunks(directory, chunksize):
     # Each chunk is in df format
     for chunk in df_chunk:  
         # perform data filtering 
-        #chunk_filter = chunk_preprocessing(chunk)
+        chunk_filter = pre_filtering(chunk)
         # Once the data filtering is done, append the chunk to list
         chunk_list.append(chunk)
     # concat the list into dataframe 
     df_concat = pd.concat(chunk_list) # this is your final dataframe
     return(df_concat)
 
-def chunk_preprocessing(df_chunk):
-    new_chunk=df_chunk[(df_chunk['ri_126.1277']>0) & (df_chunk['q_value']<=0.01) & (df_chunk['DB']==False)]
-    new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids']]
+def pre_filtering(df_chunk):
+    new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
+    new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
     return(new_chunk)
+
+def post_filtering(df):
+    new_df=df[(df['q_value']<=0.01) & (df['DB']==False)]
+    return(df)
 
 def import_coding_transcriptids(sources):
     '''

@@ -41,35 +41,39 @@ def variant_free(df_in,list_var_peps):
 def variant_containing(df_in,cpdt_var,cpdt_rev_var):
     '''
     strategy:
-    first find hits that correspond to peptides of interest (variant and decoy variant peptides)
+    first find hits that correspond to peptides of interest (variant target and variant decoy variant peptides)
     then re-estimate q-values and take all above threshold
 
     input: all hits in df, variant peptides and reverse variant peptides
     output: df of all hits that passed threshold
     '''
-    # df=df_in.loc[(df_in['matched_peptide'].isin(cpdt_var.values())) | (df_in['matched_peptide'].isin(cpdt_rev_var.values()))] #can't do this because I and L need to be equivalent
-    df=pd.DataFrame()
-    for row in df_in.iterrows():
+    # df_in['matched_peptide']=[re.sub('L','I',str(x)) for x in df_in['matched_peptide']]
+    # df=df_in.loc[(df_in['matched_peptide'].isin(cpdt_var)) | (df_in['matched_peptide'].isin(cpdt_rev_rp))] #can't do this because I and L need to be equivalent
+    # start off the dataframe with the detected variant peptides
+    print(len(cpdt_var)) #check the length of the list of true variant peptides
+    df=df_in.loc[(df_in['matched_peptide'].isin(cpdt_var))]
+    print(df.shape[0]) # should equal the amount of variants found in a particular dataset from variant containing library results
+    # df=pd.DataFrame()
+    # now add the decoys to the dataframe
+    df_decoy=df_in.loc[(df_in['DB']==True)]
+    for row in df_decoy.iterrows():
         pep=row[1][3]
-        decoy=row[1][6]
+        # decoy=row[1][6]
         prot_ids=row[1][9]
-        if decoy:
-            # cpdt=cpdt_rev_var
-            cpdt=[]
-            if '||' in prot_ids:
-                ids=prot_ids.split('||')
-            else:
-                ids=[prot_ids]
-            for i in ids:
-                i=helper_functions.get_id(i)
-                if i in cpdt_rev_var:
-                    cpdt+=cpdt_rev_var[i]
+        # cpdt=cpdt_rev_var
+        cpdt=[]
+        if '||' in prot_ids:
+            ids=prot_ids.split('||')
         else:
-            cpdt=cpdt_var
+            ids=[prot_ids]
+        for i in ids:
+            i=helper_functions.get_id(i)
+            if i in cpdt_rev_var:
+                cpdt+=cpdt_rev_var[i]
         for v in cpdt:
-            if helper_functions.equivalent_check(pep,v):
+            if pep in v or helper_functions.equivalent_check(pep,v):
                 df=df.append(df_in.loc[[row[0]]])
-                break
+                # break
     df=calculations.calculate_qvalues(df,decoy_col='DB',score_col='percolator_psm_score')
     df.to_csv('test.csv')
     indices=np.argwhere(df['q_value']<0.01)
@@ -79,7 +83,7 @@ def worker_task(csvname):
     dfvf=combi_vf.loc[combi_vf["title"]==csvname.split('.')[0]]
     vf,vff=variant_free(dfvf,list(cpdt_var_vf))
     dfvc=combi_vc.loc[combi_vc["title"]==csvname.split('.')[0]]
-    vc,vcf=variant_containing(dfvc,list(cpdt_var_vc),cpdt_rev)
+    vc,vcf=variant_containing(dfvc,cpdt_var_vc,cpdt_rev)
     return([vf,vc,vff,vcf])
 
 def child_initialize(_combi_vc,_combi_vf,_cpdt_var_vc,_cpdt_var_vf,_cpdt_rev):
@@ -108,8 +112,11 @@ def main(combi_vf,combi_vc,cpdt_var_vf,cpdt_var_vc,cpdt_rev_var_file):
     # args = vars(parser.parse_args()) 
 
     # directory_= os.fsencode(csvpath)
-    cpdt_rev=file_import.import_cpdt_simple(cpdt_rev_var_file)
-    # rev_list=[item for sublist in cpdt_rev.values() for item in sublist]
+    cpdt_rev=file_import.import_cpdt_simple(cpdt_rev_var_file) #import all the variant peptide decoys
+    rev_list=[item for sublist in cpdt_rev.values() for item in sublist] #unpack them into a simple list
+    ## make L and I equivalent
+    # cpdt_var_vc_rp=[w.replace('L','I') for w in cpdt_var_vc] #should not be necessary for the peptides that were taken straight from the results
+    # cpdt_rev_rp=[w.replace('L','I') for w in rev_list]
     # cpdt=file_import.import_cpdt(args['cpdt'],False)
     vf=pd.DataFrame()
     vc=pd.DataFrame()

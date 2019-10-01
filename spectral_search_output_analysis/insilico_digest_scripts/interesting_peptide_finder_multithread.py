@@ -43,13 +43,13 @@ def snvfinder(pid,peplist):
                 r_peplist=Set(peplist.keys())
                 dif=c_peplist.difference(r_peplist) #save all the peptides that are in the custom but not the reference for this particular protein
                 intersect=c_peplist.intersection(r_peplist)
-                if len(intersect)!=0: # should have some peptides in common - not looking for frame shift mutations
+                if len(intersect)!=0: # should have some peptides in common
                     for pep in dif:
-                        if isQualified(pep,ref): #need to check if unique peptide
+                        if isQualified(pep,ref): #need to check if variant peptide is not already present in the reference dictionary
                             prob=pepdict[pep] #fetch start position (not probability)
                             # if float(prob)>=0.05: #higher than cutoff probability
                             isSNV,counterpart=determine_snv(pep,r_peplist)
-                            if isSNV and isQualified(counterpart,ref,reference=True):
+                            if isSNV: #counterpart not filtered (optionally can filter that it does not show up in another gene)
                                 if key not in newsnv:
                                     newsnv[key]={}
                                     snvcounterpart[key]={}
@@ -59,10 +59,6 @@ def snvfinder(pid,peplist):
                                 newall[key][pep]=prob
                             else:
                                 newall[key]={pep:prob}
-    if len(newsnv)!=len(snvcounterpart): #figure out what is going wrong with 
-        print(newsnv)
-        print(snvcounterpart)
-        sys.exit()
     return [newsnv,newall,snvcounterpart]
 
 def combine_output(process_output):
@@ -83,13 +79,17 @@ def merge_two_dicts(x, y):
 
 def get_id(idstring):
     if '|m.' in idstring:
-        return(idstring.split('|m.')[0])
+        outstring=idstring.split('|m.')[0]
     elif 'ENSP' in idstring:
         tid=idstring.split('|')[1]
         if 'Random' in idstring:
             prefix=idstring.split('_')[0]
-            return(prefix+'_'+tid)
-        return(tid)
+            outstring=prefix+'_'+tid
+        else:
+            outstring='>'+tid
+    else:
+        outstring=idstring.strip()
+    return(outstring)
 
 def isQualified(peptide,reference_pepdict,reference=False):
     count=0

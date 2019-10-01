@@ -64,8 +64,6 @@ def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theore
                     if varfound:
                         # observed_raw.add(pep)
                         target_frame=target_frame.append(results_df.loc[[row[0]]])
-                        print(target_frame)
-                        sys.exit()
                     for i in ids: 
                         mutated.add(helper_functions.get_id(i))
                 # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##

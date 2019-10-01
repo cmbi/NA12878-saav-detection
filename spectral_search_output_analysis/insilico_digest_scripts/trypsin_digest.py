@@ -39,30 +39,24 @@ def main():
 	fasta_sequences = SeqIO.parse(open(args.input_file),'fasta')
 	# print("{}\t{}\t{}".format('protein', 'sequence', 'start'))
 
-	pep_list = {}
 	for fasta in fasta_sequences:
 		name, seq = fasta.id, str(fasta.seq)
-		pep_list[name] = []
+		plist=set()
 		f.writelines('>'+name+'\n')
 		f.writelines(seq+'\n')
-		#seq_cut = cleave(seq, expasy_rules['trypsin'], int(args.missed_cleavages))
-		seq_cut = cleave(seq, '[KR]', int(args.missed_cleavages))
+		# seq_cut = cleave(seq, expasy_rules['trypsin'], int(args.missed_cleavages))
+		seq_cut = cleave(seq, '[KR]', int(args.missed_cleavages)) #because this is what ionbot uses?
 		#start = 0
 		for i,k in enumerate(seq_cut):
-			if k in pep_list[name]:
+			if k in plist: #prevent duplicates
 				continue
-			pep_list[name].append(k)
+			plist.add(k)
 			peplen = len(k)
 
 			if len(k) >= 6:
 				start = find_str(seq, k)
 				# print("{}\t{}\t{}".format(name, k, start))
 				f.writelines('\t'+'PEPTIDE '+k+': '+str(start)+'\n')
-				if k.startswith('M'):
-					f.writelines('\t'+'PEPTIDE '+k+': '+str(start)+'\n')
-					# print("{}\t{}\t{}".format(name, k[1:], start+1))
-
-			#start += peplen
 
 
 

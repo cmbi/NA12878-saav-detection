@@ -7,27 +7,29 @@ from tqdm import tqdm
 from collections import Counter
 import plots
 import helper_functions
+import calculations
  
-def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saavs,mut_pep_probs,mut_cpdt_theoretical,mut_cpdt_counterparts,cpdt_decoyvar,isOpenmut):
+def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saavs,mut_pep_probs,mut_cpdt_theoretical,mut_cpdt_counterparts,cpdt_decoyvar,cpdt_decoyctp,isOpenmut):
+    ''' 
+    the main analysis function of the package
+    go through the results list (after minimal filtering) and add the relevant information to various objects
+
+
+    '''
     # proteins_covered=Counter() #proteins detected
     mutated=set() #all proteins that were detected to have a variant by ionbot. how does compare to the proteins that actually do have variant?
-    ref_only=set() #scan ids in the reference set
-    ont_only=set() #scan ids in the ont set
+    ref_only=set() #scan ids matching to proteins in the reference set
+    ont_only=set() #scan ids matching to proteins in the ont set
     both=set() #scan ids that matched to both ref and ont proteins
-    # hits_missed=0
-    # hit_mut=0
-    # hits_missed_mut=0
     chrom_dist=Counter() # 1 chromosome location per scan id
-    strand_dist=Counter()
-    # observed_raw=set() #stores the peptides as they were found by ionbot, without any equivalence editing- maybe i should just make this an ionbot dataframe of it's own!
-    target_frame=pd.DataFrame()
-    decoy_frame=pd.DataFrame()
-    counterpart_frame=pd.DataFrame()
-    mut_cpdt_observed=mut_cpdt_theoretical #to be phased out
-    mut_counterparts_observed=mut_cpdt_counterparts # to be phased out
-    protein_support=Counter()
-    unamb_protsupport=Counter()
-    for row in tqdm(combidict.iterrows()):
+    strand_dist=Counter() # associated strand
+    target_frame=pd.DataFrame() # true variant peptides
+    decoy_frame=pd.DataFrame() # decoy variant peptides (for purposes of FDR)
+    counterpart_frame=pd.DataFrame() #true reference counterpart peptides
+    decoy_ctp_frame=pd.DataFrame() # decoy reference counterpart peptides (for purposes of FDR)
+    protein_support=Counter() # how many peptides per protein found
+    unamb_protsupport=Counter() # how many unambiguous peptides per protein
+    for row in tqdm(results_df.iterrows()): #iterate through the results dataframe
         scanid=row[1][0]
         mod=str(row[1][7])
         aamod=re.findall('[A-Z]->[A-Z]',mod)
@@ -48,70 +50,109 @@ def combidict_analysis(combidict,chromdict,stranddict,cpdt_pep,full_seqs,theoret
             if not decoy:
                 # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
                 cpdt_pep=helper_functions.add_to_observed(pep,ids,cpdt_pep,False) #what peptides are detected, how many, and what proteins they come from
-                mut_counterparts_observed,cptfound=helper_functions.add_to_observed(pep,ids,mut_counterparts_observed,isOpenmut,variant_check=True) #note the occurences of "reference" versions of the SAAV peptides
+                cptfound=helper_functions.detect_peptides(pep,ids,mut_cpdt_counterparts,isOpenmut) #note the occurences of "reference" versions of the SAAV peptides
                 if cptfound:
-                    counterpart_frame=counterpart_frame.append(combidict.loc[[row[0]]])
+                    counterpart_frame=counterpart_frame.append(results_df.loc[[row[0]]])
                 chrom_origin=helper_functions.find_chrom(ids,chromdict)
                 strand_origin=helper_functions.find_strand(ids,stranddict)
                 chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
                 strand_dist[strand_origin]+=1 #which strand does the peptide belong to
                 ref_only,ont_only,both=helper_functions.bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)#what dictionary/ies did the peptide match to
                 if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
-                    mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut,variant_check=True)
+                    # mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
+                    varfound=helper_functions.detect_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
                     if varfound:
                         # observed_raw.add(pep)
-                        target_frame=target_frame.append(combidict.loc[[row[0]]])
+                        target_frame=target_frame.append(results_df.loc[[row[0]]])
+                        print(target_frame)
+                        sys.exit()
                     for i in ids: 
                         mutated.add(helper_functions.get_id(i))
                 # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
                 #     print(scanid)
                 elif not isOpenmut: #check if mutant peptide if not open mutation settings
-                    mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut,variant_check=True)
+                    # mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
+                    varfound=helper_functions.detect_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
                     if varfound:
                         # observed_raw.add(pep)
-                        target_frame=target_frame.append(combidict.loc[[row[0]]])
+                        target_frame=target_frame.append(results_df.loc[[row[0]]])
             elif decoy:
                 cpdt=[]
+                cpdt_ctp=[]
                 for i in ids:
                     if i in cpdt_decoyvar:
                         cpdt+=cpdt_decoyvar[i]
+                    elif i in cpdt_decoyctp:
+                        cpdt_ctp+=cpdt_decoyctp[i]
                 for v in cpdt:
                     if pep in v or helper_functions.equivalent_check(pep,v):
                         decoy_frame=decoy_frame.append(df_in.loc[[row[0]]])
-    mut_cpdt_observed=helper_functions.remove_empty(mut_cpdt_observed) #to be phased out
-    mut_counterparts_observed=helper_functions.remove_empty(mut_counterparts_observed) #to be phased out
-
-    #eventually move most of these plots outside this function, need to do plots involving variant peptides after the FDR correction
+                for c in cpdt_ctp:
+                    if pep in c or helper_functions.equivalent_check(pep,c):
+                        decoy_ctp_frame=decoy_ctp_frame.append(df_in.loc[[row[0]]])
+    #do FDR re-estimation/filtering
+    variant_frame=fdr_recalc_variantpep(target_frame,decoy_frame)
+    counterpart_frame=fdr_recalc_variantpep(counterpart_frame,decoy_ctp_frame)
+    #compile all the variants after filtering
+    var_vf=Counter(dict(variant_frame['matched_peptide'].value_counts()))
+    print(str(sum(var_vf.values()))+' variants remaining after FDR correction.')
+    mut_cpdt_observed=df_to_dict(variant_frame,mut_cpdt_theoretical,isOpenmut)
+    mut_counterparts_observed=df_to_dict(counterpart_frame,mut_cpdt_counterparts,isOpenmut)
+    #some plots
     if isOpenmut:
         # with open('checkpoint.openmut.json','w'):
         #     json.dump()
-        plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
+        # plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varfree.png")
         plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"_varfree.png")
         plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
         plots.plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varfree.png",isOpenmut) #must stay in
-        plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png') #must stay in
+        plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varfree.png') #must stay in, do we only want to look at support for variant peptides or keep global measures here?
     else:
-        plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
+        # plots.plot_mut_abundance(mut_cpdt_observed,mut_counterparts_observed,cpdt_pep,full_seqs,"mutant_abundance_varcont.png")
         plots.plot_mut_vs_nonmut(mut_cpdt_observed,mut_counterparts_observed,theoretical_saavs,mut_pep_probs,"_varcont.png")
         plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varcont.png","vertical_coverage_varcont.png")
         plots.plot_source_piechart(ref_only,ont_only,both,"sources_spectral_hits_varcont.png",isOpenmut)
         plots.plot_support(protein_support,unamb_protsupport,'protein_evidence_varcont.png')
     if isOpenmut:
-        return(fdr_recalc_variantpep(target_frame),fdr_recalc_variantpep(counterpart_frame),fdr_recalc_variantpep(decoy_frame),helper_functions.count_muts(mut_cpdt_observed),mutated,chrom_dist,strand_dist)
-    return(fdr_recalc_variantpep(target_frame),fdr_recalc_variantpep(counterpart_frame),fdr_recalc_variantpep(decoy_frame),helper_functions.count_muts(mut_cpdt_observed),chrom_dist,strand_dist)
+        return(helper_functions.count_muts(mut_cpdt_observed),mutated,chrom_dist,strand_dist)
+    return(helper_functions.count_muts(mut_cpdt_observed),chrom_dist,strand_dist)
 
-def fdr_recalc_variantpep(df_in):
-    '''filter df by 
+def fdr_recalc_variantpep(target,decoy):
+    '''filter df by new q-value
     '''
+    print('Recalculating q-values for variant peptide set...')
+    print(str(target.shape[0])+' target variant peptides and '+str(decoy.shape[0])+' decoy variant peptides found.')
+    df_in=pd.concat([target,decoy],ignore_index=True)
+    df_in.columns=['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']
     df=calculations.calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1]) #threshold cut
+
+def df_to_dict(filtered_variants,mut_cpdt_theoretical,isOpenmut):
+    ''' process the variant information post FDR re-estimation
+    '''
+    mut_cpdt_observed=mut_cpdt_theoretical
+    variant_counterpart_couples=[]
+    for row in filtered_variants.iterrows():
+        pep=row[1][3]
+        prot_ids=row[1][9]
+        decoy=row[1][6]
+        if '||' in prot_ids:
+            ids=prot_ids.split('||')
+        else:
+            ids=[prot_ids]
+        if not decoy:
+            mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
+            # mut_counterparts_observed,cptfound=helper_functions.add_to_observed(pep,ids,mut_counterparts_observed,isOpenmut,variant_check=True)
+    return(helper_functions.remove_empty(mut_observed))
+        
 
 def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg,rt):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
     plot unexpected modifications of the missed peptides (more unexpected modifications than average?)'''
+    #convert everything to sets and find the variants that are/are not in common
     combined_ref=helper_functions.concat_dicts(dict_saavs_vc,dict_saavs_vf)
     discrepancy=helper_functions.unpack_grouped_variants(set(dict_saavs_vc.keys()).difference(set(dict_saavs_vf.keys())),dict_saavs_vc)
     agreement=helper_functions.unpack_grouped_variants(set(dict_saavs_vc.keys()).intersection(set(dict_saavs_vf.keys())),combined_ref)

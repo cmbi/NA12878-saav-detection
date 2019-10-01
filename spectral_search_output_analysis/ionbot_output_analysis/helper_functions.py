@@ -151,7 +151,7 @@ def determine_snv(peptide,plist):
                 return(pep,(original,sub))
     return('','')
 
-def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug):
+def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):
     for isi in ids:
         i=get_id(isi)
         found=False
@@ -166,8 +166,12 @@ def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug):
                         if debug:
                             print(pep,cpdt_pep[poss])
                             sys.exit()
-                        return(True,p)
-    return(False,'')
+                        if include_extra:
+                            return(True,p,poss)
+                        return(True)
+    if include_extra:
+        return(False,'','')
+    return(False)
 
 def equivalent_check(querypep,pep):
     chunks=re.split('I|L',pep)
@@ -239,16 +243,12 @@ def concat_dicts(x,y):
             c[a]=set(y[a])
     return(c)
 
-def add_to_observed(pep,ids,cpdtpep,isOpenmut,variant_check=False,debug=False):
-    mut,mut_pep=detect_peptides(pep,ids,cpdtpep,isOpenmut,debug)
+def add_to_observed(pep,ids,cpdtpep,isOpenmut,debug=False):
+    mut,mut_pep,mut_prot=detect_peptides(pep,ids,cpdtpep,isOpenmut,include_extra=True)
     #add mutant peptide to observed
     newdict=cpdtpep
     if mut:
-        for isi in ids:
-            i=get_id(isi)
-            newdict[i][mut_pep]+=1
-    if variant_check:
-        return(newdict,mut)
+        newdict[mut_prot][mut_pep]+=1
     return(newdict)
 
 

@@ -26,7 +26,7 @@ def read_df_in_chunks(directory, chunksize):
         # perform data filtering 
         chunk_filter = pre_filtering(chunk)
         # Once the data filtering is done, append the chunk to list
-        chunk_list.append(chunk)
+        chunk_list.append(chunk_filter)
     # concat the list into dataframe 
     df_concat = pd.concat(chunk_list) # this is your final dataframe
     return(df_concat)

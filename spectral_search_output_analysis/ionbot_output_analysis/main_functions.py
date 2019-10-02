@@ -29,6 +29,7 @@ def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theore
     decoy_ctp_frame=pd.DataFrame() # decoy reference counterpart peptides (for purposes of FDR)
     protein_support=Counter() # how many peptides per protein found
     unamb_protsupport=Counter() # how many unambiguous peptides per protein
+    observed_raw=set() # observed variant peptides in the variant free results
     for row in tqdm(results_df.iterrows()): #iterate through the results dataframe
         scanid=row[1][0]
         mod=str(row[1][7])
@@ -39,14 +40,19 @@ def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theore
         decoy=row[1][6]
         if q_val<0.01:
             if '||' in prot_ids:
-                ids=prot_ids.split('||')
-                if not decoy:
-                    for i in ids:
-                        protein_support[helper_functions.get_id(i)]+=1
+                old_ids=prot_ids.split('||')
+                ids=[]
+                for i in old_ids:
+                    i=helper_functions.get_id(i)
+                    ids.append(i)
+                    if not decoy:
+                        protein_support[i]+=1
             else: #unambiguous assignment!
-                ids=[prot_ids]
+                i=helper_functions.get_id(prot_ids)
+                ids=[i]
+                old_ids=[prot_ids]
                 if not decoy:
-                    unamb_protsupport[helper_functions.get_id(prot_ids)]+=1
+                    unamb_protsupport[i]+=1
             if not decoy:
                 # proteins_covered=detected_proteins(ids,proteins_covered) #what proteins from the proteome are covered and in what amounts
                 cpdt_pep=helper_functions.add_to_observed(pep,ids,cpdt_pep,False) #what peptides are detected, how many, and what proteins they come from
@@ -57,40 +63,58 @@ def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theore
                 strand_origin=helper_functions.find_strand(ids,stranddict)
                 chrom_dist[chrom_origin]+=1 #which chromosome does the peptide belong to
                 strand_dist[strand_origin]+=1 #which strand does the peptide belong to
-                ref_only,ont_only,both=helper_functions.bin_hits_by_source(scanid,ids,ref_only,ont_only,both, isOpenmut)#what dictionary/ies did the peptide match to
+                ref_only,ont_only,both=helper_functions.bin_hits_by_source(scanid,old_ids,ref_only,ont_only,both, isOpenmut)#what dictionary/ies did the peptide match to
                 if isOpenmut and len(aamod)>0: #if ib detects a mutated peptide (for open variant search only)
-                    # mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
+                    #add all to frame for processing, and filter the true postives later
+                    target_frame=target_frame.append(results_df.loc[[row[0]]])
                     varfound=helper_functions.detect_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
                     if varfound:
-                        # observed_raw.add(pep)
-                        target_frame=target_frame.append(results_df.loc[[row[0]]])
-                    for i in ids: 
-                        mutated.add(helper_functions.get_id(i))
+                        observed_raw.add(pep)
+                    #     target_frame=target_frame.append(results_df.loc[[row[0]]])
+                    # for i in ids: 
+                    #     mutated.add(helper_functions.get_id(i))
                 # elif isOpenmut and detect_mut_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)!='': ##very strange scenario here!!##
                 #     print(scanid)
                 elif not isOpenmut: #check if mutant peptide if not open mutation settings
-                    # mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
                     varfound=helper_functions.detect_peptides(pep,ids,mut_cpdt_theoretical,isOpenmut)
                     if varfound:
                         # observed_raw.add(pep)
                         target_frame=target_frame.append(results_df.loc[[row[0]]])
             elif decoy:
-                cpdt=[]
-                cpdt_ctp=[]
-                for i in ids:
-                    if i in cpdt_decoyvar:
-                        cpdt+=cpdt_decoyvar[i]
-                    elif i in cpdt_decoyctp:
-                        cpdt_ctp+=cpdt_decoyctp[i]
-                for v in cpdt:
-                    if pep in v or helper_functions.equivalent_check(pep,v):
-                        decoy_frame=decoy_frame.append(df_in.loc[[row[0]]])
-                for c in cpdt_ctp:
-                    if pep in c or helper_functions.equivalent_check(pep,c):
-                        decoy_ctp_frame=decoy_ctp_frame.append(df_in.loc[[row[0]]])
-    #do FDR re-estimation/filtering
-    variant_frame=fdr_recalc_variantpep(target_frame,decoy_frame)
-    counterpart_frame=fdr_recalc_variantpep(counterpart_frame,decoy_ctp_frame)
+                if isOpenmut and len(aamod)>0:
+                    decoy_frame=decoy_frame.append(results_df.loc[[row[0]]])
+                else:
+                    #this method narrows the search space by protein
+                    cpdt=[]
+                    cpdt_ctp=[]
+                    for irand in ids:
+                        irand_possibilities=[irand,irand+'_h0',irand+'_h1']
+                        for irand_poss in irand_possibilities:
+                            if irand_poss in cpdt_decoyvar:
+                                cpdt+=cpdt_decoyvar[irand_poss]
+                            elif irand_poss in cpdt_decoyctp:
+                                cpdt_ctp+=cpdt_decoyctp[irand_poss]
+                    if len(cpdt)!=0:
+                        print(results_df.loc[[row[0]]])
+                        print(pep,cpdt)
+                    for v in cpdt:
+                        if pep in v or helper_functions.equivalent_check(pep,v):
+                            decoy_frame=decoy_frame.append(results_df.loc[[row[0]]])
+                    for c in cpdt_ctp:
+                        if pep in c or helper_functions.equivalent_check(pep,c):
+                            decoy_ctp_frame=decoy_ctp_frame.append(results_df.loc[[row[0]]])
+                    
+                    #this method checks all peptides (assumes decoy peptides in set, not dict)
+                    # if pep in cpdt_decoyvar:
+                    #     decoy_frame=decoy_frame.append(results_df.loc[[row[0]]])
+                    # if pep in cpdt_decoyctp:
+                    #     decoy_ctp_frame=decoy_ctp_frame.append(results_df.loc[[row[0]]])
+    #check plots and do FDR re-estimation/filtering
+    variant_frame=fdr_recalc_variantpep(target_frame,decoy_frame,isOpenmut)
+    counterpart_frame=fdr_recalc_variantpep(counterpart_frame,decoy_ctp_frame,isOpenmut)
+    #take only true variants
+    if isOpenmut:
+        variant_frame=variant_frame.loc[variant_frame['matched_peptide'].isin(observed_raw)]
     #compile all the variants after filtering
     var_vf=Counter(dict(variant_frame['matched_peptide'].value_counts()))
     print(str(sum(var_vf.values()))+' variants remaining after FDR correction.')
@@ -115,14 +139,18 @@ def combidict_analysis(results_df,chromdict,stranddict,cpdt_pep,full_seqs,theore
         return(helper_functions.count_muts(mut_cpdt_observed),mutated,chrom_dist,strand_dist)
     return(helper_functions.count_muts(mut_cpdt_observed),chrom_dist,strand_dist)
 
-def fdr_recalc_variantpep(target,decoy):
+def fdr_recalc_variantpep(target,decoy,isOpenmut):
     '''filter df by new q-value
     '''
     print('Recalculating q-values for variant peptide set...')
     print(str(target.shape[0])+' target variant peptides and '+str(decoy.shape[0])+' decoy variant peptides found.')
     df_in=pd.concat([target,decoy],ignore_index=True)
-    df_in.columns=['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']
+    df_in.columns=['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value','title']
     df=calculations.calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
+    if isOpenmut:
+        plots.plot_target_decoy(df,'variant_free_ppplot.png') #if this plot is bad, the results are also bad
+    else:
+        plots.plot_target_decoy(df,'variant_containing_ppplot.png')
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1]) #threshold cut
 
@@ -130,7 +158,6 @@ def df_to_dict(filtered_variants,mut_cpdt_theoretical,isOpenmut):
     ''' process the variant information post FDR re-estimation
     '''
     mut_cpdt_observed=mut_cpdt_theoretical
-    variant_counterpart_couples=[]
     for row in filtered_variants.iterrows():
         pep=row[1][3]
         prot_ids=row[1][9]
@@ -140,9 +167,9 @@ def df_to_dict(filtered_variants,mut_cpdt_theoretical,isOpenmut):
         else:
             ids=[prot_ids]
         if not decoy:
-            mut_cpdt_observed,varfound=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
+            mut_cpdt_observed=helper_functions.add_to_observed(pep,ids,mut_cpdt_observed,isOpenmut)
             # mut_counterparts_observed,cptfound=helper_functions.add_to_observed(pep,ids,mut_counterparts_observed,isOpenmut,variant_check=True)
-    return(helper_functions.remove_empty(mut_observed))
+    return(helper_functions.remove_empty(mut_cpdt_observed))
         
 
 def discrepancy_check(dict_saavs_vc,dict_saavs_vf,allmuts_classic,allmuts_openmut,ibdf_combi,ibdf_combi_pg,rt):

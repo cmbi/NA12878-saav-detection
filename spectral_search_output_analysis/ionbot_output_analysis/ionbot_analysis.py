@@ -69,7 +69,7 @@ def main(args):
     abrv_vc,ref_abrv_vc=helper_functions.abbreviate_peps(mut_observed_openmut)
     abrv_vf,ref_abrv_vf=helper_functions.abbreviate_peps(mut_observed_classic)
     print("making final plots...")
-    main_functions.discrepancy_check(ref_abrv_vc,ref_abrv_vf,var_vc,var_vf, ibdf_combi, ibdf_combi_pg,args['rt'])
+    main_functions.discrepancy_check(ref_abrv_vc,ref_abrv_vf,mut_observed_classic,mut_observed_openmut, ibdf_combi, ibdf_combi_pg,args['rt'])
     plots.plot_chromosomal_dist(chromdist_classic,chromdist_openmut)
     plots.plot_strand_dist(stranddist_classic,stranddist_openmut)
     plots.plot_final_venns(abrv_vc,abrv_vf,mut_cpdt,mutprotset)

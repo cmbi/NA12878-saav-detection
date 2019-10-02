@@ -8,7 +8,6 @@ from collections import Counter
 
 def find_chrom(prots,chromdict):
     for p in prots:
-        p=get_id(p)
         if '_h' in p:
             p=p.split('_h')[0]
         if p in chromdict:
@@ -22,7 +21,6 @@ def find_chrom(prots,chromdict):
 
 def find_strand(prots,stranddict):
     for p in prots:
-        p=get_id(p)
         if '_h' in p:
             p=p.split('_h')[0]
         if p in stranddict:
@@ -34,12 +32,18 @@ def find_strand(prots,stranddict):
     return("unknown")
 
 def get_id(idstring):
-    i=idstring
-    if '|m.' in i:
-        i=i.split('|m.')[0]
-    elif 'ENSP' in i:
-        i=i.split('|')[1]
-    return(i)
+    if '|m.' in idstring:
+        outstring=idstring.split('|m.')[0]
+    elif 'ENSP' in idstring:
+        tid=idstring.split('|')[1]
+        if 'Random' in idstring:
+            prefix=idstring.split('_')[0]
+            outstring=prefix+'_'+tid
+        else:
+            outstring=tid
+    else:
+        outstring=idstring.strip()
+    return(outstring)
 
 def bin_hits_by_source(scanid,ids,oro,ono,ob,isOpenmut):
     '''sort peptide hits by their source dictionary'''
@@ -153,12 +157,11 @@ def determine_snv(peptide,plist):
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):
     for isi in ids:
-        i=get_id(isi)
         found=False
         if isOpenmut:
-            possibilities=[i,i+'_h0',i+'_h1']
+            possibilities=[isi,isi+'_h0',isi+'_h1']
         else:
-            possibilities=[i]
+            possibilities=[isi]
         for poss in possibilities:
             if poss in cpdt_pep.keys():
                 for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical

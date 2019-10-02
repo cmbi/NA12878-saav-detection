@@ -324,6 +324,8 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
     plt.figure('measure direct counterparts')
     # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,color='b',alpha=1)
     sns.jointplot(*zip(*counts), kind="reg", stat_func=calculations.r2)
+    plt.xscale('log')
+    plt.yscale('log')
     plt.xlabel('Variant peptide count')
     plt.ylabel('Reference counterpart count')
     left, right = plt.xlim()

@@ -41,12 +41,8 @@ def pre_filtering(df_chunk):
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
     new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})
     new_chunk['peptide']=new_chunk['matched_peptide'].replace(to_replace='I|L',value='x',regex=True)
-    subchunk_multiprot=new_chunk[new_chunk["proteins"].str.contains('\|{2}',regex=True)]
-    subchunk_singlprot=new_chunk[~new_chunk["proteins"].str.contains('\|{2}',regex=True)]
-    subchunk_multiprot['transcript_id']=subchunk_multiprot['proteins'].apply(lambda x: x.split('||')[0])
-    subchunk_singlprot['transcript_id']=subchunk_singlprot.loc[:,('proteins')]
-    new_chunk=pd.concat([subchunk_multiprot,subchunk_singlprot])
-    new_chunk['transcript_id']=new_chunk['transcript_id'].apply(helper_functions.get_id,base=True) #slim down to transcript name only
+    new_chunk['transcript_id']=new_chunk['proteins'].apply(helper_functions.take_first_protein)
+    # new_chunk['transcript_id']=new_chunk['transcript_id'].apply(helper_functions.get_id,base=True) #slim down to transcript name only
     new_chunk['source_dict']=new_chunk['proteins'].apply(helper_functions.bin_hits_by_source) #get dictionary sources
     return(new_chunk)
 

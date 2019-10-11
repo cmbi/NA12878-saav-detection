@@ -28,7 +28,6 @@ def origin_info_fetch(df_vf,df_vc,origin_info):
     '''
     vf=df_vf.merge(origin_info,on='transcript_id') #this came from taking the first protein on the list and getting its transcript id
     vc=df_vc.merge(origin_info,on='transcript_id')
-    print(vf['chromosome'].head())
     strand_vf=Counter(dict(vf['strand'].value_counts()))
     strand_vc=Counter(dict(vc['strand'].value_counts()))
     chrom_vf=Counter(dict(vf['chromosome'].value_counts()))
@@ -56,15 +55,12 @@ def discrepancy_check(ibdf_vf,ibdf_vc,nonvar_vf,nonvar_vc,rt):
     plots.plot_peplengths(Counter(vc_only['matched_peptide_vc'].str.len().to_list()),Counter(vf_only['matched_peptide_vf'].str.len().to_list()),variant=True)
     plots.plot_peplengths(Counter(nonvar_vc['matched_peptide'].str.len().to_list()),Counter(nonvar_vf['matched_peptide'].str.len().to_list()),variant=False)
     #Compare unexpected modifications
-    plots.plot_unexpected_mods(vf_only["unexpected_modification_vf"].tolist(),vc_only["unexpected_modification_vc"].tolist(),variant=True) #plot what modifications they contained
-    plots.plot_unexpected_mods(nonvar_vf["unexpected_modification"].tolist(),nonvar_vc["unexpected_modification"].tolist(),variant=False) #plot what modifications they contained
-    #direct comparison of scores of peptides found with variant-containing but not variant-free
-    scores_vc=vc_only[["scan_id_vc","percolator_psm_score_vc","matched_peptide_vc"]].rename(columns={"scan_id_vc":"scan_id","matched_peptide_vc":"matched_peptide"})
-    scores_vf=vf_only[["scan_id_vf","percolator_psm_score_vf"]].rename(columns={"scan_id_vf":"scan_id"})
-    scores_all=scores_vc.merge(scores_vf, on=('scan_id'))
-    scores_all_filtered=scores_all.loc[scores_all["percolator_psm_score_vc"]>scores_all["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
+    plots.plot_unexpected_mods(vf_only["unexpected_modification_vf"].apply(helper_functions.categorize_mods),vc_only["unexpected_modification_vc"].apply(helper_functions.categorize_mods),variant=True) #plot what modifications they contained
+    plots.plot_unexpected_mods(nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vc["unexpected_modification"].apply(helper_functions.categorize_mods),variant=False) #plot what modifications they contained
+    #direct comparison of scores of peptides
+    scores_all_filtered=overlap.loc[overlap["percolator_psm_score_vc"]>overlap["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
     scores_all_filtered.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv, look at where the vc scores were higher than vf
-    plots.plot_ib_scores_directcomp(scores_all,rt) #direct comparison plot: what scores they had in each of the libraries
+    plots.plot_ib_scores_directcomp(overlap.rename(columns={"matched_peptide_vc":"matched_peptide"}),rt) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     plots.plot_ib_scores(vf_only["percolator_psm_score_vf"].tolist(),vc_only["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function

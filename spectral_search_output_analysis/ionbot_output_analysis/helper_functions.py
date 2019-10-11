@@ -35,6 +35,8 @@ def get_id(idstring,base=False):
     if '|m.' in idstring:
         outstring=idstring.split('|m.')[0]
     elif 'ENSP' in idstring:
+        if '|' not in idstring:
+            return('none')
         tid=idstring.split('|')[1]
         if 'Random' in idstring:
             prefix=idstring.split('_')[0]
@@ -274,18 +276,18 @@ def detected_proteins(ids,pco):
         proteins_covered[idu]+=1
     return(proteins_covered)
 
-def categorize_mods(list_mods):
-    mod_ct=Counter()
-    for mod in list_mods:
-        mod=str(mod)
-        if len(re.findall('[A-Z]->[A-Z]',mod))>0:
-            mod_ct['SAAV']+=1
-        elif mod=='nan':
-            mod_ct["none"]+=1
-        else:
-            s_mod=re.split('\[[a-z]\]',mod)[0]
-            mod_ct[s_mod]+=1
-    return(mod_ct)
+def categorize_mods(mod):
+    if len(re.findall('[A-Z]->[A-Z]',mod))>0:
+        return('SAAV')
+    elif mod=='nan':
+        return("none")
+    s_mod=re.split('\[[a-z]\]',mod)[0]
+    return(s_mod)
+
+def take_first_protein(protstring):
+    if '||' in protstring:
+        return(get_id(protstring.split('||')[0],base=True))
+    return(get_id(protstring,base=True))
 
 def remove_empty(variant_pep_dict):
     '''remove empty entries from the variant peptide dictionary'''

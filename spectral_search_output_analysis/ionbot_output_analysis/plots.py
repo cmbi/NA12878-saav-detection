@@ -177,15 +177,15 @@ def plot_source_piechart(source_counter,figname):
     plt.close()
     return("saved to sources_spectral_hits")
 
-def plot_chromosomal_dist(distr_classic,distr_openmut):
+def plot_chromosomal_dist(distr_vc,distr_vf):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
+    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     plt.figure('chromosomal distribution')
-    chist=pd.DataFrame.from_dict(distr_classic,orient='index')#.sort_index()
-    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index')#.sort_index()
-    combi=pd.concat([chist,chist_openmut],axis=1)
-    combi=combi.reindex(new_index)
+    chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
+    chist_vf=pd.DataFrame.from_dict(distr_vf,orient='index')#.sort_index()
+    combi=pd.concat([chist,chist_vf],axis=1,sort=True)
+    # combi=combi.reindex(new_index)
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
@@ -196,13 +196,13 @@ def plot_chromosomal_dist(distr_classic,distr_openmut):
     plt.close()
     return("plotted chromosomal distribution")
 
-def plot_strand_dist(distr_classic,distr_openmut):
+def plot_strand_dist(distr_vc,distr_vf):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('strand distribution')
-    chist=pd.DataFrame.from_dict(distr_classic,orient='index')#.sort_index()
-    chist_openmut=pd.DataFrame.from_dict(distr_openmut,orient='index')#.sort_index()
-    combi=pd.concat([chist,chist_openmut],axis=1)
+    chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
+    chist_vf=pd.DataFrame.from_dict(distr_vf,orient='index')#.sort_index()
+    combi=pd.concat([chist,chist_vf],axis=1)
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Strand distribution of peptide hits")
     plt.ylabel("# Peptides")
@@ -324,7 +324,7 @@ def plot_mut_vs_nonmut(counts,figname):
     return(0)
 
 def plot_ib_scores_directcomp(combi,retentiontime):
-    '''for the variant peptides that were found in the variant containing set but not in the variant free set,
+    '''for the variant peptides that were found in one set but not another,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
     '''
@@ -333,7 +333,8 @@ def plot_ib_scores_directcomp(combi,retentiontime):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
-    combi.groupby("matched_peptide").mean() #make sure don't have groups of dots per unique peptide
+    # combi.groupby("matched_peptide").mean()
+    # combi.groupby("matched_peptide_vf").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     combi=pd.merge(combi,rt,on='matched_peptide')
     # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
@@ -372,14 +373,17 @@ def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     else:
         labels=['Nonvariant VC', 'Nonvariant VF']
         figname='nonvariant_unexpected_mods.png'
-    mod_ct_vf=helper_functions.categorize_mods(mods_vf)
-    mod_ct_vc=helper_functions.categorize_mods(mods_vc)
+    mod_ct_vf=Counter(dict(mods_vf.value_counts()))
+    mod_ct_vc=Counter(dict(mods_vc.value_counts()))
     plt.figure('discrepant peptide lengths')
     chist_vc=pd.DataFrame.from_dict(dict(mod_ct_vc.most_common(10)),orient='index')
     chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(10)),orient='index')
     combi=pd.concat([chist_vc,chist_vf],axis=1,sort=False)
     combi.fillna(0)
-    combi.columns=labels
+    if len(mod_ct_vf)==0: #sometimes there might not be any unique variants in variant-free
+        combi.columns=[labels[0]]
+    else:
+        combi.columns=labels
     combi.plot(kind='bar',title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")

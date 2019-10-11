@@ -5,6 +5,7 @@ import numpy as np
 from scipy import stats
 import pandas as pd
 import helper_functions
+import plots
 
 def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
                       lower_score_is_better=False):
@@ -42,6 +43,17 @@ def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
     df['target_cumsum'] = (~df[decoy_col]).cumsum()
     df['q_value'] = (df['decoy_cumsum'] / df['target_cumsum'])
     return df
+
+def fdr_recalc_variantpep(target,decoy,filename):
+    '''filter df by new q-value
+    '''
+    print('Recalculating q-values...')
+    # print(str(target.shape[0])+' target variant peptides and '+str(decoy.shape[0])+' decoy variant peptides found.')
+    df_in=pd.concat([target,decoy],ignore_index=True)
+    plots.plot_target_decoy(df_in,filename) #if this plot is bad, the results are also bad
+    df=calculations.calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
+    indices=np.argwhere(df['q_value']<0.01)
+    return(df[:int(indices[-1][0])+1]) #threshold cut
 
 
 def coverage_measure(cpdt_pep,full_seqs):
@@ -156,15 +168,30 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
     # df,dfall=helper_functions.counter_to_df(observed_subs)
     return(counts,probs,observed_subs)
 
-def theoretical_saav_counts(mutant_cpdtpep,counterpart_cpdtpep):
+def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',observed=False):
+    '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur'''
     all_subs=helper_functions.initiate_counter()
-    for prot,peps in mutant_cpdtpep.items():
-        if prot in counterpart_cpdtpep:
-            peps_cpt=counterpart_cpdtpep[prot]
-            for pep in peps:
-                cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-                if sub!='':
-                    all_subs[sub]+=1
+    count_subs=[]
+    for protname in variantdf['protein'].unique():
+        slice_var=variantdf[variantdf['protein']==protname]
+        slice_ctp=counterpartdf[counterpartdf['protein']==protname]
+        variant=slice_var[peptide_colname].unique()
+        counterpart=slice_ctp[peptide_colname].unique()
+        for var in variant:
+            cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
+            if sub!='':
+                all_subs[sub]+=1
+                if observed:
+                    count_var=slice_var[slice_var[peptide_colname]==var].shape[0] #how many of this variant peptide was detected
+                    count_ctp=slice_ctp[slice_ctp[peptide_colname]==cpt_pep].shape[0] #how many of the counterpart was detected
+                    count_subs.append((count_var,count_ctp))
+    if observed:
+        return(all_subs,count_subs)
+    # for prot,peps in mutant_cpdtpep.items():
+    #     if prot in counterpart_cpdtpep:
+    #         peps_cpt=counterpart_cpdtpep[prot]
+    #         for pep in peps:
+                
     # serall=pd.Series(list(all_subs.values()),index=pd.MultiIndex.from_tuples(all_subs.keys()))
     # dfall=serall.unstack()
     return(all_subs)

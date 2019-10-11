@@ -119,30 +119,30 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     plt.savefig('qval_comparison.png')
 
 
-def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
+def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution")
     sns.distplot(ibdf_refonly['percolator_psm_score'], hist=False, label='Human reference only',axlabel='Percolator score')
     sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
-    sns.distplot(ibdf_combi['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
+    sns.distplot(ibdf_vf['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     plt.close()
     return("Scores plot made")
 
-def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
+def plot_scores_combi(ibdf_vf,ibdf_vc):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
-    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_vc[ibdf_vc['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
-    plt.savefig("qc_pearsonr_pgvsopenmut.png")
+    plt.savefig("qc_pearsonr_vcvsopenmut.png")
     plt.close()
     return("Scores plot made")
 
@@ -154,13 +154,13 @@ def main(args):
     print("importing ionbot results")
     ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
     ibdf_refonly=file_import.concatenate_csvs(args['ref'])
-    ibdf_combi=file_import.concatenate_csvs(args['cvf'])
-    ibdf_combi_pg=file_import.concatenate_csvs(args['cvc'])
+    ibdf_vf=file_import.concatenate_csvs(args['cvf'])
+    ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #qc function
     print("plotting initial QC")
-    plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_combi.dropna())
-    plots.plot_scores_pg(ibdf_combi.dropna(),ibdf_combi_pg.dropna())
-    plots.plot_target_decoy(ibdf_combi.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
-    plots.plot_target_decoy(ibdf_combi_pg.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
-    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_combi_pg,'Combi variant-free':ibdf_combi},fdr_levels=[0.01])
+    plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
+    plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
+    plots.plot_target_decoy(ibdf_vf.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
+    plots.plot_target_decoy(ibdf_vc.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])

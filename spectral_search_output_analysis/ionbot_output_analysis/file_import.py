@@ -4,41 +4,51 @@ import pandas as pd
 import helper_functions
 
 
-def concatenate_csvs(csvpath):
+def concatenate_csvs(csvpath,containsVariants):
     directory= os.fsencode(csvpath)
     ionbotout=pd.DataFrame()
+    values={'unexpected_modification':'none'}
     for csvfile in os.listdir(directory):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
-            temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
+            temp=read_df_in_chunks(os.path.join(csvpath,csvname),containsVariants, 1000)
             temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname.split('.')[0] #make scan ids unique again when concatenating all files
             temp["title"]=csvname.split('.')[0]
-            temp["DB"]=temp["DB"].map({'D':True,'T':False})
-            ionbotout=pd.concat([ionbotout,temp])
+            ionbotout=pd.concat([ionbotout,temp.fillna(value=values)])
     return(ionbotout)
 
-def read_df_in_chunks(directory, chunksize):
+def il_sensitive_read_csv(csvpath):
+    df=pd.read_csv(csvpath,header=0,names=['protein', 'peptide', 'start'])
+    df['peptide']=df['peptide'].replace(to_replace='I|L',value='x',regex=True)
+    return(df)
+
+def read_df_in_chunks(directory, containsVariants, chunksize):
     # read the large csv file with specified chunksize 
     df_chunk = pd.read_csv(directory, chunksize=chunksize) # chunksize represents number of rows read per chunk
     chunk_list = []  # append each chunk df here 
     # Each chunk is in df format
     for chunk in df_chunk:  
         # perform data filtering 
-        chunk_filter = pre_filtering(chunk)
+        chunk_filter = pre_filtering(chunk,containsVariants)
         # Once the data filtering is done, append the chunk to list
         chunk_list.append(chunk_filter)
     # concat the list into dataframe 
     df_concat = pd.concat(chunk_list) # this is your final dataframe
     return(df_concat)
 
-def pre_filtering(df_chunk):
+def pre_filtering(df_chunk,containsVariants):
     new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
+    new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})
+    new_chunk['peptide']=new_chunk['matched_peptide'].replace(to_replace='I|L',value='x',regex=True)
+    subchunk_multiprot=new_chunk[new_chunk["proteins"].str.contains('\|{2}',regex=True)]
+    subchunk_singlprot=new_chunk[~new_chunk["proteins"].str.contains('\|{2}',regex=True)]
+    subchunk_multiprot['transcript_id']=subchunk_multiprot['proteins'].apply(lambda x: x.split('||')[0])
+    subchunk_singlprot['transcript_id']=subchunk_singlprot.loc[:,('proteins')]
+    new_chunk=pd.concat([subchunk_multiprot,subchunk_singlprot])
+    new_chunk['transcript_id']=new_chunk['transcript_id'].apply(helper_functions.get_id,base=True) #slim down to transcript name only
+    new_chunk['source_dict']=new_chunk['proteins'].apply(helper_functions.bin_hits_by_source) #get dictionary sources
     return(new_chunk)
-
-def post_filtering(df):
-    new_df=df[(df['q_value']<=0.01) & (df['DB']==False)]
-    return(df)
 
 def import_coding_transcriptids(sources):
     '''
@@ -89,33 +99,32 @@ def import_cpdt(cpdt,fullSeq):
 def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
     '''
-    chromdict={}
-    stranddict={}
+    origininfo={'transcript_id':[],'chromosome':[],'strand':[]}
     with open(gfffile) as handle:
         for line in handle:
             info=line.split('\t')
             if len(info)>5:
-                if not isBed:
+                if not isBed: # if true gff
                     if 'transcript_type=protein_coding' in line:
                         tid=line.split('transcript_id=')[1]
                         tid=tid.split(';')[0]
-                        chromdict[tid]=info[0]
-                        stranddict[tid]=info[6]
+                        origininfo['transcript_id'].append(tid)
+                        origininfo['chromosome'].append(info[0])
+                        origininfo['strand'].append(info[6])
                 else:
-                    chromdict[info[3]]=info[0]
+                    origininfo['transcript_id'].append(info[3])
+                    origininfo['chromosome'].append(info[0])
                     if info[5]!='+' and info[5]!='-':
-                        stranddict[info[3]]='unknown'
+                        origininfo['strand'].append('unknown')
                     else:
-                        stranddict[info[3]]=info[5]
-    return(chromdict,stranddict)
+                        origininfo['strand'].append(info[5])
+    return(pd.DataFrame(data=origininfo))
 
 
 def create_chromosome_reference(gfffile,bedfile):
-    chromdict_ref,stranddict_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
-    chromdict_ont,stranddict_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
-    chromdict={**chromdict_ont,**chromdict_ref} #combine the 2 dictionaries
-    stranddict={**stranddict_ont,**stranddict_ref} #combine the 2 dictionaries
-    return(chromdict,stranddict)
+    info_ref=import_gff(gfffile,False) #import gff3 file annotations from gencode
+    info_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
+    return(pd.concat([info_ref,info_ont]))
 
 def import_cpdt_simple(cpdt):
     cpdt_pep={}

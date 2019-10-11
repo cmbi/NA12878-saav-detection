@@ -37,12 +37,6 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
-    # Score distribution plot
-    # if not df['DB'].isin(['D']).empty:
-    #     # df=df.reset_index(drop=True)
-    #     # df=df.drop(df[(df["DB"]!='D') & (df["DB"]!='T')].index)
-    #     df['DB']=df['DB'].map({'D':True,'T':False})
-    #     df=df.dropna().reset_index(drop=True)
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score']
     plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score'], df[~df['DB']]['percolator_psm_score']]]
     axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
@@ -131,55 +125,52 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.clf()
     return('Plotted peptide support')
 
-def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_combi):
+def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution")
     sns.distplot(ibdf_refonly['percolator_psm_score'], hist=False, label='Human reference only',axlabel='Percolator score')
     sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
-    sns.distplot(ibdf_combi['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
+    sns.distplot(ibdf_vf['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     plt.close()
     return("Scores plot made")
 
-def plot_scores_pg(ibdf_combi,ibdf_combi_pg):
+def plot_scores_combi(ibdf_vf,ibdf_vc):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
-    sns.distplot(ibdf_combi_pg[ibdf_combi_pg['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_vc[ibdf_vc['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
-    plt.savefig("qc_pearsonr_pgvsopenmut.png")
+    plt.savefig("qc_pearsonr_vcvsopenmut.png")
     plt.close()
     return("Scores plot made")
 
-def plot_scores_decoy(ibdf_combi,figname):
+def plot_scores_decoy(ibdf_vf,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
-    sns.distplot(ibdf_combi[ibdf_combi['DB']=='D']['percolator_psm_score'], label='Decoy',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='D']['percolator_psm_score'], label='Decoy',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
     plt.close()
     return("Scores plot made")
 
-def plot_source_piechart(ref_only,ont_only,both,figname,isOpenmut):
+def plot_source_piechart(source_counter,figname):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
     plt.figure('source piechart')
     explode = (0.1, 0, 0)
-    if isOpenmut:
-        labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
-    else:
-        labels='Novel','Annotated','Combination'
-    plt.pie([len(ont_only),len(ref_only),len(both)],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
+    labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
+    plt.pie([source_counter['ont'],source_counter['ref'],source_counter['both']],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
     plt.title('Peptide spectral hits by source',fontsize=35)
     plt.legend(labels,loc=8)
     plt.savefig(figname)
@@ -253,9 +244,8 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.close()
     return("Plotted coverage")
 
-def plot_heatmaps(counter,prefix,suffix):
+def plot_heatmaps(counter,outfile):
     '''plot the types of substitutions that occur'''
-    outfile=prefix+suffix
     if type(counter)==Counter:
         ser=pd.Series(list(counter.values()),index=pd.MultiIndex.from_tuples(counter.keys()))
         df=ser.unstack()
@@ -313,12 +303,7 @@ def plot_mut_vs_prob(counts,figname):
     plt.close()
     return(0)
 
-def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var_probs,suffix):
-    counts,probs,observed=calculations.calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,var_probs)
-    plot_heatmaps(observed,'heatmap_observed_subs',suffix)
-    comparison=helper_functions.get_normalized_matrix(theoretical_counts,observed)
-    plot_heatmaps(comparison,'heatmap_difference',suffix)
-    # plot_mut_vs_prob(probs,'probability_detection_vs_count'+suffix) #this plot doesn't make sense unless real cpdt output is put in
+def plot_mut_vs_nonmut(counts,figname):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure('measure direct counterparts')
@@ -334,11 +319,11 @@ def plot_mut_vs_nonmut(mutant_cpdtpep,counterpart_cpdtpep,theoretical_counts,var
     # plt.ylim(-10,700)
     # plt.title('Variant vs. non-variant peptide abundance')
     plt.tight_layout()
-    plt.savefig("variant_vs_nonvariant"+suffix)
+    plt.savefig(figname)#"variant_vs_nonvariant"+suffix)
     plt.close()
     return(0)
 
-def plot_ib_scores_directcomp(varfree_scores,varcont_scores,retentiontime):
+def plot_ib_scores_directcomp(combi,retentiontime):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
@@ -348,13 +333,11 @@ def plot_ib_scores_directcomp(varfree_scores,varcont_scores,retentiontime):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
-    #inner join the 2
-    combi=pd.merge(varfree_scores,varcont_scores,on="scan_id",suffixes=("_varfree","_varcont"))
     combi.groupby("matched_peptide").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     combi=pd.merge(combi,rt,on='matched_peptide')
     # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
-    combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="predicted_retention_time",colormap='viridis')
+    combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="predicted_retention_time",colormap='viridis')
     left, right = plt.xlim()
     x = np.linspace(left,right)
     plt.plot(x, x)
@@ -374,11 +357,6 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
-    # sns.distplot(ibonly, hist=False, label='Variant-free only',axlabel='Percolator score')
-    # sns.distplot(pgonly, hist=False, label='Variant-containing only',axlabel='Percolator score')
-    # sns.distplot(intersectionpg, hist=False, label='Intersection variant-containing',axlabel='Percolator score')
-    # if len(intersectionom)>0:
-    #     sns.distplot(intersectionom, hist=False, label='Intersection variant-free')
     plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf])
     plt.xticks([1,2,3,4,5,6],['VF only','VC only','Intersection VC','Intersection VF','Non-variant VC','Non-variant VF'])
     # plt.legend()
@@ -387,19 +365,19 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
     plt.close()
     return("Scores plot made")
 
-def plot_unexpected_mods(mods_om,mods_pg,variant=False):
+def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     if variant:
         labels=['Variant VC','Variant VF']
         figname='variant_unexpected_mods.png'
     else:
         labels=['Nonvariant VC', 'Nonvariant VF']
         figname='nonvariant_unexpected_mods.png'
-    mod_ct_om=helper_functions.categorize_mods(mods_om)
-    mod_ct_pg=helper_functions.categorize_mods(mods_pg)
+    mod_ct_vf=helper_functions.categorize_mods(mods_vf)
+    mod_ct_vc=helper_functions.categorize_mods(mods_vc)
     plt.figure('discrepant peptide lengths')
-    chist_pg=pd.DataFrame.from_dict(dict(mod_ct_pg.most_common(10)),orient='index')
-    chist_om=pd.DataFrame.from_dict(dict(mod_ct_om.most_common(10)),orient='index')
-    combi=pd.concat([chist_pg,chist_om],axis=1,sort=False)
+    chist_vc=pd.DataFrame.from_dict(dict(mod_ct_vc.most_common(10)),orient='index')
+    chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(10)),orient='index')
+    combi=pd.concat([chist_vc,chist_vf],axis=1,sort=False)
     combi.fillna(0)
     combi.columns=labels
     combi.plot(kind='bar',title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
@@ -411,24 +389,22 @@ def plot_unexpected_mods(mods_om,mods_pg,variant=False):
     plt.close()
     return(0)
 
-def plot_peplengths(peptide_counter_pg,peptide_counter_om,variant=False):
+def plot_peplengths(lenct_vc,lenct_vf,variant=False):
     if variant:
         labels=['Variant VC','Variant VF']
         figname='variant_peptide_length.png'
     else:
         labels=['Nonvariant VC','Nonvariant VF']
         figname='nonvariant_peptide_length.png'
-    lenct_pg=helper_functions.gather_counts(peptide_counter_pg)
-    lenct_om=helper_functions.gather_counts(peptide_counter_om)
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
-    chist_pg=pd.DataFrame.from_dict(lenct_pg,orient='index').sort_index()
-    if len(lenct_om)>0:
-        chist_om=pd.DataFrame.from_dict(lenct_om,orient='index').sort_index()
-        combi=pd.concat([chist_pg,chist_om],axis=1)
+    chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
+    if len(lenct_vf)>0:
+        chist_vf=pd.DataFrame.from_dict(lenct_vf,orient='index').sort_index()
+        combi=pd.concat([chist_vc,chist_vf],axis=1)
         combi.fillna(0)
     else:
-        combi=chist_pg
+        combi=chist_vc
         combi["Combi variant-free only"]=0
     combi.columns=labels
     combi.plot(kind='bar',legend=False,title="Length of variant and normal peptides from combination search dictionaries")
@@ -440,9 +416,12 @@ def plot_peplengths(peptide_counter_pg,peptide_counter_om,variant=False):
     plt.close()
     return(0)
 
-def plot_final_venns(vc,vf,mut_cpdt_theoretical,mutprotset):
+def plot_final_venns(df_vc,df_vf):
+    #get appropriate counters
+    vc=Counter(dict(df_vc['peptide'].value_counts()))
+    vf=Counter(dict(df_vf['peptide'].value_counts()))
     #create diagrams
-    plt.figure('venn mutant psms')
+    plt.figure('venn variant psms')
     vda=venn2_unweighted([vc,vf],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides
     plt.title("Observed variant PSMs",fontsize=26)
     for text in vda.set_labels:
@@ -451,7 +430,7 @@ def plot_final_venns(vc,vf,mut_cpdt_theoretical,mutprotset):
         text.set_fontsize(20)
     plt.savefig('overlap_detected_mut_psms.png')
     plt.clf()
-    plt.figure('venn mutant peptides')
+    plt.figure('venn variant peptides')
     vdb=venn2_unweighted([set(vc),set(vf)],("Combi variant-containing","Combi variant-free")) #venn for the overlap in detected proteins
     plt.title("Unique observed variant peptides",fontsize=26)
     for text in vdb.set_labels:
@@ -460,14 +439,14 @@ def plot_final_venns(vc,vf,mut_cpdt_theoretical,mutprotset):
         text.set_fontsize(20)
     plt.savefig('overlap_detected_mut_peps.png')
     plt.clf()
-    plt.figure('venn proteins all')
-    vdb=venn3([set(vc),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
-    plt.title("Unique proteins associated with variant peptides",fontsize=26)
-    # for text in vdb.set_labels:
-    #     text.set_fontsize(26)
-    # for text in vdb.subset_labels:
-    #     text.set_fontsize(20)
-    plt.savefig('overlap_all_detected_mut_prots.png')
+    # plt.figure('venn proteins all')
+    # vdb=venn3([set(vc),set(mut_cpdt_theoretical.keys()),mutprotset],("Combi variant-containing","All theoretical","Combi variant-free")) #venn for the overlap in detected proteins
+    # plt.title("Unique proteins associated with variant peptides",fontsize=26)
+    # # for text in vdb.set_labels:
+    # #     text.set_fontsize(26)
+    # # for text in vdb.subset_labels:
+    # #     text.set_fontsize(20)
+    # plt.savefig('overlap_all_detected_mut_prots.png')
     plt.close()
     return('plotted final venns')
 

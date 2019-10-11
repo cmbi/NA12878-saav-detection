@@ -10,8 +10,8 @@ def insilico_digest_diff(cpdtref,cpdtcustom,cpu):
     prints cpdt files: one for all different peptides and one with only snv peptides
     '''
     print('Reading in files...')
-    ref=read_cpdt(cpdtref)
-    custom=read_cpdt(cpdtcustom)
+    ref=read_csv(cpdtref)
+    custom=read_csv(cpdtcustom)
     print('Searching for variant peptides...')
     pool=mp.Pool(processes=int(cpu),initializer=child_initialize, initargs=(ref,custom))
     results=[pool.apply_async(snvfinder,args=(pid,peplist,)) for pid,peplist in ref.iteritems()]
@@ -86,7 +86,7 @@ def get_id(idstring):
             prefix=idstring.split('_')[0]
             outstring=prefix+'_'+tid
         else:
-            outstring='>'+tid
+            outstring=tid
     else:
         outstring=idstring.strip()
     return(outstring)
@@ -137,23 +137,48 @@ def read_cpdt(cpdt):
                 cpdt_pep[key][lp[0]]=lp[1].strip()
     return cpdt_pep
 
-def write_cpdt(d,outfile):
+def read_csv(csvfile):
+    cpdt_pep={}
+    with open(csvfile) as c:
+        for line in c:
+            if 'protein' not in line:
+                info=line.split(',')
+                key=get_id(info[0])
+                if key not in cpdt_pep:
+                    cpdt_pep[key]={}
+                cpdt_pep[key][info[1]]=info[2].strip()
+    return cpdt_pep
+
+# def write_cpdt(d,outfile):
+#     '''
+#     input format: {id:{peptide:probability}}
+#     output: new cpdt file
+#     '''
+#     f=open(outfile,'w')
+#     for id,peplist in d.iteritems():
+#         f.writelines(id+'\n')
+#         for pep,prob in peplist.iteritems():
+#             f.writelines('\t'+'PEPTIDE '+pep+': '+prob+'\n')
+#     return 'new CPDT file written to '+outfile
+
+def write_csv(d,outfile):
     '''
     input format: {id:{peptide:probability}}
-    output: new cpdt file
+    output: new csv
     '''
     f=open(outfile,'w')
+    f.writelines("{},{},{}".format('protein', 'matched_peptide', 'start')+'\n')
     for id,peplist in d.iteritems():
-        f.writelines(id+'\n')
+        # f.writelines(id+'\n')
         for pep,prob in peplist.iteritems():
-            f.writelines('\t'+'PEPTIDE '+pep+': '+prob+'\n')
+            f.writelines(id+','+pep+','+prob+'\n')
     return 'new CPDT file written to '+outfile
 
 def main():
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--cpu',help='CPU number',required=True)
-    parser.add_argument('--ref', help='Reference cpdt file', required=True)
-    parser.add_argument('--var', help='Variant containing cpdt file', required=True)
+    parser.add_argument('--ref', help='Reference csv file', required=True)
+    parser.add_argument('--var', help='Variant containing csv file', required=True)
     parser.add_argument('--outall', help='Output file all differing', required=False)
     parser.add_argument('--outsnp', help='Output file snv differing', required=False)
     parser.add_argument('--outctp', help='Output file reference counterpart (to snv)', required=False)
@@ -161,11 +186,11 @@ def main():
     snvdiffpeps,alldiffpeps,snvcounterpart=insilico_digest_diff(args['ref'],args['var'],args['cpu'])
     print('Writing to files...')
     if args['outall']:
-        write_cpdt(alldiffpeps,args['outall'])
+        write_csv(alldiffpeps,args['outall'])
     if args['outsnp']:
-        write_cpdt(snvdiffpeps,args['outsnp'])
+        write_csv(snvdiffpeps,args['outsnp'])
     if args['outctp']:
-        write_cpdt(snvcounterpart,args['outctp'])
+        write_csv(snvcounterpart,args['outctp'])
 
 if __name__ == "__main__":
     main()

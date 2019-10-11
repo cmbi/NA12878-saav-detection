@@ -31,7 +31,7 @@ def find_strand(prots,stranddict):
             # return(stranddict[p])
     return("unknown")
 
-def get_id(idstring):
+def get_id(idstring,base=False):
     if '|m.' in idstring:
         outstring=idstring.split('|m.')[0]
     elif 'ENSP' in idstring:
@@ -43,35 +43,27 @@ def get_id(idstring):
             outstring=tid
     else:
         outstring=idstring.strip()
+    if base and '_h' in outstring:
+        return(outstring.split('_h')[0])
     return(outstring)
 
-def bin_hits_by_source(scanid,ids,oro,ono,ob,isOpenmut):
+def bin_hits_by_source(protstring):
     '''sort peptide hits by their source dictionary'''
-    ref_only=oro
-    ont_only=ono
-    both=ob
-    ont=False
-    ref=False
+    sources=set()
+    if 'Random' in protstring or 'random' in protstring:
+        return('decoy')
+    if '||' in protstring:
+        ids=protstring.split('||')
+    else:
+        ids=[protstring]
     for i in ids:
-        if not isOpenmut:
-            if '_E' in i:
-                ont=True
-            elif 'ENST' in i:
-                ref=True
+        if '_ENSG' in i:
+            sources.add('ont')
         else:
-            if '|m.' in i: #assumes that the proteins from the reference were not generated with ANGEL
-                ont=True
-            elif 'ENST' in i:
-                ref=True
-    if ont and ref:
-        both.add(scanid)
-    elif ont:
-        ont_only.add(scanid)
-    elif ref:
-        ref_only.add(scanid)
-    #else:
-    #    raise Exception('Unexpected protein found')
-    return(ref_only,ont_only,both)
+            sources.add('ref')
+    if 'ont' in sources and 'ref' in sources:
+        return('both')
+    return(list(sources)[0])
 
 
 def counter_translator(counterobj):
@@ -147,15 +139,17 @@ def determine_snv(peptide,plist):
                 if aa!=peptide[idx]:
                     original=aa
                     sub=peptide[idx]
-                    situation1= original=='I' and sub=='L'
-                    situation2= original=='L' and sub=='I'
-                    if not situation1 and not situation2:
-                        mismatch+=1
+                    if aa=='x':
+                        original='I'
+                    if peptide[idx]=='x':
+                        sub='I'
+                    mismatch+=1
             if mismatch==1:
                 return(pep,(original,sub))
     return('','')
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):
+    count=0
     for isi in ids:
         found=False
         if isOpenmut:
@@ -167,8 +161,8 @@ def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):
                 for p in cpdt_pep[poss]: #this allows for some flexibility in matches, allows for non-canonical
                     if pep in p or equivalent_check(pep,p):
                         if debug:
+                            # count+=1
                             print(pep,cpdt_pep[poss])
-                            sys.exit()
                         if include_extra:
                             return(True,p,poss)
                         return(True)
@@ -292,12 +286,6 @@ def categorize_mods(list_mods):
             s_mod=re.split('\[[a-z]\]',mod)[0]
             mod_ct[s_mod]+=1
     return(mod_ct)
-
-def gather_counts(peptide_counter):
-    length_counter=Counter()
-    for pep in peptide_counter:
-        length_counter[len(pep)]+=peptide_counter[pep]
-    return(length_counter)
 
 def remove_empty(variant_pep_dict):
     '''remove empty entries from the variant peptide dictionary'''

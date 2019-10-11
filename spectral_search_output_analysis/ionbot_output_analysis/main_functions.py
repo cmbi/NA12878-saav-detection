@@ -28,6 +28,7 @@ def origin_info_fetch(df_vf,df_vc,origin_info):
     '''
     vf=df_vf.merge(origin_info,on='transcript_id') #this came from taking the first protein on the list and getting its transcript id
     vc=df_vc.merge(origin_info,on='transcript_id')
+    print(vf['chromosome'].head())
     strand_vf=Counter(dict(vf['strand'].value_counts()))
     strand_vc=Counter(dict(vc['strand'].value_counts()))
     chrom_vf=Counter(dict(vf['chromosome'].value_counts()))
@@ -65,6 +66,6 @@ def discrepancy_check(ibdf_vf,ibdf_vc,nonvar_vf,nonvar_vc,rt):
     scores_all_filtered.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv, look at where the vc scores were higher than vf
     plots.plot_ib_scores_directcomp(scores_all,rt) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
-    plots.plot_ib_scores(vf_only["percolator_psm_score"].tolist(),vc_only["percolator_psm_score"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
+    plots.plot_ib_scores(vf_only["percolator_psm_score_vf"].tolist(),vc_only["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function
    

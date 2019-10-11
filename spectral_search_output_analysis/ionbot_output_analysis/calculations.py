@@ -47,11 +47,10 @@ def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
 def fdr_recalc_variantpep(target,decoy,filename):
     '''filter df by new q-value
     '''
-    print('Recalculating q-values...')
     # print(str(target.shape[0])+' target variant peptides and '+str(decoy.shape[0])+' decoy variant peptides found.')
     df_in=pd.concat([target,decoy],ignore_index=True)
     plots.plot_target_decoy(df_in,filename) #if this plot is bad, the results are also bad
-    df=calculations.calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
+    df=calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1]) #threshold cut
 

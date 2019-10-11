@@ -22,8 +22,8 @@ def main(args):
     print("importing ionbot results")
     # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
     # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
-    ibdf_vf=file_import.concatenate_csvs(args['cvf'],False)
-    ibdf_vc=file_import.concatenate_csvs(args['cvc'],True)
+    ibdf_vf=file_import.concatenate_csvs(args['cvf'])
+    ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #inital QC
     print("plotting initial QC")
@@ -37,9 +37,9 @@ def main(args):
     print('importing helper data')
     origin_info=file_import.create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC), dataframe
     all_peptides=file_import.il_sensitive_read_csv(args['cpdtvf'])
-    variant_peptides=file_import.il_sensitive_read_csv(args['cpdtvar']) 
-    variant_counterparts=file_import.il_sensitive_read_csv(args['cpdtctp']) 
-    decoy_variants=file_import.il_sensitive_read_csv(args['decoy']) 
+    variant_peptides=file_import.il_sensitive_read_csv(args['cpdtvar'])
+    variant_counterparts=file_import.il_sensitive_read_csv(args['cpdtctp'])
+    decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
     decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
     
@@ -63,6 +63,7 @@ def main(args):
 
     #find variants
     print('Finding variants...')
+    #for the variant-free set, recalculate FDR based on the subset of peptides that were predicted to have a SAAV
     detected_variant_combi_vf=ibdf_vf[(ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==False)] #get all peptides that are predicted to have a SAAV
     detected_normal_combi_vf=ibdf_vf[(~ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==False)] #all not having saav
     detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==True)]
@@ -74,21 +75,25 @@ def main(args):
     # observed_variant_counterparts_vf=ibdf_vf.merge(variant_counterparts, on='peptide') # target counterparts vf
     # observed_decoy_counterparts_vf=ibdf_vf.merge(decoy_counterparts, on='peptide') # decoy counterparts vf
     
+    #for the variant-containing set, recalculate FDR based on the variant subset only
     observed_variants_vc=ibdf_vc.merge(variant_peptides, on='peptide') # target variants vc
     observed_decoy_vc=ibdf_vc.merge(decoy_variants, on='peptide') # decoy variants vc
     observed_decoy_vc=observed_decoy_vc[observed_decoy_vc["DB"]==True]
     observed_variant_counterparts_vc=ibdf_vc.merge(variant_counterparts, on='peptide') # target counterparts vc
     observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_counterparts, on='peptide') # decoy counterparts vc
 
-    #FDR
+    ###FDR###
     print('...filtering false positives...')
+    #for variant-free set, filter for true variant peptides after the FDR
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
     prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_normal_combi_vf,detected_normal_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
     final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,on='peptide')
     final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_counterparts,on='peptide')
+
+    #for the variant-free set, get true variant peptides from the FDR re-estimation
     final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png')
     final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png')
-    print(str(final_counterpartset_vf.shape[0])+' variants found in the variant-free output and '+str(final_counterpartset_vc.shape[0])+' variants found in the variant-containing output.')
+    print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output.')
 
     print('Analyzing variants...')
     # mut_observed_openmut,mutprotset,chromdist_openmut,stranddist_openmut=main_functions.combidict_analysis(ibdf_vf,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,cpdt_rev,cpdt_rev_ctp,True)
@@ -102,11 +107,9 @@ def main(args):
     plots.plot_mut_vs_nonmut(sub_count_vf,'variant_vs_counterpart_vf.png')
 
     #group peptides to individual SNPs
-    # abrv_vc,ref_abrv_vc=helper_functions.abbreviate_peps(mut_observed_openmut)
-    # abrv_vf,ref_abrv_vf=helper_functions.abbreviate_peps(mut_observed_classic)
     print("Making final plots...")
-    main_functions.discrepancy_check(ibdf_vf, ibdf_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt'])
-    plots.plot_final_venns(ibdf_vc,ibdf_vf)
+    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt'])
+    plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     
 parser = argparse.ArgumentParser(description='Ionbot output analysis')

@@ -4,14 +4,14 @@ import pandas as pd
 import helper_functions
 
 
-def concatenate_csvs(csvpath,containsVariants):
+def concatenate_csvs(csvpath):
     directory= os.fsencode(csvpath)
     ionbotout=pd.DataFrame()
     values={'unexpected_modification':'none'}
     for csvfile in os.listdir(directory):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
-            temp=read_df_in_chunks(os.path.join(csvpath,csvname),containsVariants, 1000)
+            temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
             temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname.split('.')[0] #make scan ids unique again when concatenating all files
             temp["title"]=csvname.split('.')[0]
             ionbotout=pd.concat([ionbotout,temp.fillna(value=values)])
@@ -22,21 +22,21 @@ def il_sensitive_read_csv(csvpath):
     df['peptide']=df['peptide'].replace(to_replace='I|L',value='x',regex=True)
     return(df)
 
-def read_df_in_chunks(directory, containsVariants, chunksize):
+def read_df_in_chunks(directory, chunksize):
     # read the large csv file with specified chunksize 
     df_chunk = pd.read_csv(directory, chunksize=chunksize) # chunksize represents number of rows read per chunk
     chunk_list = []  # append each chunk df here 
     # Each chunk is in df format
     for chunk in df_chunk:  
         # perform data filtering 
-        chunk_filter = pre_filtering(chunk,containsVariants)
+        chunk_filter = pre_filtering(chunk)
         # Once the data filtering is done, append the chunk to list
         chunk_list.append(chunk_filter)
     # concat the list into dataframe 
     df_concat = pd.concat(chunk_list) # this is your final dataframe
     return(df_concat)
 
-def pre_filtering(df_chunk,containsVariants):
+def pre_filtering(df_chunk):
     new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
     new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})

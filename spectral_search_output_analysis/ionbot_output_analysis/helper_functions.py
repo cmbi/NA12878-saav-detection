@@ -299,3 +299,6 @@ def remove_empty(variant_pep_dict):
                     newdict[prot]={}
                 newdict[prot][pep]=ct
     return(newdict)
+
+def longest(s):
+    return(max(s,key=len))

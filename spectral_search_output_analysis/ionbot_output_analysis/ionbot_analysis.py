@@ -96,8 +96,6 @@ def main(args):
     print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output.')
 
     print('Analyzing variants...')
-    # mut_observed_vf,mutprotset,chromdist_vf,stranddist_vf=main_functions.combidict_analysis(ibdf_vf,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,cpdt_rev,cpdt_rev_ctp,True)
-    # mut_observed_vc,chromdist_vc,stranddist_vc=main_functions.combidict_analysis(ibdf_vc,chromdict,stranddict,cpdt_pep,full_seqs,theoretical_saav,mut_pep_probs,mut_cpdt,mut_cpdt_counterparts,cpdt_rev,cpdt_rev_ctp,False)
     sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
     sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)
     plots.plot_heatmaps(theoretical_saav,'heatmap_theoretical_subs.png')
@@ -106,7 +104,6 @@ def main(args):
     plots.plot_mut_vs_nonmut(sub_count_vc,'variant_vs_counterpart_vc.png')
     plots.plot_mut_vs_nonmut(sub_count_vf,'variant_vs_counterpart_vf.png')
 
-    #group peptides to individual SNPs
     print("Making final plots...")
     main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt'])
     plots.plot_final_venns(final_variantset_vc,final_variantset_vf)

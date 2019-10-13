@@ -370,9 +370,11 @@ def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     if variant:
         labels=['Variant VC','Variant VF']
         figname='variant_unexpected_mods.png'
+        title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)"
     else:
         labels=['Nonvariant VC', 'Nonvariant VF']
         figname='nonvariant_unexpected_mods.png'
+        title='All unexpected modifications found in non-variant peptides'
     mod_ct_vf=Counter(dict(mods_vf.value_counts()))
     mod_ct_vc=Counter(dict(mods_vc.value_counts()))
     plt.figure('discrepant peptide lengths')
@@ -380,11 +382,11 @@ def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(10)),orient='index')
     combi=pd.concat([chist_vc,chist_vf],axis=1,sort=False)
     combi.fillna(0)
-    if len(mod_ct_vf)==0: #sometimes there might not be any unique variants in variant-free
+    if len(mod_ct_vc)==0: #is the case if there are no variants unique to the variant free set
         combi.columns=[labels[0]]
     else:
         combi.columns=labels
-    combi.plot(kind='bar',title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)")
+    combi.plot(kind='bar',title=title)
     plt.ylabel("Count peptides")
     plt.xlabel("PTMs")
     plt.legend()

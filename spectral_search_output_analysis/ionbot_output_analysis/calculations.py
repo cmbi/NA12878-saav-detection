@@ -171,9 +171,9 @@ def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',observed=False
     '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur'''
     all_subs=helper_functions.initiate_counter()
     count_subs=[]
-    for protname in variantdf['protein'].unique():
-        slice_var=variantdf[variantdf['protein']==protname]
-        slice_ctp=counterpartdf[counterpartdf['protein']==protname]
+    for protname in variantdf['proteins'].unique():
+        slice_var=variantdf[variantdf['proteins']==protname]
+        slice_ctp=counterpartdf[counterpartdf['proteins']==protname]
         variant=slice_var[peptide_colname].unique()
         counterpart=slice_ctp[peptide_colname].unique()
         for var in variant:

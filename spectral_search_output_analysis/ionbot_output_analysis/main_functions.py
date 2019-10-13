@@ -41,11 +41,15 @@ def dict_source_bin(df_vf,df_vc,figname_vf,figname_vc):
     plots.plot_source_piechart(vf,figname_vf)
     plots.plot_source_piechart(vc,figname_vc)        
 
-def discrepancy_check(ibdf_vf,ibdf_vc,nonvar_vf,nonvar_vc,rt):
+def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
     plot unexpected modifications of the missed peptides (more unexpected modifications than average?)'''
+    #abbreviate the results, group by matched peptide
+    aggregation_rules={'percolator_psm_score':'mean','unexpected_modification':helper_functions.longest,'proteins':helper_functions.longest,'matched_peptide':helper_functions.longest}
+    ibdf_vf=vf.groupby('peptide').aggregate(aggregation_rules)
+    ibdf_vc=vc.groupby('peptide').aggregate(aggregation_rules)
     #convert everything to sets and find the variants that are/are not in common
     merged=pd.merge(ibdf_vf,ibdf_vc, on='peptide', how='outer', suffixes=('_vf','_vc'), indicator=True)
     vf_only=merged[merged['_merge'] == 'left_only']
@@ -54,8 +58,10 @@ def discrepancy_check(ibdf_vf,ibdf_vc,nonvar_vf,nonvar_vc,rt):
     #plot lengths of the peptides caught by one method but not the other
     plots.plot_peplengths(Counter(vc_only['matched_peptide_vc'].str.len().to_list()),Counter(vf_only['matched_peptide_vf'].str.len().to_list()),variant=True)
     plots.plot_peplengths(Counter(nonvar_vc['matched_peptide'].str.len().to_list()),Counter(nonvar_vf['matched_peptide'].str.len().to_list()),variant=False)
-    #Compare unexpected modifications
-    plots.plot_unexpected_mods(vf_only["unexpected_modification_vf"].apply(helper_functions.categorize_mods),vc_only["unexpected_modification_vc"].apply(helper_functions.categorize_mods),variant=True) #plot what modifications they contained
+    #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
+    mislabeled_ids=vc_only['scan_id_vc'].rename(columns={'scan_id_vc':'scan_id'}) #get scan ids of vc only
+    mislabeled=pd.merge(ibdf_vf,mislabeled_ids, on='scan_id')
+    plots.plot_unexpected_mods(mislabeled["unexpected_modification"].apply(helper_functions.categorize_mods),pd.DataFrame(),variant=True) #plot what modifications they contained
     plots.plot_unexpected_mods(nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vc["unexpected_modification"].apply(helper_functions.categorize_mods),variant=False) #plot what modifications they contained
     #direct comparison of scores of peptides
     scores_all_filtered=overlap.loc[overlap["percolator_psm_score_vc"]>overlap["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free

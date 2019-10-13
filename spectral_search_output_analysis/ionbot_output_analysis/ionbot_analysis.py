@@ -20,18 +20,18 @@ def main(args):
     '''
     #import ionbot output data
     print("importing ionbot results")
-    ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
-    ibdf_refonly=file_import.concatenate_csvs(args['ref'])
+    # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
+    # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
     ibdf_vf=file_import.concatenate_csvs(args['cvf'])
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #inital QC
     print("plotting initial QC")
-    plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
+    # plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
-    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
+    # plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
 
     #import other data
     print('importing helper data')

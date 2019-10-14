@@ -20,18 +20,18 @@ def main(args):
     '''
     #import ionbot output data
     print("importing ionbot results")
-    # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
-    # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
+    ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
+    ibdf_refonly=file_import.concatenate_csvs(args['ref'])
     ibdf_vf=file_import.concatenate_csvs(args['cvf'])
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #inital QC
     print("plotting initial QC")
-    # plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
+    plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
-    # plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
 
     #import other data
     print('importing helper data')
@@ -47,14 +47,14 @@ def main(args):
     all_matches_nonvar_vf,all_matches_nonvar_vc=helper_functions.get_all_observed(ibdf_vf,ibdf_vc,args['vfd'])#observed matches
     #get strand and chrom info
     print('...fetching and plotting origin info...')
-    # main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
-    # #get support
-    # print('...gauging protein support...')
-    # main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
-    # #get source
-    # print('...summing source dictionaries...')
-    # main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
-    # main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
+    main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
+    #get support
+    print('...gauging protein support...')
+    main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
+    #get source
+    print('...summing source dictionaries...')
+    main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
+    main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
     #coverage - need to import full sequences for this #TODO
     # plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
 
@@ -66,12 +66,6 @@ def main(args):
     detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==True)]
     detected_normal_decoy_combi_vf=ibdf_vf[(~ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==True)]
 
-    # observed_variants_vf=ibdf_vf.merge(variant_peptides, ) # target variants vf
-    # observed_decoy_vf=ibdf_vf.merge(decoy_variants, on='peptide') # decoy variants vf
-    # observed_decoy_vf=observed_decoy_vf[observed_decoy_vf["DB"]==True]
-    # observed_variant_counterparts_vf=ibdf_vf.merge(variant_counterparts, on='peptide') # target counterparts vf
-    # observed_decoy_counterparts_vf=ibdf_vf.merge(decoy_counterparts, on='peptide') # decoy counterparts vf
-    
     #for the variant-containing set, recalculate FDR based on the variant subset only
     observed_variants_vc=ibdf_vc.merge(variant_peptides, on='peptide') # target variants vc
     observed_decoy_vc=ibdf_vc.merge(decoy_variants, on='peptide') # decoy variants vc

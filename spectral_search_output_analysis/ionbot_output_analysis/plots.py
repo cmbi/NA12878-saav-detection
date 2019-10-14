@@ -12,9 +12,9 @@ import calculations
 import helper_functions
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
-matplotlib.rcParams['axes.titlesize'] = 'xx-large'
-matplotlib.rcParams['axes.labelsize'] = 'x-large'
-matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
+# matplotlib.rcParams['axes.titlesize'] = 'xx-large'
+# matplotlib.rcParams['axes.labelsize'] = 'x-large'
+# matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
 matplotlib.rcParams.update({'font.size': 22})
 
 def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title='Search result'):
@@ -84,6 +84,8 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     decoy_col: Name of decoy column
     fdr_levels: List of FDR float values to plot as vertical lines
     """
+    matplotlib.rcParams.update({'font.size': 22})
+
     for label, df_in in df_dict.items():
         df = df_in.reset_index(drop=True).sort_values(q_value_col, ascending=True).copy()
         df[decoy_col]=df[decoy_col]=='D'
@@ -96,11 +98,13 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     plt.xlabel('FDR (log scale)')
     #plt.xscale("log", nonposy='clip')
     plt.xscale("log")
-    plt.xlim(0.00001, 1)
+    plt.xlim(0.0001, 1)
     plt.legend()
     plt.title('q-value comparison search dictionaries')
     plt.tight_layout()
     plt.savefig('qval_comparison.png')
+    plt.clf()
+    plt.close()
 
 def plot_support(prot_evidence,unamb_prot_evidence,figname):
     '''look into the support for proteins
@@ -124,7 +128,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.clf()
-    return('Plotted peptide support')
+    plt.close()
 
 def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
@@ -137,8 +141,8 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
+    plt.clf()
     plt.close()
-    return("Scores plot made")
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
@@ -150,8 +154,7 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_vcvsopenmut.png")
-    plt.close()
-    return("Scores plot made")
+    plt.clf()
 
 def plot_scores_decoy(ibdf_vf,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
@@ -163,8 +166,8 @@ def plot_scores_decoy(ibdf_vf,figname):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return("Scores plot made")
 
 def plot_source_piechart(source_counter,figname):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
@@ -175,8 +178,8 @@ def plot_source_piechart(source_counter,figname):
     # plt.title('Peptide spectral hits by source',fontsize=35)
     plt.legend(labels,loc=8)
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return("saved to sources_spectral_hits")
 
 def plot_chromosomal_dist(distr_vc,distr_vf):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
@@ -194,8 +197,8 @@ def plot_chromosomal_dist(distr_vc,distr_vf):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('chromosomal_distribution.png')
+    plt.clf()
     plt.close()
-    return("plotted chromosomal distribution")
 
 def plot_strand_dist(distr_vc,distr_vf):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
@@ -211,8 +214,8 @@ def plot_strand_dist(distr_vc,distr_vf):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('strand_distribution.png')
+    plt.clf()
     plt.close()
-    return("plotted strand distribution")
 
 def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     '''this function will plot the graphs that correspond to the coverage of the proteome
@@ -242,8 +245,8 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.xlabel("Peptide count (protein size normalized)")
     plt.ylabel("Density")
     plt.savefig(fignamevertical)
+    plt.clf()
     plt.close()
-    return("Plotted coverage")
 
 def plot_heatmaps(counter,outfile):
     '''plot the types of substitutions that occur'''
@@ -261,8 +264,9 @@ def plot_heatmaps(counter,outfile):
     plt.xlabel("Variant")
     plt.tight_layout()
     plt.savefig(outfile)
+    plt.clf()
     plt.close()
-    return(0)
+    
 
 def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figname):
     '''plot protein abundance vs number of detected mutant peptides'''
@@ -288,8 +292,9 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     plt.title('Variant peptide abundance vs non-variant peptide abundance')
     # plt.legend(loc='upper right')
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return('done')
+    
 
 def plot_mut_vs_prob(counts,figname):
     '''plot variant observed count vs CPDT probability for that peptide'''
@@ -301,8 +306,8 @@ def plot_mut_vs_prob(counts,figname):
     plt.ylabel('Variant peptide observed count')
     plt.tight_layout()
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return(0)
 
 def plot_mut_vs_nonmut(counts,figname):
     sns.set(style="white", color_codes=True)
@@ -320,8 +325,8 @@ def plot_mut_vs_nonmut(counts,figname):
     # plt.title('Variant vs. non-variant peptide abundance')
     # plt.tight_layout()
     plt.savefig(figname)#"variant_vs_nonvariant"+suffix)
+    plt.clf()
     plt.close()
-    return(0)
 
 def plot_ib_scores_directcomp(combi,retentiontime):
     '''for the variant peptides that were found in one set but not another,
@@ -349,8 +354,8 @@ def plot_ib_scores_directcomp(combi,retentiontime):
     plt.legend()
     plt.title('Percolator scores for discrepant peptides found only in the variant-containing search')
     plt.savefig("discrepant_peptide_direct_comparison.png")
+    plt.clf()
     plt.close()
-    return("Scores plot made")
 
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
@@ -363,8 +368,8 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
     # plt.legend()
     plt.title('Percolator scores for detected variant peptides')
     plt.savefig("discrepant_peptide_scores.png")
+    plt.clf()
     plt.close()
-    return("Scores plot made")
 
 def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     mod_ct_vf=Counter(dict(mods_vf.value_counts()))
@@ -387,8 +392,8 @@ def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
     plt.xlabel("PTMs")
     plt.tight_layout()
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return(0)
 
 def plot_peplengths(lenct_vc,lenct_vf,variant=False):
     if variant:
@@ -414,8 +419,8 @@ def plot_peplengths(lenct_vc,lenct_vf,variant=False):
     plt.xlabel("Length peptide")
     plt.legend(loc='upper left')
     plt.savefig(figname)
+    plt.clf()
     plt.close()
-    return(0)
 
 def plot_final_venns(df_vc,df_vf):
     #get appropriate counters
@@ -449,5 +454,4 @@ def plot_final_venns(df_vc,df_vf):
     # #     text.set_fontsize(20)
     # plt.savefig('overlap_all_detected_mut_prots.png')
     plt.close()
-    return('plotted final venns')
 

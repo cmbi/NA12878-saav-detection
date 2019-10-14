@@ -167,13 +167,13 @@ def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
     # df,dfall=helper_functions.counter_to_df(observed_subs)
     return(counts,probs,observed_subs)
 
-def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',observed=False):
+def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colname='protein',observed=False):
     '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur'''
     all_subs=helper_functions.initiate_counter()
     count_subs=[]
-    for protname in variantdf['proteins'].unique():
-        slice_var=variantdf[variantdf['proteins']==protname]
-        slice_ctp=counterpartdf[counterpartdf['proteins']==protname]
+    for protname in variantdf[protein_colname].unique():
+        slice_var=variantdf[variantdf[protein_colname]==protname]
+        slice_ctp=counterpartdf[counterpartdf[protein_colname]==protname]
         variant=slice_var[peptide_colname].unique()
         counterpart=slice_ctp[peptide_colname].unique()
         for var in variant:

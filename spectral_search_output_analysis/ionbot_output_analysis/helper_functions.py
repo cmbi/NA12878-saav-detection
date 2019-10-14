@@ -3,6 +3,7 @@
 import re, os,sys, itertools
 import pandas as pd
 from collections import Counter
+import file_import
 
 
 
@@ -302,3 +303,7 @@ def remove_empty(variant_pep_dict):
 
 def longest(s):
     return(max(s,key=len))
+
+def get_all_observed(vf,vc,theoretical):
+    all_peptides=file_import.il_sensitive_read_csv(theoretical)
+    return(vf.merge(all_peptides, on='peptide'),vc.merge(all_peptides, on='peptide'))

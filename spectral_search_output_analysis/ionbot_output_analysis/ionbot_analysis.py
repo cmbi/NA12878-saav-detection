@@ -35,8 +35,6 @@ def main(args):
 
     #import other data
     print('importing helper data')
-    origin_info=file_import.create_chromosome_reference(args['gff'],args['bed']) #import information about the chromosome of origin (QC), dataframe
-    all_peptides=file_import.il_sensitive_read_csv(args['vfd'])
     variant_peptides=file_import.il_sensitive_read_csv(args['var'])
     variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
@@ -46,18 +44,17 @@ def main(args):
     #collect results
     print("Doing general analysis...")
     ###gather information about all non-variant matches###
-    all_matches_nonvar_vf=ibdf_vf.merge(all_peptides, on='peptide') #observed matches to variant free dictionary
-    all_matches_nonvar_vc=ibdf_vc.merge(all_peptides, on='peptide') #observed matches to variant containing dictionary
+    all_matches_nonvar_vf,all_matches_nonvar_vc=helper_functions.get_all_observed(ibdf_vf,ibdf_vc,args['vfd'])#observed matches
     #get strand and chrom info
     print('...fetching and plotting origin info...')
-    main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,origin_info)
-    #get support
-    print('...gauging protein support...')
-    main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
-    #get source
-    print('...summing source dictionaries...')
-    main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
-    main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
+    # main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
+    # #get support
+    # print('...gauging protein support...')
+    # main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
+    # #get source
+    # print('...summing source dictionaries...')
+    # main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
+    # main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
     #coverage - need to import full sequences for this #TODO
     # plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
 

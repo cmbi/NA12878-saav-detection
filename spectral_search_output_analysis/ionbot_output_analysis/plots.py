@@ -10,6 +10,8 @@ from statsmodels.distributions.empirical_distribution import ECDF
 from collections import Counter
 import calculations
 import helper_functions
+import logging
+log = logging.getLogger(__name__)
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
 # matplotlib.rcParams['axes.titlesize'] = 'xx-large'
@@ -103,7 +105,7 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     plt.title('q-value comparison search dictionaries')
     plt.tight_layout()
     plt.savefig('qval_comparison.png')
-    plt.clf()
+    
     plt.close()
 
 def plot_support(prot_evidence,unamb_prot_evidence,figname):
@@ -127,7 +129,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     plt.xlabel("# peptides")
     plt.legend(loc='upper right')
     plt.savefig(figname)
-    plt.clf()
+    
     plt.close()
 
 def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
@@ -141,7 +143,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
-    plt.clf()
+    
     plt.close()
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):
@@ -154,7 +156,7 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_pearsonr_vcvsopenmut.png")
-    plt.clf()
+    plt.close()
 
 def plot_scores_decoy(ibdf_vf,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
@@ -166,7 +168,7 @@ def plot_scores_decoy(ibdf_vf,figname):
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
-    plt.clf()
+    
     plt.close()
 
 def plot_source_piechart(source_counter,figname):
@@ -178,7 +180,7 @@ def plot_source_piechart(source_counter,figname):
     # plt.title('Peptide spectral hits by source',fontsize=35)
     plt.legend(labels,loc=8)
     plt.savefig(figname)
-    plt.clf()
+    
     plt.close()
 
 def plot_chromosomal_dist(distr_vc,distr_vf):
@@ -197,7 +199,7 @@ def plot_chromosomal_dist(distr_vc,distr_vf):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('chromosomal_distribution.png')
-    plt.clf()
+    
     plt.close()
 
 def plot_strand_dist(distr_vc,distr_vf):
@@ -214,7 +216,7 @@ def plot_strand_dist(distr_vc,distr_vf):
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig('strand_distribution.png')
-    plt.clf()
+    
     plt.close()
 
 def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
@@ -245,7 +247,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     plt.xlabel("Peptide count (protein size normalized)")
     plt.ylabel("Density")
     plt.savefig(fignamevertical)
-    plt.clf()
+    
     plt.close()
 
 def plot_heatmaps(counter,outfile):
@@ -264,7 +266,7 @@ def plot_heatmaps(counter,outfile):
     plt.xlabel("Variant")
     plt.tight_layout()
     plt.savefig(outfile)
-    plt.clf()
+    
     plt.close()
     
 
@@ -292,7 +294,6 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     plt.title('Variant peptide abundance vs non-variant peptide abundance')
     # plt.legend(loc='upper right')
     plt.savefig(figname)
-    plt.clf()
     plt.close()
     
 
@@ -306,26 +307,26 @@ def plot_mut_vs_prob(counts,figname):
     plt.ylabel('Variant peptide observed count')
     plt.tight_layout()
     plt.savefig(figname)
-    plt.clf()
     plt.close()
 
 def plot_mut_vs_nonmut(counts,figname):
-    sns.set(style="white", color_codes=True)
+    # sns.set(style="white", color_codes=True)
     plt.figure('measure direct counterparts')
     # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,color='b',alpha=1)
-    sns.jointplot(*zip(*counts), kind='scatter',stat_func=calculations.r2)
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Variant peptide count')
-    plt.ylabel('Reference counterpart count')
+    h=sns.jointplot(*zip(*counts), kind='scatter',stat_func=calculations.r2)
+    h.set_axis_labels('Variant peptide count', 'Reference counterpart count', fontsize=16)
+    # ax = h.ax_joint
+    # ax.set_xscale('log')
+    # ax.set_yscale('log')
+    # h.ax_marg_x.set_xlim(0, 250)
+    h.ax_marg_x.set_xscale('log')
+    h.ax_marg_y.set_yscale('log')
     left, right = plt.xlim()
     x = np.linspace(left,right)
-    plt.plot(x, x)
-    # plt.ylim(-10,700)
+    h.ax_joint.plot(x,x,':k')
     # plt.title('Variant vs. non-variant peptide abundance')
-    # plt.tight_layout()
-    plt.savefig(figname)#"variant_vs_nonvariant"+suffix)
-    plt.clf()
+    plt.tight_layout()
+    plt.savefig(figname)
     plt.close()
 
 def plot_ib_scores_directcomp(combi,retentiontime):
@@ -354,7 +355,7 @@ def plot_ib_scores_directcomp(combi,retentiontime):
     plt.legend()
     plt.title('Percolator scores for discrepant peptides found only in the variant-containing search')
     plt.savefig("discrepant_peptide_direct_comparison.png")
-    plt.clf()
+    
     plt.close()
 
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf):

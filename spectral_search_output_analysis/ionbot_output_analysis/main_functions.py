@@ -8,6 +8,9 @@ from collections import Counter
 import plots
 import helper_functions
 import calculations
+import file_import
+import logging
+log = logging.getLogger(__name__)
 
 def protein_support(df_vf,df_vc):
     '''calculate support for proteins

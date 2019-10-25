@@ -6,6 +6,8 @@ from scipy import stats
 import pandas as pd
 import helper_functions
 import plots
+import logging
+log = logging.getLogger(__name__)
 
 def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
                       lower_score_is_better=False):
@@ -145,31 +147,10 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
 
-def calc_pep_counts(mutant_cpdtpep,counterpart_cpdtpep,mutant_probs):
-    '''directly measure the observed counts of the saav peptides and their reference counterparts
-    for later implementation: coloring similar to the direct comparison discrepant peptide graph, with colors corresponding to the abundance of peptides
-    '''
-    counts=[]
-    probs=[]
-    observed_subs=helper_functions.initiate_counter()
-    for prot,peps in mutant_cpdtpep.items():
-        if prot in counterpart_cpdtpep:
-            peps_cpt=counterpart_cpdtpep[prot]
-            for pep in peps:
-                cpt_pep,sub=helper_functions.determine_snv(pep,peps_cpt)
-                if cpt_pep in peps_cpt:
-                    tuptoadd=(peps[pep],peps_cpt[cpt_pep])
-                    probtup=(mutant_probs[pep],peps[pep])
-                    if tuptoadd[0]!=0: #only if at least 1 variant peptide detected
-                        counts.append(tuptoadd)
-                        probs.append(probtup)
-                        observed_subs[sub]+=1
-    # df,dfall=helper_functions.counter_to_df(observed_subs)
-    return(counts,probs,observed_subs)
-
-def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colname='protein',observed=False):
+def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colname='protein',observed=False,debug=False):
     '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur'''
     all_subs=helper_functions.initiate_counter()
+    debug_lines=[]
     count_subs=[]
     for protname in variantdf[protein_colname].unique():
         slice_var=variantdf[variantdf[protein_colname]==protname]
@@ -180,19 +161,17 @@ def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colnam
             cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
             if sub!='':
                 all_subs[sub]+=1
+                if debug:
+                    debug_lines.append('\t'.join([sub,var,counterpart]))
                 if observed:
                     count_var=slice_var[slice_var[peptide_colname]==var].shape[0] #how many of this variant peptide was detected
                     count_ctp=slice_ctp[slice_ctp[peptide_colname]==cpt_pep].shape[0] #how many of the counterpart was detected
                     count_subs.append((count_var,count_ctp))
+    if debug:
+        with open('debug_subs.txt','w') as f:
+            f.writelines(line+'\n' for line in debug_lines)
     if observed:
         return(all_subs,count_subs)
-    # for prot,peps in mutant_cpdtpep.items():
-    #     if prot in counterpart_cpdtpep:
-    #         peps_cpt=counterpart_cpdtpep[prot]
-    #         for pep in peps:
-                
-    # serall=pd.Series(list(all_subs.values()),index=pd.MultiIndex.from_tuples(all_subs.keys()))
-    # dfall=serall.unstack()
     return(all_subs)
 
 def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
@@ -206,7 +185,6 @@ def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):
     print("correlation between variant peptides abundance and total protein abundance: "+str(cor_var[1][0]))
     print("correlation between counterpart peptide abundance and total protein abundance:"+str(cor_cpt[1][0]))
     print("correlation between non-variant peptide abundance and total protein abundance: "+str(cor_nonvar[1][0]))
-    return(0)
 
 
 def r2(x, y):

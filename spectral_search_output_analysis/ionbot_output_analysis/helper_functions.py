@@ -307,3 +307,10 @@ def longest(s):
 def get_all_observed(vf,vc,theoretical):
     all_peptides=file_import.il_sensitive_read_csv(theoretical)
     return(vf.merge(all_peptides, on='peptide'),vc.merge(all_peptides, on='peptide'))
+
+def normalize_counter(x):
+    '''normalize a counter object'''
+    total = sum(x.values(), 0.0)
+    for key in x:
+        x[key] /= total
+    return(x)

@@ -7,7 +7,7 @@ import pandas as pd
 import helper_functions
 import plots
 import logging
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
 
 def calculate_qvalues(df_in, decoy_col='decoy', score_col='score',
                       lower_score_is_better=False):

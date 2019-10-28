@@ -10,7 +10,7 @@ import helper_functions
 import calculations
 import file_import
 import logging
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
 
 def protein_support(df_vf,df_vc):
     '''calculate support for proteins
@@ -59,14 +59,12 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt):
     vf_only=merged[merged['_merge'] == 'left_only']
     vc_only=merged[merged['_merge'] == 'right_only']
     overlap=merged[merged['_merge'] == 'both']
-    #plot lengths of the peptides caught by one method but not the other
-    plots.plot_peplengths(Counter(vc_only['matched_peptide_vc'].str.len().to_list()),Counter(vf_only['matched_peptide_vf'].str.len().to_list()),variant=True)
-    plots.plot_peplengths(Counter(nonvar_vc['matched_peptide'].str.len().to_list()),Counter(nonvar_vf['matched_peptide'].str.len().to_list()),variant=False)
+    #plot lengths of the variant peptides caught by VC but not VF against nonvariant VC
+    plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list())))
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
     vc_unique=pd.merge(vf['peptide'],vc[['scan_id','peptide','matched_peptide','percolator_psm_score']], on='peptide', how='right', indicator=True) #isolate variant containing only
     mislabeled=pd.merge(nonvar_vf[['scan_id','peptide','unexpected_modification']],vc_unique.loc[vc_unique['_merge']=='right_only','scan_id'], on='scan_id').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).reset_index()
-    plots.plot_unexpected_mods(mislabeled["unexpected_modification"].apply(helper_functions.categorize_mods),pd.DataFrame(),variant=True) #plot what modifications they contained
-    plots.plot_unexpected_mods(nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vc["unexpected_modification"].apply(helper_functions.categorize_mods),variant=False) #plot what modifications they contained
+    plots.plot_unexpected_mods(mislabeled["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods)) #plot what modifications they contained
     #direct comparison of scores of peptides
     mislabeled=pd.merge(nonvar_vf[['scan_id','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('scan_id','matched_peptide','percolator_psm_score')], on='scan_id',suffixes=('_vf','_vc')).groupby(['matched_peptide_vc','matched_peptide_vf']).aggregate('mean').reset_index()
     scores_all_filtered=mislabeled.loc[mislabeled["percolator_psm_score_vc"]>mislabeled["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free

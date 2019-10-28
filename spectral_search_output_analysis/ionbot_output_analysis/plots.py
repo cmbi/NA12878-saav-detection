@@ -11,7 +11,7 @@ from collections import Counter
 import calculations
 import helper_functions
 import logging
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
 
 # Set the visualization settings (maybe need to be adjusted for saving figures to file)
 # matplotlib.rcParams['axes.titlesize'] = 'xx-large'
@@ -372,53 +372,40 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
     plt.clf()
     plt.close()
 
-def plot_unexpected_mods(mods_vf,mods_vc,variant=False):
-    mod_ct_vf=Counter(dict(mods_vf.value_counts()))
+def plot_unexpected_mods(mods_vf,mods_nonvar_vf):
+    mod_ct_vf=helper_functions.normalize_counter(Counter(dict(mods_vf.value_counts())))
     plt.figure('discrepant peptide lengths')
     chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(10)),orient='index')
-    if variant:
-        figname='variant_unexpected_mods.png'
-        title="Unexpected modifications found instead of SAAVs from variant peptides (variant-free search)"
-        chist_vf.plot(kind='bar',title=title,legend=False)
-    else:
-        figname='nonvariant_unexpected_mods.png'
-        title='All unexpected modifications found in non-variant peptides'
-        mod_ct_vc=Counter(dict(mods_vc.value_counts()))
-        chist_vc=pd.DataFrame.from_dict(dict(mod_ct_vc.most_common(10)),orient='index')
-        combi=pd.concat([chist_vc,chist_vf],axis=1,sort=False)
-        combi.fillna(0)
-        combi.columns=['Nonvariant VC', 'Nonvariant VF']
-        combi.plot(kind='bar',title=title)
-    plt.ylabel("Count peptides")
+    figname='nonvariant_unexpected_mods.png'
+    title='All unexpected modifications found in non-variant peptides'
+    mod_ct_non_var_vf=helper_functions.normalize_counter(Counter(dict(mods_nonvar_vf.value_counts())))
+    chist_non_var_vf=pd.DataFrame.from_dict(dict(mod_ct_non_var_vf.most_common(10)),orient='index')
+    combi=pd.concat([chist_non_var_vf,chist_vf],axis=1,sort=False)
+    combi.fillna(0)
+    combi.columns=['All nonvariant VF', 'Mislabeled as nonvariant VF']
+    combi.plot(kind='bar',title=title)
+    plt.ylabel("% Peptides")
     plt.xlabel("PTMs")
     plt.tight_layout()
     plt.savefig(figname)
     plt.clf()
     plt.close()
 
-def plot_peplengths(lenct_vc,lenct_vf,variant=False):
-    if variant:
-        labels=['Variant VC','Variant VF']
-        figname='variant_peptide_length.png'
-    else:
-        labels=['Nonvariant VC','Nonvariant VF']
-        figname='nonvariant_peptide_length.png'
+def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
+    labels=['Variant VC','Non-variant VC']
+    figname='variant_peptide_length.png'
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
-    if len(lenct_vf)>0:
-        chist_vf=pd.DataFrame.from_dict(lenct_vf,orient='index').sort_index()
-        combi=pd.concat([chist_vc,chist_vf],axis=1)
-        combi.fillna(0)
-    else:
-        combi=chist_vc
-        labels=['Variant VC']
+    chist_nonvar_vc=pd.DataFrame.from_dict(lenct_nonvar_vc,orient='index').sort_index()
+    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1)
+    combi.fillna(0)
     combi.columns=labels
     combi.plot(kind='bar',legend=False,title="Length of variant and normal peptides from combination search dictionaries")
     # combi=combi.reindex(new_index)
     plt.ylabel("Density")
     plt.xlabel("Length peptide")
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.clf()
     plt.close()

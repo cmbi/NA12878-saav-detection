@@ -77,8 +77,9 @@ def main(args):
     observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_counterparts, on='peptide') # decoy counterparts vc
 
     #just to get a count of how many variants were found in variant free set
-    print("variants found in variant-free before FDR correction:")
-    print(ibdf_vf.merge(variant_peptides, on='peptide').shape[0])
+    # print("variants found in variant-free before FDR correction:"+ )
+    # print("variants found in the variant-containing before FDR correction:"+)
+    print(str(ibdf_vf.merge(variant_peptides, on='peptide').shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.shape[0])+' variants found in the variant-containing output before FDR correction.')
 
     ###FDR###
     print('...filtering false positives...')
@@ -91,7 +92,7 @@ def main(args):
     #for the variant-free set, get true variant peptides from the FDR re-estimation
     final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png')
     final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png')
-    print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output.')
+    print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output after FDR correction.')
 
     print('Analyzing variants...')
     sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)

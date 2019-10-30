@@ -60,7 +60,10 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt):
     vc_only=merged[merged['_merge'] == 'right_only']
     overlap=merged[merged['_merge'] == 'both']
     #plot lengths of the variant peptides caught by VC but not VF against nonvariant VC
-    plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list())))
+    vcopl=[len(i) for i in vc_only['matched_peptide_vc'].unique()]
+    vcnvpl=[len(i) for i in nonvar_vc['matched_peptide'].unique()]
+    plots.plot_peplengths(helper_functions.normalize_counter(Counter(vcopl)),helper_functions.normalize_counter(Counter(vcnvpl)))
+    # plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list()))) #does not take into account repeating peptides
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
     vc_unique=pd.merge(vf['peptide'],vc[['scan_id','peptide','matched_peptide','percolator_psm_score']], on='peptide', how='right', indicator=True) #isolate variant containing only
     mislabeled=pd.merge(nonvar_vf[['scan_id','peptide','unexpected_modification']],vc_unique.loc[vc_unique['_merge']=='right_only','scan_id'], on='scan_id').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).reset_index()

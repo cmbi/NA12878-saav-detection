@@ -401,10 +401,15 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
     combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1)
     combi.fillna(0)
     combi.columns=labels
-    combi.plot(kind='bar',legend=False,title="Length of variant and normal peptides from combination search dictionaries")
+    combi.plot.box(legend=False,title="Length of variant and normal peptides from combination search dictionaries")
+    #stats to look at the difference between the 2 columns
+    t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC'])
+    print("peptide length statistics")
+    print("t = " + str(t2))
+    print("p = " + str(p2))
     # combi=combi.reindex(new_index)
-    plt.ylabel("Density")
-    plt.xlabel("Length peptide")
+    # plt.ylabel("Density")
+    # plt.xlabel("Length peptide")
     plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.clf()

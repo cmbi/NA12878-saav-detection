@@ -12,8 +12,6 @@ def concatenate_csvs(csvpath):
         csvname=os.fsdecode(csvfile)
         if csvname.endswith('.csv'):
             temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
-            temp["scan_id"]=temp["scan_id"].astype(str)+'_'+csvname.split('.')[0] #make scan ids unique again when concatenating all files
-            temp["title"]=csvname.split('.')[0]
             ionbotout=pd.concat([ionbotout,temp.fillna(value=values)])
     return(ionbotout)
 
@@ -38,6 +36,7 @@ def read_df_in_chunks(directory, chunksize):
 
 def pre_filtering(df_chunk):
     new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
+    new_chunk['scan_id']=new_chunk['title'].str[1:].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
     new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})
     new_chunk['peptide']=new_chunk['matched_peptide'].replace(to_replace='I|L',value='x',regex=True)

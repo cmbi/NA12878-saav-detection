@@ -104,7 +104,7 @@ def main(args):
     plots.plot_mut_vs_nonmut(sub_count_vf,'variant_vs_counterpart_vf.png')
 
     print("Making final plots...")
-    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt'])
+    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt_pred'], args['rt_obs'])
     plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     
@@ -120,7 +120,8 @@ parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
 parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
 parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
-parser.add_argument('--rt', help='retention time prediction',required=True)
+parser.add_argument('--rt_pred', help='retention time prediction',required=True)
+parser.add_argument('--rt_obs', help='retention time observed',required=True)
 # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
 args = vars(parser.parse_args()) 
 main(args)

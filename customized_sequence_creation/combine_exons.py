@@ -43,7 +43,7 @@ def worker_process(transcript):
     to_add=''
     kill=False
     AS=False
-    variants=[[],[]]
+    var_hom=[[],[]]
     origin=[[],[]]
     to_write=[]
     trans_info=junction_frame[junction_frame["transcript"]==transcript] #get junction information for the transcript
@@ -51,38 +51,29 @@ def worker_process(transcript):
     for tidx,trow in trans_info.iterrows(): #iterate through each junction and get the sequence
         sense=trow["sense"]
         seq_rows=exon_frame[(exon_frame["chromosome"]==trow["chromosome"]) & (exon_frame["end"]==trow["end"]) & (exon_frame["start"]==trow["start"])]
-        if len(seq_rows.index)==1: #if no heterozygous variants in exon
+        if len(seq_rows.index)==1: #if no heterozygous variants in exon. could better check if 'pos_het' != 'NA'
             #gather variants
-            v=seq_rows.iloc[0]["position"]
-            v=process_variant(v)
-            o=seq_rows.iloc[0]["origin"]
-            o=process_origin(o)
-            if sense=='-':
+            v=process_variant(seq_rows.iloc[0]["pos_hom"])
+            if sense=='-': #if minus strand, make reverse compliment
                 to_add=make_complement(seq_rows.iloc[0]["sequence"])
                 if v!='NA':
-                    v=[len(to_add)-x for x in v]
+                    v=[[len(to_add)-int(x[0]),x[1]] for x in v]
             else:
                 to_add=seq_rows.iloc[0]["sequence"]
-            len_existingz,len_existingo=len(sequence_zero),len(sequence_one)
+            len_existingz,len_existingo=len(sequence_zero),len(sequence_one) #keep track of current sequence lengths
             if v!='NA':
-                variants[0].extend([str(x+len_existingz) for x in v])
-                variants[1].extend([str(x+len_existingo) for x in v])
-                origin[0].extend(o)
-                origin[1].extend(o)
+                var_hom[0].extend([str(int(x[0])+len_existingz)+x[1] for x in v])
+                var_hom[1].extend([str(int(x[0])+len_existingo)+x[1] for x in v])
             sequence_zero+=to_add
             sequence_one+=to_add
         elif len(seq_rows.index)==2: #if heterozygous variants in exon
             AS=True
             seq_row_hz=seq_rows[seq_rows["haplotype"]==0]
             seq_row_ho=seq_rows[seq_rows["haplotype"]==1]
-            vz=seq_row_hz.iloc[0]["position"]
-            vo=seq_row_ho.iloc[0]["position"]
-            vz=process_variant(vz)
-            vo=process_variant(vo)
-            oo=seq_row_ho.iloc[0]["origin"]
-            oz=seq_row_hz.iloc[0]["origin"]
-            oo=process_origin(oo)
-            oz=process_origin(oz)
+            vhz=process_variant(seq_row_hz.iloc[0]["pos_het"])
+            vho=process_variant(seq_row_ho.iloc[0]["pos_het"])
+            vhomz=process_variant(seq_row_hz.iloc[0]["pos_het"])
+            vhomo=process_variant(seq_row_ho.iloc[0]["pos_hom"])
             to_add_z=make_complement(seq_row_hz.iloc[0]["sequence"])
             to_add_o=make_complement(seq_row_ho.iloc[0]["sequence"])
             len_existingz,len_existingo=len(sequence_zero),len(sequence_one)
@@ -99,8 +90,6 @@ def worker_process(transcript):
             if vz!='NA' and vo!='NA':
                 variants[0].extend([str(x+len_existingz) for x in vz])
                 variants[1].extend([str(x+len_existingo) for x in vo])
-                origin[0].extend(oz)
-                origin[1].extend(oo)
         else:
             print('exon not found')
             print(trans_info)
@@ -115,15 +104,19 @@ def worker_process(transcript):
         else:
             l='>'+transcript+'\n'+sequence_zero+'\n'
             to_write=[l]
-    return([transcript,to_write,variants,origin])
+    return([transcript,to_write,var_hom,var_het])
 
 def process_variant(v):
+    '''takes a comma seperated string of variants
+    input format: exon_position|chromosome|genome_position
+    output format: [[exon_position,chromosome|genome_position],[exon_position2,chromosome|genome_position2]]
+    '''
     if v!='NA':
         if ',' in v:
             v=v.split(',')
-            v=map(int,v)
+            v=[i.split('|',1) for i in v] #get the exon coordinate away from the genome coordinate
         else:
-            v=[int(v)]
+            v=[v.split('|',1)]
     return(v)
 
 def process_origin(o):
@@ -145,7 +138,7 @@ def read_exons_into_frame(hap_exons):
     reads exon file and stores into data frame
     this function contains the correction for the 0/1 coordinates in variable "true_start"
     '''                
-    exon_dict={'chromosome':[],'start':[],'end':[],'haplotype':[],'position':[],'origin':[],'sequence':[]}
+    exon_dict={'chromosome':[],'start':[],'end':[],'haplotype':[],'pos_het':[],'pos_hom':[],'sequence':[]}
     with open(hap_exons) as he:
         for line in he:
             if line.startswith('>'):
@@ -154,23 +147,26 @@ def read_exons_into_frame(hap_exons):
                         info=line.strip().split(' ')
                         hap=info[1].split(':')[1]
                         pos=info[2].split(':')[1]
-                        org=info[3].split(':')[1]
+                        if len(info)>3:
+                            hom=info[3].split(':')[1]
+                        else:
+                            hom='NA'
                         exon_dict['haplotype'].append(int(hap))
-                        exon_dict['position'].append(pos)
-                        exon_dict['origin'].append(org)
+                        exon_dict['pos_het'].append(pos)
+                        exon_dict['pos_hom'].append(hom)
                         info=re.split(':|-',info[0])
-                    elif 'pos' in line:
+                    elif 'pos_hom' in line:
                         info=line.strip().split(' ')
                         pos=info[1].split(':')[1]
                         org=info[2].split(':')[1]
-                        exon_dict['position'].append(pos)
-                        exon_dict['origin'].append(org)
+                        exon_dict['pos_hom'].append(pos)
+                        exon_dict['pos_het'].append('NA')
                         exon_dict['haplotype'].append(9)
                         info=re.split(':|-',info[0])
                     else:
                         exon_dict['haplotype'].append(9)
                         exon_dict['position'].append('NA')
-                        exon_dict['origin'].append('NA')
+                        exon_dict['pos_het'].append('NA')
                         info=re.split(':|-',line.strip())
                     chrom=info[0]
                     exon_dict['chromosome'].append(chrom[1:])

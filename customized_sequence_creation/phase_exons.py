@@ -14,6 +14,7 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
     
     input: fasta file of exons created from getfasta, vcf file of heterozygous variants excluding header
     output: new fasta files of exons, with 0 and 1 haplotypes for the exons that include one or more heterozygous variants
+        header will include information about homozygous and heterozygous variants
 
     also print out report of what exons have what variants to make it easier to trace. This report will be tab delimited and consist of:
         - chr start-stop in the previous format
@@ -51,8 +52,8 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                         entry_0,entry_1='',''
                         het=False
                         var=False
-                        v=[]
-                        o=[]
+                        v=[] #homozygous variants
+                        hv=[] #heterozygous variants
                         for vari in vcf_fetch:
                             var_pos=max(0,vari.POS-start-1) #start position on the sequence string, don't allow neagtive
                             entry_0+=seq[var_pos_end:var_pos] #add portion between old end position and new start position
@@ -63,27 +64,30 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                             #add a check that the base(s) that I am replacing are what they should be
                             ref_allele=seq[var_pos:var_pos_end]
                             if ref_allele==vari.REF: #only if the sequence that is being replaced matches what is written in the vcf file. this discludes all border
-                                v.append(str(var_pos))
-                                o.append(chr+'|'+str(vari.POS))
                                 varall+=1
                                 if vari.genotype('NA12878')['GT']=="0|1":
                                     het=True
+                                    hv.append(str(var_pos)+'|'+chr+'|'+str(vari.POS)) #format: variant position in exon, chromosome, variant positiion in genome
                                     entry_0+=vari.REF
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|0":
                                     het=True
+                                    hv.append(str(var_pos)+'|'+chr+'|'+str(vari.POS))
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=vari.REF
                                 elif vari.genotype('NA12878')['GT']=="1|2":
                                     het=True
+                                    hv.append(str(var_pos)+'|'+chr+'|'+str(vari.POS))
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[1])
                                 elif vari.genotype('NA12878')['GT']=="2|1":
                                     het=True
+                                    hv.append(str(var_pos)+'|'+chr+'|'+str(vari.POS))
                                     entry_0+=str(vari.ALT[1])
                                     entry_1+=str(vari.ALT[0])
                                 elif vari.genotype('NA12878')['GT']=="1|1":
                                     var=True
+                                    v.append(str(var_pos)+'|'+chr+'|'+str(vari.POS))
                                     entry_0+=str(vari.ALT[0])
                                     entry_1+=str(vari.ALT[0])
                                 else:
@@ -97,13 +101,16 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                                 bordervar+=1
                         entry_0+=seq[var_pos_end:end] #add last chunk of sequence
                         entry_1+=seq[var_pos_end:end]
-                        if het: 
-                            header_0=header.strip()+' haplotype:0 pos:'+','.join(v)+' orig:'+','.join(o)
-                            header_1=header.strip()+' haplotype:1 pos:'+','.join(v)+' orig:'+','.join(o)
+                        if het: #if contains heterozygous, make 2 seperate sequences
+                            header_0=header.strip()+' haplotype:0 pos_het:'+','.join(hv)
+                            header_1=header.strip()+' haplotype:1 pos_het:'+','.join(hv)
+                            if var: #if also contains homozygous, add those variants too
+                                header_0+=' pos_hom:'+','.join(v)
+                                header_1+=' pos_hom:'+','.join(v)
                             f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  
-                        elif var:
-                            f.writelines(header.strip()+' pos:'+','.join(v)+' orig:'+','.join(o)+'\n'+entry_0+'\n')
-                        else: #no variant positions in the exon
+                        elif var: #if only contains homozygous variants
+                            f.writelines(header.strip()+' pos_hom:'+','.join(v)+'\n'+entry_0+'\n')
+                        else: #no variants in the exon
                             f.writelines(header+line)
     f.close()
     return 'number total variants replaced = '+str(varall)+'. total border variants that were skipped = '+str(bordervar)

@@ -313,7 +313,7 @@ def plot_mut_vs_nonmut(counts,figname):
     # sns.set(style="white", color_codes=True)
     plt.figure('measure direct counterparts')
     # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,color='b',alpha=1)
-    h=sns.jointplot(*zip(*counts), kind='scatter',stat_func=calculations.r2)
+    h=sns.jointplot(*zip(*counts), kind='scatter',alpha=0.55,stat_func=calculations.r2) #in the future, should have another object for heterozygous
     h.set_axis_labels('Variant peptide count', 'Reference counterpart count', fontsize=16)
     # ax = h.ax_joint
     # ax.set_xscale('log')
@@ -329,22 +329,26 @@ def plot_mut_vs_nonmut(counts,figname):
     plt.savefig(figname)
     plt.close()
 
-def plot_ib_scores_directcomp(combi,retentiontime):
+def plot_ib_scores_directcomp(combi,rtpredfile,rtobsfile):
     '''for the variant peptides that were found in one set but not another,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
     '''
-    rt=pd.read_csv(retentiontime)
-    rt.columns=['matched_peptide','predicted_retention_time']
+    rt_pred=pd.read_csv(rtpredfile)
+    rt_pred.columns=['matched_peptide','predicted_retention_time']
+    rt_obs=pd.read_csv(rtobsfile)
+    rt_obs.columns=['scan_id','observed_retention_time']
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
     # combi.groupby("matched_peptide").mean()
     # combi.groupby("matched_peptide_vf").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
-    combi=pd.merge(combi,rt,on='matched_peptide')
+    combi=pd.merge(combi,rt_pred,on='matched_peptide')
+    combi=pd.merge(combi,rt_obs,on='scan_id')
+    combi['delta_retention_time']=(combi['observed_retention_time']-combi['predicted_retention_time']).abs()
     # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
-    combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="predicted_retention_time",colormap='viridis')
+    combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="delta_retention_time",colormap='viridis')
     left, right = plt.xlim()
     x = np.linspace(left,right)
     plt.plot(x, x)

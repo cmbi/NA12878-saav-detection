@@ -148,15 +148,23 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     return(mut_pep_abundance,nonmut_pep_abundance)
 
 def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colname='protein',observed=False,debug=False):
-    '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur'''
+    '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur
+    protein column corresponds to the protein associated with the variant peptide in the digest, not the proteins matched by ionbot'''
     all_subs=helper_functions.initiate_counter()
     debug_lines=[]
     count_subs=[]
+    heterozygous=[] #to store those that are heterozygous
+    isHetero=False
+    interest=[] #to store those peptides that are in a list of interest- namely the list of ASE transcripts from the nanopore paper
     for protname in variantdf[protein_colname].unique():
         slice_var=variantdf[variantdf[protein_colname]==protname]
         slice_ctp=counterpartdf[counterpartdf[protein_colname]==protname]
         variant=slice_var[peptide_colname].unique()
         counterpart=slice_ctp[peptide_colname].unique()
+        if '_h' in protname: #easy check: proteins that have one or more heterozygous variants in them. keep in mind that this is at the protein resolution not peptide!
+            isHetero=True
+        else:
+            isHetero=False
         for var in variant:
             cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
             if sub!='':

@@ -45,7 +45,7 @@ def dict_source_bin(df_vf,df_vc,figname_vf,figname_vc):
     plots.plot_source_piechart(vf,figname_vf)
     plots.plot_source_piechart(vc,figname_vc)        
 
-def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt):
+def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt_pred,rt_obs):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
@@ -72,7 +72,7 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,rt):
     mislabeled=pd.merge(nonvar_vf[['scan_id','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('scan_id','matched_peptide','percolator_psm_score')], on='scan_id',suffixes=('_vf','_vc')).groupby(['matched_peptide_vc','matched_peptide_vf']).aggregate('mean').reset_index()
     scores_all_filtered=mislabeled.loc[mislabeled["percolator_psm_score_vc"]>mislabeled["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
     scores_all_filtered.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv, look at where the vc scores were higher than vf
-    plots.plot_ib_scores_directcomp(mislabeled.rename(columns={"matched_peptide_vc":"matched_peptide"}),rt) #direct comparison plot: what scores they had in each of the libraries
+    plots.plot_ib_scores_directcomp(mislabeled.rename(columns={"matched_peptide_vc":"matched_peptide"}),rt_pred,rt_obs) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     plots.plot_ib_scores(vf_only["percolator_psm_score_vf"].tolist(),vc_only["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function

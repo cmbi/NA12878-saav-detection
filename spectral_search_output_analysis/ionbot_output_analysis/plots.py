@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from scipy import stats
 from statsmodels.distributions.empirical_distribution import ECDF
 from collections import Counter
 import calculations
@@ -329,15 +330,13 @@ def plot_mut_vs_nonmut(counts,figname):
     plt.savefig(figname)
     plt.close()
 
-def plot_ib_scores_directcomp(combi,rtpredfile,rtobsfile):
+def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='rt_observed'):
     '''for the variant peptides that were found in one set but not another,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
     '''
     rt_pred=pd.read_csv(rtpredfile)
     rt_pred.columns=['matched_peptide','predicted_retention_time']
-    rt_obs=pd.read_csv(rtobsfile)
-    rt_obs.columns=['scan_id','observed_retention_time']
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
@@ -345,8 +344,7 @@ def plot_ib_scores_directcomp(combi,rtpredfile,rtobsfile):
     # combi.groupby("matched_peptide_vf").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     combi=pd.merge(combi,rt_pred,on='matched_peptide')
-    combi=pd.merge(combi,rt_obs,on='scan_id')
-    combi['delta_retention_time']=(combi['observed_retention_time']-combi['predicted_retention_time']).abs()
+    combi['delta_retention_time']=(combi[observed_colname]-combi['predicted_retention_time']).abs()
     # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
     combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="delta_retention_time",colormap='viridis')
     left, right = plt.xlim()
@@ -407,7 +405,7 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
     combi.columns=labels
     combi.plot.box(legend=False,title="Length of variant and normal peptides from combination search dictionaries")
     #stats to look at the difference between the 2 columns
-    t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC'])
+    t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC']) #related or independent samples? (rel or ind?)
     print("peptide length statistics")
     print("t = " + str(t2))
     print("p = " + str(p2))

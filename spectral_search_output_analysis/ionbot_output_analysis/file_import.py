@@ -36,7 +36,7 @@ def read_df_in_chunks(directory, chunksize):
 
 def pre_filtering(df_chunk):
     new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
-    new_chunk['scan_id']=new_chunk['title'].str[1:].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
+    new_chunk['scan_id']=new_chunk['title'].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
     new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
     new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})
     new_chunk['peptide']=new_chunk['matched_peptide'].replace(to_replace='I|L',value='x',regex=True)
@@ -64,32 +64,32 @@ def import_coding_transcriptids(sources):
                         transcript_ids.append(line.strip()[1:])
     return(transcript_ids)
 
-def import_cpdt(cpdt,fullSeq):
-    ''' read the cpdt files into a data structure
-    this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
-    {protein_ID:{pep1:0, pep2:0, pep3:0}} #counts
-    {pep1:prob, pep2:prob, pep3:prob} #probabilities
-    '''
-    cpdt_pep={}
-    cpdt_probs={}
-    full_seqs={}
-    with open(cpdt) as c:
-        for line in c:
-            if line.startswith('>'):
-                key=line.strip()[1:]
-                key=helper_functions.get_id(key)
-                cpdt_pep[key]={}
-                full_seqs[key]=''
-            elif 'PEPTIDE' in line:
-                lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')
-                cpdt_pep[key][lp[0]]=0
-                cpdt_probs[lp[0]]=float(lp[1].strip())
-            elif 'PEPTIDE' not in line:
-                full_seqs[key]=line.strip()
-    if fullSeq:
-        return(cpdt_pep, full_seqs)
-    return(cpdt_pep,cpdt_probs)
+# def import_cpdt(cpdt,fullSeq):
+#     ''' read the cpdt files into a data structure
+#     this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
+#     {protein_ID:{pep1:0, pep2:0, pep3:0}} #counts
+#     {pep1:prob, pep2:prob, pep3:prob} #probabilities
+#     '''
+#     cpdt_pep={}
+#     cpdt_probs={}
+#     full_seqs={}
+#     with open(cpdt) as c:
+#         for line in c:
+#             if line.startswith('>'):
+#                 key=line.strip()[1:]
+#                 key=helper_functions.get_id(key)
+#                 cpdt_pep[key]={}
+#                 full_seqs[key]=''
+#             elif 'PEPTIDE' in line:
+#                 lp=line.split('PEPTIDE ')[1]
+#                 lp=lp.split(':')
+#                 cpdt_pep[key][lp[0]]=0
+#                 cpdt_probs[lp[0]]=float(lp[1].strip())
+#             elif 'PEPTIDE' not in line:
+#                 full_seqs[key]=line.strip()
+#     if fullSeq:
+#         return(cpdt_pep, full_seqs)
+#     return(cpdt_pep,cpdt_probs)
 
 def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
@@ -121,17 +121,17 @@ def create_chromosome_reference(gfffile,bedfile):
     info_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
     return(pd.concat([info_ref,info_ont]))
 
-def import_cpdt_simple(cpdt):
-    cpdt_pep={}
-    with open(cpdt) as c:
-        for line in c:
-            if line.startswith('>'):
-                key=line.strip()[1:]
-                key=helper_functions.get_id(key)
-                cpdt_pep[key]=[]
-            elif 'PEPTIDE' in line:
-                lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(':')[0]
-                cpdt_pep[key].append(lp)
-    return(cpdt_pep)
+# def import_cpdt_simple(cpdt):
+#     cpdt_pep={}
+#     with open(cpdt) as c:
+#         for line in c:
+#             if line.startswith('>'):
+#                 key=line.strip()[1:]
+#                 key=helper_functions.get_id(key)
+#                 cpdt_pep[key]=[]
+#             elif 'PEPTIDE' in line:
+#                 lp=line.split('PEPTIDE ')[1]
+#                 lp=lp.split(':')[0]
+#                 cpdt_pep[key].append(lp)
+#     return(cpdt_pep)
 

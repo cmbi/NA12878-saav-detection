@@ -123,19 +123,19 @@ def determine_snv(peptide,plist):
                 return (True,pep)
     return (False,'')
 
-def read_cpdt(cpdt):
-    '''{id:{peptide:probability}'''
-    cpdt_pep={}
-    with open(cpdt) as c:
-        for line in c:
-            if line.startswith('>'):
-                key=get_id(line)
-                cpdt_pep[key]={}
-            elif 'PEPTIDE' in line:
-                lp=line.split('PEPTIDE ')[1]
-                lp=lp.split(': ')
-                cpdt_pep[key][lp[0]]=lp[1].strip()
-    return cpdt_pep
+# def read_cpdt(cpdt):
+#     '''{id:{peptide:probability}'''
+#     cpdt_pep={}
+#     with open(cpdt) as c:
+#         for line in c:
+#             if line.startswith('>'):
+#                 key=get_id(line)
+#                 cpdt_pep[key]={}
+#             elif 'PEPTIDE' in line:
+#                 lp=line.split('PEPTIDE ')[1]
+#                 lp=lp.split(': ')
+#                 cpdt_pep[key][lp[0]]=lp[1].strip()
+#     return cpdt_pep
 
 def read_csv(csvfile):
     cpdt_pep={}

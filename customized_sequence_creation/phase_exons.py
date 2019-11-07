@@ -117,8 +117,8 @@ def phase_exons(fasta_exons,vcf_gz,outputfile):
                                 line_zero.extend([','.join(hom_variants),','.join(hom_variants_org)])
                                 line_one.extend([','.join(hom_variants),','.join(hom_variants_org)])
                             else:
-                                line_zero.append(str(None))
-                                line_one.append(str(None))
+                                line_zero.extend([str(None),str(None)])
+                                line_one.extend([str(None),str(None)])
                             line_zero.append(entry_0)
                             line_one.append(entry_1)
                             # f.writelines(header_0+'\n'+entry_0+'\n'+header_1+'\n'+entry_1+'\n')  

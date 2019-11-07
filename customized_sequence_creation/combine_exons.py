@@ -6,6 +6,7 @@ import numpy as np
 #from enum import Enum
 from Bio.Seq import Seq
 from tqdm import tqdm
+import gffpandas.gffpandas as gffpd
 import multiprocessing as mp
 import argparse
 
@@ -25,16 +26,20 @@ and what the genome coordinate is
 {sequence}
 '''
                         
-def print_results(results,outfile):
+def print_results(results,outfasta,report):
     '''
-    takes the exons created from the phase_exons function and stitches them together according to the gff file to make full transcripts
+    takes the exons created from the phase_exons function and stitches them together according to the gff fasta to make full transcripts
     
     ''' 
-    f=open(outfile,'w')
+    f=open(outfasta,'w')
+    r=open(report,'w')
     output = [p.get() for p in results] #list of tuplies
     #write transcript to fasta
     for o in output:
-        f.write(o)
+        f.write(o[0])
+        r.write(o[1])
+    r.close()
+    f.close()
     return('done')
 
 def worker_process(transcript):
@@ -45,163 +50,117 @@ def worker_process(transcript):
     var_hom,hom_org,var_het,het_org=([],[]),([],[]),([],[]),([],[])
     output_fasta=[]
     output_report=[]
-    trans_info=junction_frame[junction_frame["transcript"]==transcript] #get junction information for the transcript
-    trans_info=trans_info.sort_values(by="rank") #sort them in the correct order
-    for tidx,trow in trans_info.iterrows(): #iterate through each junction and get the sequence
-        seq_rows=exon_frame[(exon_frame["chromosome"]==trow["chromosome"]) & (exon_frame["end"]==trow["end"]) & (exon_frame["start"]==trow["start"])]
+    trans_info=exon_df[exon_df["transcript"]==transcript] #get exons in transcript
+    for rank in np.sort(trans_info['rank'].unique()): #iterate through each exon by its rank, by ascending
+        seq_rows=trans_info[trans_info["rank"]==rank]
         if len(seq_rows.index)==1: #if no heterozygous variants in exon
-            assert(seq_rows.iloc[0]['pos_het'] == None)
-            var_hom[0].append(variant_renumber(seq_rows.iloc[0]["pos_hom"],len(sequence_zero),strand_correction=False))
-            var_hom[1].append(variant_renumber(seq_rows.iloc[0]["pos_hom"],len(sequence_one),strand_correction=False))
-            # if v:
-            #     var_hom[0].extend([str(int(x[0])+len_existingz)+x[1] for x in v])
-            #     var_hom[1].extend([str(int(x[0])+len_existingo)+x[1] for x in v])
+            assert np.isnan(seq_rows.iloc[0]['pos_het']), f"there are heterozygous positions at {seq_rows.iloc[0]['pos_het']}"
+            var_hom[0].append(variant_renumber(seq_rows.iloc[0]["pos_hom"],len(sequence_zero),seq_rows.iloc[0]['sense'],len(seq_rows.iloc[0]['sequence'])))
+            var_hom[1].append(variant_renumber(seq_rows.iloc[0]["pos_hom"],len(sequence_one),seq_rows.iloc[0]['sense'],len(seq_rows.iloc[0]['sequence'])))
+            hom_org[0].append(seq_rows.iloc[0]["hom_org"]) #transfer over the origins
+            hom_org[1].append(seq_rows.iloc[0]["hom_org"])
             #finally, add the exon sequence to the transcript
             sequence_zero+=seq_rows.iloc[0]["sequence"]
             sequence_one+=seq_rows.iloc[0]["sequence"]
         elif len(seq_rows.index)==2: #if heterozygous variants in exon
             isHetero=True
             #separate the 2 exon haplotypes
-            seq_row_hz=seq_rows[seq_rows["haplotype"]==0]
-            seq_row_ho=seq_rows[seq_rows["haplotype"]==1]
+            hap_zero_exon_row=seq_rows[seq_rows["haplotype"]==0]
+            hap_one_exon_row=seq_rows[seq_rows["haplotype"]==1]
             #collect the corresponding variants
-            assert(seq_row_hz.iloc[0]["pos_het"]!=None)
-            assert(seq_row_ho.iloc[0]["pos_het"]!=None)
-            #fetch sequence, renumber if minus strand, add exon sequence to transcript
-            var_het[0].append(variant_renumber(seq_row_hz.iloc[0]["pos_het"],len(sequence_zero),strand_correction=False))
-            var_het[1].append(variant_renumber(seq_row_ho.iloc[0]["pos_het"],len(sequence_one),strand_correction=False))
-            var_hom[0].append(variant_renumber(seq_row_hz.iloc[0]["pos_hom"],len(sequence_zero),strand_correction=False))
-            var_hom[1].append(variant_renumber(seq_row_ho.iloc[0]["pos_hom"],len(sequence_one),strand_correction=False))
+            assert ~np.isnan(hap_zero_exon_row.iloc[0]["pos_het"]), f"heterozygous positions are missing"
+            assert ~np.isnan(hap_one_exon_row.iloc[0]["pos_het"]), f"heterozygous positions are missing"
+            #collect all information
+            var_het[0].append(variant_renumber(hap_zero_exon_row.iloc[0]["pos_het"],len(sequence_zero),hap_zero_exon_row.iloc[0]['sense'],len(hap_zero_exon_row.iloc[0]['sequence'])))
+            var_het[1].append(variant_renumber(hap_one_exon_row.iloc[0]["pos_het"],len(sequence_one),hap_one_exon_row.iloc[0]['sense'],len(hap_one_exon_row.iloc[0]['sequence'])))
+            het_org[0].append(hap_zero_exon_row.iloc[0]["het_org"])
+            het_org[1].append(hap_one_exon_row.iloc[0]["het_org"])
+            var_hom[0].append(variant_renumber(hap_zero_exon_row.iloc[0]["pos_hom"],len(sequence_zero),hap_zero_exon_row.iloc[0]['sense'],len(hap_zero_exon_row.iloc[0]['sequence'])))
+            var_hom[1].append(variant_renumber(hap_one_exon_row.iloc[0]["pos_hom"],len(sequence_one),hap_one_exon_row.iloc[0]['sense'],len(hap_one_exon_row.iloc[0]['sequence'])))
+            hom_org[0].append(hap_zero_exon_row.iloc[0]["hom_org"])
+            hom_org[1].append(hap_one_exon_row.iloc[0]["hom_org"])
             #finally, add the exon sequences to the transcript
-            sequence_zero+=seq_row_hz.iloc[0]["sequence"]
-            sequence_one+=seq_row_ho.iloc[0]["sequence"]
-            #update and store variant info
-            # var_het[0].extend([str(int(x[0])+len_existingz)+x[1] for x in vhz])
-            # var_het[1].extend([str(int(x[0])+len_existingo)+x[1] for x in vho])
-            # if vhomz:
-            #     var_hom[0].extend([str(int(x[0])+len_existingz)+x[1]  for x in vhomz])
-            # if vhomo:
-            #     var_hom[1].extend([str(int(x[0])+len_existingo)+x[1] for x in vhomo])
+            sequence_zero+=hap_zero_exon_row.iloc[0]["sequence"]
+            sequence_one+=hap_one_exon_row.iloc[0]["sequence"]
         else:# can have another elif for 0, and then an 
             print(trans_info)
             raise Exception('exon not found')
     if isHetero: #if there was a heterozygous variant detected somewhere in the transcript
         for_fasta=f">{transcript}_h0\n{sequence_zero}\n>{transcript}_h1\n{sequence_one}\n"
-        for_report=f""
-        header_zero='>'+transcript+'_h0 pos_het:'+','.join(var_het[0]) # look into f strings- more pythonic
-        header_one='>'+transcript+'_h1 pos_het:'+','.join(var_het[1])
-        if len(var_hom[0])>0:
-            header_zero+=' pos_hom:'+','.join(var_hom[0])
-        if len(var_hom[1])>0:
-            header_one+=' pos_hom:'+','.join(var_hom[1])
-        l1=header_zero+'\n'+sequence_zero+'\n'
-        l2=header_one+'\n'+sequence_one+'\n'
-        output_fasta=[l1,l2]
+        for_report=f"{transcript}_h0\t{','.join(var_het[0])}\t{','.join(het_org[0])}\t{','.join(var_hom[0])}\t{','.join(hom_org[0])}\n{transcript}_h1\t{','.join(var_het[1])}\t{','.join(het_org[1])}\t{','.join(var_hom[1])}\t{','.join(var_hom[1])}"
     else: #if no heterozygous variant detected, then both 0 and 1 haplotypes are the same
-        header_zero='>'+transcript
-        if len(var_hom[0])>0:
-            header_zero+=' pos_hom:'+','.join(var_hom[0])
-        l=header_zero+'\n'+sequence_zero+'\n'
-        output_fasta=[l]
-    return(output_fasta)
+        for_fasta=f">{transcript}\n{sequence_zero}\n"
+        print(var_hom)
+        print(hom_org)
+        for_report=f"{transcript}\t{str(None)}\t{str(None)}\t{','.join(var_hom[0])}\t{','.join(hom_org[0])}\n"
+    return(for_fasta,for_report)
 
-def variant_renumber(com_seperated_variantlist,len_whole_seq,strand_correction=True):
+def variant_renumber(com_seperated_variantlist,len_whole_seq,strand,len_exon):
     '''takes a comma seperated string of variants and the length of the whole sequence
-    renumbers the variants to adjust for the minus strand
-    Can be used for 2 types of renumbering: minus strand correction or addition of existing sequence
-    in the case of the latter, the "len_whole_seq" actually refers to the len of the existing sequence fragment
+    renumbers the variants to adjust for the minus strand and adds the length of the existing sequence
     '''
-    if com_seperated_variantlist:
+    if ~np.isnan(com_seperated_variantlist):
+        assert type(com_seperated_variantlist)==str, com_seperated_variantlist
         if ',' in com_seperated_variantlist:
             com_seperated_variantlist=com_seperated_variantlist.split(',')
             new_var_pos=[]
             for variant in com_seperated_variantlist:
-                if strand_correction:
-                    new_var_pos.append(len_whole_seq-int(variant))
-                else:
-                    new_var_pos.append(len_whole_seq+int(variant))
+                if strand=='-':
+                    variant=str(len_exon-int(variant))
+                new_var_pos.append(str(len_whole_seq+int(variant)))
             return(','.join(new_var_pos))
         else:
-            if strand_correction:
-                return(str(len_whole_seq-int(com_seperated_variantlist)))
-            else:
-                return(str(len_whole_seq+int(com_seperated_variantlist))
-    return(com_seperated_variantlist)
+            if strand=='-':
+                com_seperated_variantlist=str(len_exon-int(com_seperated_variantlist))
+            return(str(len_whole_seq+int(com_seperated_variantlist)))
+    return(str(None))
 
-def import_exons(exoncsv):
+def reverse_complement(df):
     '''read in exons and process the minus strand sequences
+    chromosome      start   end     haplotype       pos_het het_org pos_hom hom_org sequence
     '''
-    df=pd.read_csv(exoncsv,sep='\t')
-    reverse_strand=df[df['strand']=='-']
-    reverse_strand['sequence']=reverse_strand['sequence'].apply(make_complement)
-    reverse_strand['pos_het']=reverse_strand.apply(lambda x: variant_renumber(x['pos_het'],x['sequence'].str.len()))
-    reverse_strand['pos_hom']=reverse_strand.apply(lambda x: variant_renumber(x['pos_hom'],x['sequence'].str.len()))
-    # reverse_strand['pos_het']=reverse_strand['sequence'].str.len()-reverse_strand['pos_het']
-    # reverse_strand['pos_hom']=reverse_strand['sequence'].str.len()-reverse_strand['pos_hom']
-    return(pd.concat([df[df['strand']!='-'],reverse_strand],axis=0, ignore_index=True))
+    reverse_strand=df[df['sense']=='-']
+    reverse_strand['sequence']=reverse_strand['sequence'].apply(lambda x: make_complement(str(x)))
+    # reverse_strand['pos_het']=reverse_strand.apply(lambda x: variant_renumber(x['pos_het'],x['sequence'].str.len()))
+    # reverse_strand['pos_hom']=reverse_strand.apply(lambda x: variant_renumber(x['pos_hom'],x['sequence'].str.len()))
+    return(pd.concat([df[df['sense']!='-'],reverse_strand],axis=0, ignore_index=True))
 
 def make_complement(sequence):
     '''helper function to combine_exons
     makes complimenary mRNA in case of antisense strand'''
-    seq=Seq(sequence)
-    return(str(seq.reverse_complement()))
+    complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+    reverse_complement = "".join(complement.get(base, base) for base in reversed(sequence))
+    return(reverse_complement)
 
 def read_gff3_into_frame(gff):
     '''helper function to combine_exons
     input: junction file (gff), and T/F depending on whether you are actually putting in a 0-based (bed) file. True for bed, False for gff.
     this function assumes that the bed file chr is in the foormat "chr2" while gff is in format "2"
     '''
-    df=read_csv(gff,sep='\t')
     if gff[-3:]=='bed':
-        df=df.drop(df[[3,4,6,7,8]],axis=1) #maybe these shouldn't be hardcoded...
+        df=pd.read_csv(gff,sep='\t')
+        df.drop(df.columns[[3,4,6,7,8]],axis=1) #maybe these shouldn't be hardcoded...
         df.columns=['chromosome','start','end','sense','transcript']
         df['start']=df['start'].astype(int)+1
         df['transcript']=df['transcript'].str.split('transcript:').apply(lambda x: x[1])
-        df['transcript'],df['rank']=df['transcript'].str.split('rank=')
+        df['transcript'],df['rank']=df['transcript'].str.split('rank=',1).str
         df['transcript']=df['transcript'].str.split(';',1).apply(lambda x: x[0])
         df['rank']=df['rank'].str.split(';',1).apply(lambda x: x[0])
     elif gff[-4:]=='gff3':
-        df=df.drop(df[[1,2,5,7]],axis=1)
+        df=gffpd.read_gff3(gff).df
+        df.drop(df.columns[[1,2,5,7]],axis=1,inplace=True)
         df.columns=['chromosome','start','end','sense','transcript']
         df['transcript']=df['transcript'].str.split('transcript_id=').apply(lambda x: x[1])
-        df['transcript'],df['rank']=df['transcript'].str.split('exon_number=')
+        df['transcript'],df['rank']=df['transcript'].str.split('exon_number=',1).str
         df['transcript']=df['transcript'].str.split(';',1).apply(lambda x: x[0])
         df['rank']=df['rank'].str.split(';',1).apply(lambda x: x[0])
     else:
         raise Exception("Wrong junction file type input - must be gff3 or bed file")
-    df=df[df['chromosome']!='chrM']
-    # gff_dict={'chromosome':[],'start':[],'end':[],'sense':[],'transcript':[],'rank':[]}
-    # with open(gff) as g:
-    #     for line in g:
-    #         if 'transcript' in line:
-    #             info=re.split('\t',line.strip())
-    #             if isBed:
-    #                 info_temp=[info[0],info[3],info[4],info[1],info[2]]
-    #                 info=info_temp+info[4:]
-    #                 chrom=info[0]
-    #                 gff_dict['start'].append(int(info[3])+1)
-    #             else:
-    #                 #chrom='chr'+info[0]
-    #                 chrom=info[0] #for gencode
-    #                 gff_dict['start'].append(int(info[3]))
-    #             gff_dict['sense'].append(info[6])
-    #             gff_dict['chromosome'].append(chrom)
-    #             gff_dict['end'].append(int(info[4]))
-    #             annos=info[-1]
-    #             if 'transcript_id' in line: #gencode ref
-    #                 tns=annos.split('transcript_id=')[1]
-    #                 rk=annos.split('exon_number=')[1]
-    #             else: #for ensembl ref
-    #                 tns=annos.split('transcript:')[1] 
-    #                 rk=annos.split('rank=')[1]
-    #             gff_dict['transcript'].append(tns.split(';')[0])
-    #             gff_dict['rank'].append(int(rk.split(';')[0]))
     return(df)
 
-def child_initialize(_exon_frame, _junction_frame):
-     global exon_frame, junction_frame, terms
-     exon_frame = _exon_frame
-     junction_frame = _junction_frame
+def child_initialize(_exon_df):
+     global exon_df
+     exon_df = _exon_df
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='track variants')
@@ -210,15 +169,17 @@ if __name__ == '__main__':
     parser.add_argument('--exons',help='Phased and variant replaced exons, tab seperated from phase_exons.py',required=True)
     parser.add_argument('--jun', help='file transcript junctions (GFF or BED accepted)', required=True)
     parser.add_argument('--out', help='Output fasta', required=True)
-    # parser.add_argument('--report', help='Output file report', required=True) #in favor of reporting the variants in the header of the fasta file
+    parser.add_argument('--report', help='Output file report', required=True) #in favor of reporting the variants in the header of the fasta file
     args=vars(parser.parse_args())
     print('Reading in haplotype-specific exons...')
-    # exon_frame=read_exons_into_frame(args['exons'])
-    exon_frame=import_exons(args['exons'])
+    exon_frame=pd.read_csv(args['exons'],sep='\t')
     print('Reading in transcript annotations...')
     junction_frame=read_gff3_into_frame(args['jun']) #can put bed file in
-    transcripts=junction_frame.transcript.unique()
+    print("Preparing for analysis...")
+    exon_df=reverse_complement(pd.merge(junction_frame, exon_frame, on=['chromosome','start','end']))
+    exon_df.replace({'None':np.nan}, inplace=True)
+    transcripts=exon_df.transcript.unique()
     print('building transcripts')
-    pool=mp.Pool(processes=int(args['cpu']), initializer=child_initialize, initargs=(exon_frame,junction_frame))
+    pool=mp.Pool(processes=int(args['cpu']), initializer=child_initialize, initargs=(exon_df,))
     results=[pool.apply_async(worker_process,args=(transcript,)) for transcript in transcripts] #each transcript processed with seperate cpu
-    print_results(results,args['out'])
+    print_results(results,args['out'],args['report'])

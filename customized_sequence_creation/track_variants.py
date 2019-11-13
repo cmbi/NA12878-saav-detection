@@ -2,8 +2,8 @@
 
 '''
 this script will use as input:
-    - the report output from phase_exons
-    - CDS from both ref and ont
+    - the report output from combine_exons
+    - CDS
     - file with identifiers of the proteins and peptides from fdr_reestimation
 
 will return the SNP information (first file) from those variants that were found in the peptides (last file)

@@ -9,6 +9,7 @@ import plots
 import fdr_reestimation
 import pandas as pd
 import logging
+from Bio.SubsMat import MatrixInfo
 
 
 '''
@@ -37,15 +38,18 @@ def main(args):
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var'])
-    variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
+    # variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
-    decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
+    # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
+    rt_obs_df=pd.read_csv(args['rt_obs'],sep=',',names=['scan_id','rt_observed'])
+    rt_pred_df=pd.read_csv(args['rt_pred'],sep=',',names=['matched_peptide','rt_predicted'])
     theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
     
     #collect results
     print("Doing general analysis...")
     ###gather information about all non-variant matches###
     all_matches_nonvar_vf,all_matches_nonvar_vc=helper_functions.get_all_observed(ibdf_vf,ibdf_vc,args['vfd'])#observed matches
+    # all_matches_nonvar_vc.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide').to_csv('all_hits')
     
     # #get strand and chrom info
     # print('...fetching and plotting origin info...')
@@ -69,7 +73,6 @@ def main(args):
     detected_normal_decoy_combi_vf=ibdf_vf[(~ibdf_vf["unexpected_modification"].str.contains('[A-Z]->[A-Z]',regex=True)) & (ibdf_vf["DB"]==True)]
 
     #for the variant-containing set, recalculate FDR based on the variant subset only
-    print()
     observed_variants_vc=ibdf_vc.merge(variant_peptides, on='peptide') # target variants vc
     observed_decoy_vc=ibdf_vc.merge(decoy_variants, on='peptide') # decoy variants vc
     observed_decoy_vc=observed_decoy_vc[observed_decoy_vc["DB"]==True]
@@ -86,23 +89,28 @@ def main(args):
     #for variant-free set, filter for true variant peptides after the FDR
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
     prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_normal_combi_vf,detected_normal_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
-    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,on='peptide')
-    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_counterparts,on='peptide')
+    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,on='peptide').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_counterparts,on='peptide').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
 
     #for the variant-free set, get true variant peptides from the FDR re-estimation
-    final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png')
-    final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png')
+    final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
     print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output after FDR correction.')
+    pd.merge(final_variantset_vc,final_counterpartset_vf, on='scan_id',how='outer', suffixes=('_vc','_vf'), indicator=True).to_csv('finalvariantlist.csv',index=False)
+    pd.merge(final_counterpartset_vc,final_counterpartset_vf,on='scan_id',how='outer', suffixes=('_vc','_vf'), indicator=True).to_csv('finalcounterpartlist.csv',index=False)
 
     print('Analyzing variants...')
     sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
     sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)
+    with open('daemons.txt', 'w') as fp:
+        
     plots.plot_heatmaps(theoretical_saav,'heatmap_theoretical_subs.png')
+    plots.plot_heatmaps(MatrixInfo.blosum62,'blosum62matrix.png')
     plots.plot_heatmaps(sub_type_vc,'heatmap_obs_subs_vc.png')
     plots.plot_heatmaps(sub_type_vf,'heatmap_obs_subs_vf.png')
     plots.plot_mut_vs_nonmut(sub_count_vc,'variant_vs_counterpart_vc.png')
     plots.plot_mut_vs_nonmut(sub_count_vf,'variant_vs_counterpart_vf.png')
-
+    sys.exit()
     print("Making final plots...")
     main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt_pred'], args['rt_obs'])
     plots.plot_final_venns(final_variantset_vc,final_variantset_vf)

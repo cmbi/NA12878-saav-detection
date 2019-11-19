@@ -60,6 +60,10 @@ def read_gff3_into_frame(gff):
     df['transcript'],df['rank']=df['transcript'].str.split(exon_position_seperator,1).str
     df['transcript']=df['transcript'].str.split(';',1).apply(lambda x: x[0])
     df['rank']=df['rank'].str.split(';',1).apply(lambda x: x[0])
+    if 'cds' in gff:
+        df=df[df['rank']=='1'].reset_index(drop=True)
+        df.drop(columns=['sense','chromosome'],inplace=True) #drop redundant
+        df.rename({'start':'cds_start','end':'cds_end'},axis=1,inplace=True) #rename start cds
     return(df)
 
 def reverse_complement(df):
@@ -67,8 +71,11 @@ def reverse_complement(df):
     chromosome      start   end     haplotype       pos_het het_org pos_hom hom_org sequence
     '''
     reverse_strand=df[df['sense']=='-']
+    forward_strand=df[df['sense']=='+']
     reverse_strand['sequence']=reverse_strand['sequence'].apply(lambda x: make_complement(str(x)))
-    return(pd.concat([df[df['sense']!='-'],reverse_strand],axis=0, ignore_index=True))
+    reverse_strand['five_prime_shift']=reverse_strand['end']-reverse_strand['cds_end']
+    forward_strand['five_prime_shift']=forward_strand['cds_start']-forward_strand['start']
+    return(pd.concat([forward_strand,reverse_strand],axis=0, ignore_index=True))
 
 def make_complement(sequence):
     '''helper function to combine_exons
@@ -114,18 +121,24 @@ def worker_process(transcript):
     Input: transcript name
     output: lines to print to the output fasta/report
     '''
-    sequence_zero,sequence_one,to_add='','',''
+    #store the sequence as it's being built
+    sequence_zero,sequence_one='',''
+    #booleans to check for variants
     hasHeterozygous,hasHomozygous=False,False
+    #homologous and heterozgyous variants, and their original position in the genome. Record 0 and 1 haplotype seperately in tuple
     var_hom,hom_org,var_het,het_org=([],[]),([],[]),([],[]),([],[])
-    output_fasta,output_report=[],[]
     try:
-        trans_info=exon_df[exon_df["transcript"]==transcript].reset_index(drop=True) #get exons in transcript
+        trans_info=exon_df[exon_df["transcript"]==transcript].drop_duplicates().reset_index(drop=True) #get exons in transcript
         ranks=np.sort(trans_info['rank'].unique()) #sort exons in the correct order
         #check for consecutive
         int_ranks=sorted([int(x) for x in ranks])
         if int_ranks != list(range(min(int_ranks), max(int_ranks)+1)): 
             print(ranks)
             raise Exception(f"ranks for transcript {transcript} are inconsistent; exon may be missing")
+        #get the 5' utr
+        fiveprime=trans_info.loc[trans_info["rank"]=='1','five_prime_shift'].iloc[0]
+        if np.isnan(fiveprime):
+            fiveprime='None'
         for rank in ranks: #iterate through each exon by its rank, by ascending
             seq_rows=trans_info[trans_info["rank"]==rank].reset_index(drop=True)
             if len(seq_rows.index)==1: #if no heterozygous variants in exon
@@ -145,8 +158,11 @@ def worker_process(transcript):
                 hap_zero_exon_row=seq_rows[seq_rows["haplotype"]=="0"]
                 hap_one_exon_row=seq_rows[seq_rows["haplotype"]=="1"]
                 #collect the corresponding variants
-                assert (hap_zero_exon_row.iloc[0]["pos_het"]!="None"), f"heterozygous positions are missing"
-                assert (hap_one_exon_row.iloc[0]["pos_het"]!="None"), f"heterozygous positions are missing"
+                if hap_zero_exon_row.shape[0]!=1 or hap_one_exon_row.shape[0]!=1:
+                    return('',[]) #this happened in 2 cases
+                if hap_zero_exon_row.iloc[0]["pos_het"]=="None" or hap_one_exon_row.iloc[0]["pos_het"]=="None":
+                    print(seq_rows)
+                    raise Exception("Missing heterozygous variant positions in a heterzygous exon")
                 #collect all information
                 var_het[0].append(variant_renumber(hap_zero_exon_row.iloc[0]["pos_het"],len(sequence_zero),hap_zero_exon_row.iloc[0]['sense'], \
                 len(hap_zero_exon_row.iloc[0]['sequence'])))
@@ -170,13 +186,14 @@ def worker_process(transcript):
             for_fasta=f">{transcript}_h0\n{sequence_zero}\n>{transcript}_h1\n{sequence_one}\n"
             for_report=[f"{transcript}_h0\t{','.join(var_het[0])}\t{','.join(het_org[0])}\t \
             {','.join(filter_nones(var_hom[0])) if hasHomozygous else str(None)}\t \
-            {','.join(filter_nones(hom_org[0])) if hasHomozygous else str(None)}\n",
+            {','.join(filter_nones(hom_org[0])) if hasHomozygous else str(None)}\t{str(fiveprime)}\n",
             f"{transcript}_h1\t{','.join(var_het[1])}\t{','.join(het_org[1])}\t \
             {','.join(filter_nones(var_hom[1])) if hasHomozygous else str(None)}\t \
-            {','.join(filter_nones(hom_org[1])) if hasHomozygous else str(None)}\n"]
+            {','.join(filter_nones(hom_org[1])) if hasHomozygous else str(None)}\t{str(fiveprime)}\n"]
         elif hasHomozygous:
             for_fasta=f">{transcript}\n{sequence_zero}\n"
-            for_report=[f"{transcript}\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t{','.join(filter_nones(hom_org[0]))}\n"]
+            for_report=[f"{transcript}\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t \
+            {','.join(filter_nones(hom_org[0]))}\t{str(fiveprime)}\n"]
         else: #if no heterozygous variant detected, then both 0 and 1 haplotypes are the same
             for_fasta=f">{transcript}\n{sequence_zero}\n"
             for_report=[]
@@ -193,8 +210,10 @@ def print_results(results,outfasta,report):
     r=open(report,'w')
     output = [p.get() for p in results] #list of tuplies
     #write transcript to fasta
+    r.writelines('\t'.join(['transcript','pos_het','het_origin','pos_hom','hom_origin','len_five_prime_utr'])+'\n')
     for o in output:
-        f.write(o[0])
+        if o[0]!='':
+            f.write(o[0])
         if len(o[1])>0:
             for line in o[1]:
                 r.write(line)
@@ -206,6 +225,13 @@ def child_initialize(_exon_df):
      global exon_df
      exon_df = _exon_df
 
+# def cds_shifter(sense,start,end,cds_start,cds_end):
+#     '''returns the length of the 5' UTR'''
+#     if sense=='+':
+#         return(int(start)-int(cds_start))
+#     if sense=='-':
+#         return(int(end)-int(cds_end))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--cpu',help='CPU number',required=True)
@@ -214,11 +240,20 @@ if __name__ == '__main__':
     parser.add_argument('--out', help='Output fasta', required=True)
     parser.add_argument('--report', help='Output file report', required=True) #in favor of reporting the variants in the header of the fasta file
     parser.add_argument('--debug', help='debug option',action='store_true', required=False) #in favor of reporting the variants in the header of the fasta file
+    parser.add_argument('--cds',help='CDS (if only available in the genomic coordinates)',required=False)
     args=vars(parser.parse_args())
     print('Reading in haplotype-specific exons...')
     exon_frame=pd.read_csv(args['exons'],sep='\t')
     print('Reading in transcript annotations...')
     junction_frame=read_gff3_into_frame(args['jun']) #can put bed file 
+    if args['cds']:
+        print('Reading in CDS')
+        cds_frame=read_gff3_into_frame(args['cds'])
+        junction_frame=pd.merge(junction_frame,cds_frame,how='left',on=['transcript','rank'])
+        # junction_frame['five_prime_shift']=junction_frame.apply(lambda x: cds_shifter(x['sense'],x['start'],x['end'],x['cds_start'],x['cds_end']))
+    else:
+        junction_frame['cds_start']=None #junction_frame['start']
+        junction_frame['cds_end']=None
     print("Preparing for analysis...")
     exon_df=reverse_complement(pd.merge(junction_frame, exon_frame, on=['chromosome','start','end']))
     # exon_df.replace({'None':np.nan}, inplace=True)

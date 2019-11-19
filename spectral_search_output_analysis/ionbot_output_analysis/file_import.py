@@ -15,9 +15,15 @@ def concatenate_csvs(csvpath):
             ionbotout=pd.concat([ionbotout,temp.fillna(value=values)])
     return(ionbotout)
 
-def il_sensitive_read_csv(csvpath):
-    df=pd.read_csv(csvpath,header=0,names=['protein', 'peptide', 'start'])
-    df['peptide']=df['peptide'].replace(to_replace='I|L',value='x',regex=True)
+def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','start'],to_replace=['variant','counterpart'],variant=True):
+    '''read in the variant peptides and counterparts, replace 
+    '''
+    #names may change if add substitution/variant status: ['protein','variant','counterpart','sub','start','chr','genomic_pos','is_het']
+    df=pd.read_csv(csvpath,header=0,names=names)
+    for col in to_replace:
+        df[col]=df[col].replace(to_replace='I|L',value='x',regex=True)
+    if variant:
+        df['sub']=df.apply(lambda x: helper_functions.determine_snv(x['variant'],x['counterpart'])) # to be phased out at next run of interesting_peptide_finder
     return(df)
 
 def read_df_in_chunks(directory, chunksize):

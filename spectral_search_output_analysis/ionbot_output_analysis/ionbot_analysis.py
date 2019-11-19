@@ -43,7 +43,8 @@ def main(args):
     # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     rt_obs_df=pd.read_csv(args['rt_obs'],sep=',',names=['scan_id','rt_observed'])
     rt_pred_df=pd.read_csv(args['rt_pred'],sep=',',names=['matched_peptide','rt_predicted'])
-    theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
+    # theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
+    theoretical_saav=calculations.saav_counts(variant_peptides['sub'].dropna().to_list())
     
     #collect results
     print("Doing general analysis...")
@@ -76,8 +77,8 @@ def main(args):
     observed_variants_vc=ibdf_vc.merge(variant_peptides, on='peptide') # target variants vc
     observed_decoy_vc=ibdf_vc.merge(decoy_variants, on='peptide') # decoy variants vc
     observed_decoy_vc=observed_decoy_vc[observed_decoy_vc["DB"]==True]
-    observed_variant_counterparts_vc=ibdf_vc.merge(variant_counterparts, on='peptide') # target counterparts vc
-    observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_counterparts, on='peptide') # decoy counterparts vc
+    observed_variant_counterparts_vc=ibdf_vc.merge(variant_peptides, on='counterpart') # target counterparts vc
+    observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_variants, on='counterpart') # decoy counterparts vc
 
     #just to get a count of how many variants were found in variant free set
     # print("variants found in variant-free before FDR correction:"+ )
@@ -90,7 +91,7 @@ def main(args):
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
     prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_normal_combi_vf,detected_normal_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
     final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,on='peptide').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
-    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_counterparts,on='peptide').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides,on='counterpart').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
 
     #for the variant-free set, get true variant peptides from the FDR re-estimation
     final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
@@ -100,9 +101,15 @@ def main(args):
     pd.merge(final_counterpartset_vc,final_counterpartset_vf,on='scan_id',how='outer', suffixes=('_vc','_vf'), indicator=True).to_csv('finalcounterpartlist.csv',index=False)
 
     print('Analyzing variants...')
-    sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
-    sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)
-    with open('daemons.txt', 'w') as fp:
+    #get value counts of observed
+    observed_var_count_vc=final_variantset_vc['variant'].value_counts().reset_index()
+    observed_ctp_coun_vc=final_counterpartset_vc['counterpart'].value_counts().reset_index()
+    observed_var_count_vf=final_variantset_vf['variant'].value_counts().reset_index()
+    observed_ctp_coun_vf=final_counterpartset_vf['counterpart'].value_counts().reset_index()
+
+    # sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
+    # sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)
+    # with open('daemons.txt', 'w') as fp:
         
     plots.plot_heatmaps(theoretical_saav,'heatmap_theoretical_subs.png')
     plots.plot_heatmaps(MatrixInfo.blosum62,'blosum62matrix.png')
@@ -122,12 +129,12 @@ parser.add_argument('--ref', help='Directory GENCODE reference ionbot output fil
 parser.add_argument('--cvc', help='Directory combi variant-containing', required=True)
 parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
 parser.add_argument('--var', help='csv file of selected SAAV peptides', required=True)
-parser.add_argument('--ctp', help='csv file of non-mutated counterparts of the selected SAAV peptides', required=True)
+# parser.add_argument('--ctp', help='csv file of non-mutated counterparts of the selected SAAV peptides', required=True)
 parser.add_argument('--vfd', help='csv file of entire combi variant-free', required=True)
 parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
 parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
 parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
-parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
+# parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
 parser.add_argument('--rt_pred', help='retention time prediction',required=True)
 parser.add_argument('--rt_obs', help='retention time observed',required=True)
 # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')

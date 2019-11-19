@@ -1,74 +1,43 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import re, collections, sys
-from sets import Set
 import multiprocessing as mp
+import pandas as pd
 import argparse
-
-def insilico_digest_diff(cpdtref,cpdtcustom,cpu):
-    '''this script will find peptides that vary between two cpdt files
-    prints cpdt files: one for all different peptides and one with only snv peptides
-    '''
-    print('Reading in files...')
-    ref=read_csv(cpdtref)
-    custom=read_csv(cpdtcustom)
-    print('Searching for variant peptides...')
-    pool=mp.Pool(processes=int(cpu),initializer=child_initialize, initargs=(ref,custom))
-    results=[pool.apply_async(snvfinder,args=(pid,peplist,)) for pid,peplist in ref.iteritems()]
-    output = [p.get() for p in results] #list of tuplies/list of dictionaries
-    print('Gathering output...')
-    return combine_output(output)
 
 def child_initialize(_ref,_custom):
      global ref, custom
      ref = _ref
      custom = _custom
     
-def snvfinder(pid,peplist):
-    keys=fetch_identifiers(pid,custom)
-    newsnv={}
-    if len(keys)>0:
-        for key in keys:
-            if key in custom:
-                pepdict=custom[key]
-                variant_peplist=Set(pepdict.keys())
-                reference_peplist=Set(peplist.keys())
-                intersect=variant_peplist.intersection(reference_peplist)
-                if len(intersect)!=0: # should have some peptides in common
-                    dif=variant_peplist.difference(reference_peplist) #save all the peptides that are in the custom but not the reference for this particular protein
-                    for pep in dif:
-                        if isQualified(pep,ref): #need to check if variant peptide is not already present in the reference dictionary
-                            prob=pepdict[pep] #fetch start position (not probability)
-                            # if float(prob)>=0.05: #higher than cutoff probability
-                            isSNV,counterpart=determine_snv(pep,reference_peplist)
-                            if isSNV: #counterpart not filtered (optionally can filter that it does not show up in another gene)
-                                if key not in newsnv:
-                                    newsnv[key]=[]
-                                newsnv[key].append([pep,counterpart,prob])
-    return newsnv
+def snvfinder(pid):
+    try:
+        ref_df=ref[ref['protein']==pid]
+        assert (ref_df.shape[0]>0), 'not getting reference df'
+        custom_df=custom[custom['protein'].str.contains(pid)]
+        saav_list=[]
+        for custom_id in custom_df['protein'].unique():
+            var_df=custom_df[custom_df['protein']==custom_id]
+            assert (var_df.shape[0]>0), 'protein not found in variant-containing pep lib'
+            variant_peplist=set(list(var_df['sequence']))
+            reference_peplist=set(list(ref_df['sequence']))
+            intersect=variant_peplist.intersection(reference_peplist)
+            if len(intersect)!=0: # should have some peptides in common
+                dif=variant_peplist.difference(reference_peplist) #save all the peptides that are in the custom but not the reference for this particular protein
+                for pep in dif:
+                    if pep not in ref['sequence']: #need to check if variant peptide is not already present in the reference dictionary
+                        start=list(var_df.loc[var_df['sequence']==pep,'start']) #fetch start position (not probability)
+                        assert (all_same(start)), start
+                        # if float(prob)>=0.05: #higher than cutoff probability
+                        isSNV,counterpart,tup=determine_snv(pep,reference_peplist)
+                        if isSNV: #counterpart not filtered (optionally can filter that it does not show up in another gene)
+                            saav_list.append(','.join([custom_id,pep,counterpart,tup,str(start[0])]))
+    except Exception as e:
+        raise e
+    return('\n'.join(saav_list))
 
-def fetch_identifiers(pid,custom):
-    idho=pid+'_h1'
-    idhz=pid+'_h0'
-    if idho in custom or idhz in custom:
-        return [idhz,idho]
-    elif pid in custom:
-        return [pid]
-    return []
-
-def combine_output(process_output):
-    '''
-    takes the multiprocessing output and concatenates the appropriate libraries
-    '''
-    newsnv={}
-    for l in process_output:
-        newsnv=merge_two_dicts(newsnv, l)
-    return newsnv
-
-def merge_two_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
+def all_same(items):
+    return(all(x == items[0] for x in items))
 
 def get_id(idstring):
     if '|m.' in idstring:
@@ -84,74 +53,59 @@ def get_id(idstring):
         outstring=idstring.strip()
     return(outstring)
 
-def isQualified(peptide,reference_pepdict,reference=False):
-    count=0
-    for pid,peplist in reference_pepdict.iteritems():
-        if peptide in peplist:
-            count+=1
-            if reference and count>1:
-                return False
-            elif not reference:
-                return False
-    return True
-
-def determine_snv(peptide,plist):
+def determine_snv(peptide_query,plist):
     ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid
     input: a peptide and a list of peptides
-    output: boolean
+    output: boolean, the reference peptide, and the 
     '''
-    mismatch=0
+    mismatch=[]
     il=False #TO IMPLEMENT: get statistics about how many times we have an IL substitution as the only substitution
-    for pep in plist:
-        if len(pep)==len(peptide) and pep!=peptide:
-            for idx,aa in enumerate(pep):
-                if aa!=peptide[idx]:
-                    situation1= aa=='I' and peptide[idx]=='L'
-                    situation2= aa=='L' and peptide[idx]=='I'
-                    if not situation1 and not situation2:
-                        mismatch+=1
+    for peptide_comp in plist:
+        if len(peptide_comp)==len(peptide_query) and peptide_comp!=peptide_query:
+            for a, b in zip(peptide_query,peptide_comp):
+                if a!=b and a!='*' and b!='*':
+                    if not (a=='I' and b=='L') and not (a=='L' and b=='I'):
+                        mismatch.append(f"{a},{b}")
                     else:
                         il=True
-            if mismatch==1:
-                return (True,pep)
-    return (False,'')
+            if len(mismatch)==1:
+                return (True,peptide_comp,mismatch[0])
+    return(False,'','')
 
 def read_csv(csvfile):
-    cpdt_pep={}
-    with open(csvfile) as c:
-        for line in c:
-            if 'protein' not in line:
-                info=line.split(',')
-                key=get_id(info[0])
-                if key not in cpdt_pep:
-                    cpdt_pep[key]={}
-                cpdt_pep[key][info[1]]=info[2].strip()
-    return cpdt_pep
+    df=pd.read_csv(csvfile)#,names=['protein','sequence','start']
+    df['protein']=df['protein'].apply(get_id)
+    return(df)
 
-def write_csv(d,outfile):
+def write_csv(saav_list,outfile):
     '''
     input format: {id:{peptide:probability}}
     output: new csv
     '''
     f=open(outfile,'w')
-    f.writelines("{},{},{},{}".format('protein', 'variant','counterpart', 'start')+'\n')
-    for id,infolist in d.iteritems():
-        f.writelines(id+','+','.join(infolist)+'\n')
-        # for pep,prob in peplist.iteritems():
-        #     f.writelines(id+','+pep+','+prob+'\n')
-    return 'csv file written to '+outfile
+    f.writelines(','.join(['protein', 'variant','counterpart', 'start'])+'\n')
+    for s in saav_list:
+        if s!='':
+            f.writelines(s+'\n')
+    return(f'csv file written to {outfile}')
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--cpu',help='CPU number',required=True)
     parser.add_argument('--ref', help='Reference csv file', required=True)
     parser.add_argument('--var', help='Variant containing csv file', required=True)
     parser.add_argument('--out', help='Output file snv differing', required=False)
+    parser.add_argument('--debug', help='debug option',action='store_true', required=False)
     args=vars(parser.parse_args())
-    snvdiffpeps=insilico_digest_diff(args['ref'],args['var'],args['cpu'])
+    print('Reading in files...')
+    ref=read_csv(args['ref'])
+    custom=read_csv(args['var'])
+    # if args['debug']:
+        # ref=ref.head(100)
+    print('Searching for variant peptides...')
+    pool=mp.Pool(processes=int(args['cpu']),initializer=child_initialize, initargs=(ref,custom,))
+    results=[pool.apply_async(snvfinder,args=(pid,)) for pid in ref['protein'].unique()]
+    output = [p.get() for p in results]
     print('Writing to file...')
     if args['out']:
-        write_csv(snvdiffpeps,args['out'])
-
-if __name__ == "__main__":
-    main()
+        write_csv(output,args['out'])

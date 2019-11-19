@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+import re, collections, sys
+import pandas as pd
+import gffpandas.gffpandas as gffpd
+import argparse
+
 '''
 this script will use as input:
     - the report output from combine_exons
@@ -8,29 +13,19 @@ this script will use as input:
 
 will return the SNP information (first file) from those variants that were found in the peptides (last file)
 
-1. read in CDS (only include observed) from ANGEL output (suffix "final.cds")
+1. read in CDS from ANGEL output (suffix "final.cds")
 2. match CDS with transcript sequence on record
 3. renumber the variant position to CDS
 4. renumber the variant position to protein
-5. find appropriate peptide
-6. result: peptide - SNP linked
+5. result: peptide - SNP linked
 
 '''
 
-def read_filter_cds(cdsfile,prots):
-    cds=pd.DataFrame(columns=["protein","cds"])
-    with open(cdsfile) as handle:
-        for line in handle:
-            if line.startswith('>'):
-                add=False
-                header=line.split('|m.')[0]
-                if header[1:] in prots: #check if this CDS is important to keep
-                    header=header[1:]
-                    add=True
-            else:
-                seq=line.strip()
-                if add:
-                    cds=cds.append({"protein":header,"cds":seq})
+def read_filter_cds(cdsfile):
+    if cdsfile[-3:]=='gff3':
+        df=gffpd.read_csv(cdsfile)
+    else:
+        df=pd.read_csv(cdsfile,sep=' ')
     return(cds)
 
 
@@ -67,16 +62,9 @@ def get_id(idstring):
 def main():
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--var', help='', required=True)
-    parser.add_argument('--cdsont', help='', required=True)
-    parser.add_argument('--cdsref', help='', required=True)
-    parser.add_argument('--observed', help='', required=True)
+    parser.add_argument('--cds', help='angel final cds file for all the CDS that are not in ref', required=True)
     args=parser.parse_args()
 
-    #read in the observed
-    obs=pd.read_csv(args.observed,sep='\t') #proteins \t peptide
-    # obs=obs.str.split(',',expand=True).stack()
-    prots_unfiltered=obs["proteins"].unique()
-    prots=gather_prots(prots_unfiltered)
     cds_ont=read_filter_cds(args.cdsont,prots) #protein \t cds
     cds_ref=read_filter_cds(args.cdsref,prots)
     report=pd.read_csv(args.var,sep='\t',columns=["transcript","local_pos","chrom_pos"]) #transcript \t var positions on transcript \t chr|chrom_positions

@@ -147,30 +147,32 @@ def calc_mut_abundances(mutant_cpdtpep,cpdtpep,fullseqs):
     print("Total of "+str(num_occurences)+" occurances of "+str(num_peptides)+" peptides from "+str(len(mut_proteins_detected))+" proteins were detected")
     return(mut_pep_abundance,nonmut_pep_abundance)
 
-def saav_counts(variantdf,counterpartdf,peptide_colname='peptide',protein_colname='protein',observed=False,debug=False):
+def saav_counts(subs_list):#,variant_colname='variant',protein_colname='protein',observed=False,debug=False):
     '''input the variant and counterpart dataframes to get a count of which/how many AA substitutions occur
     protein column corresponds to the protein associated with the variant peptide in the digest, not the proteins matched by ionbot'''
     all_subs=helper_functions.initiate_counter()
-    debug_lines=[]
-    count_subs=[]
-    heterozygous=[] #to store those that are heterozygous
-    isHetero=False
-    interest=[] #to store those peptides that are in a list of interest- namely the list of ASE transcripts from the nanopore paper
-    for protname in variantdf[peptide_colname].unique():
-        cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
-        if sub!='' and sub[0]!='*' and sub[1]!='*':
-            all_subs[sub]+=1
-            if debug:
-                debug_lines.append('\t'.join([sub,var,counterpart]))
-            if observed:
-                count_var=slice_var[slice_var[peptide_colname]==var].shape[0] #how many of this variant peptide was detected
-                count_ctp=slice_ctp[slice_ctp[peptide_colname]==cpt_pep].shape[0] #how many of the counterpart was detected
-                count_subs.append((count_var,count_ctp))
-    if debug:
-        with open('debug_subs.txt','w') as f:
-            f.writelines(line+'\n' for line in debug_lines)
-    if observed:
-        return(all_subs,count_subs)
+    for sub in subs_list:
+        all_subs[sub]+=1
+    # debug_lines=[]
+    # count_subs=[]
+    # heterozygous=[] #to store those that are heterozygous
+    # isHetero=False
+    # interest=[] #to store those peptides that are in a list of interest- namely the list of ASE transcripts from the nanopore paper
+    # for protname in variantdf[protein_colname].unique():
+    #     cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
+    #     if sub!='' and sub[0]!='*' and sub[1]!='*':
+    #         all_subs[sub]+=1
+    #         if debug:
+    #             debug_lines.append('\t'.join([sub,var,counterpart]))
+    #         if observed:
+    #             count_var=slice_var[slice_var[variant_colname]==var].shape[0] #how many of this variant peptide was detected
+    #             count_ctp=slice_ctp[slice_ctp[variant_colname]==cpt_pep].shape[0] #how many of the counterpart was detected
+    #             count_subs.append((count_var,count_ctp))
+    # if debug:
+    #     with open('debug_subs.txt','w') as f:
+    #         f.writelines(line+'\n' for line in debug_lines)
+    # if observed:
+    #     return(all_subs,count_subs)
     return(all_subs)
 
 def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):

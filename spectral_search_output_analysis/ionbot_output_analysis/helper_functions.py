@@ -128,28 +128,16 @@ def initiate_counter():
 #     df=get_normalized_matrix(allc,observed)
 #     return(df,dfall)
 
-def determine_snv(peptide,plist):
-    ''' checks whether the peptide in question differs from a member in the list by exactly 1 amino acid
+def determine_snv(peptide,counterpart):
+    ''' extract the single amino acid substitution from the 
     input: a peptide and a list of peptides
-    output: boolean
+    output: tuple
     '''
-    for pep in plist:
-        if len(pep)==len(peptide) and pep!=peptide:
-            original=''
-            sub=''
-            mismatch=0
-            for idx,aa in enumerate(pep):
-                if aa!=peptide[idx]:
-                    original=aa
-                    sub=peptide[idx]
-                    if aa=='x':
-                        original='I'
-                    if peptide[idx]=='x':
-                        sub='I'
-                    mismatch+=1
-            if mismatch==1:
-                return(pep,(original,sub))
-    return('','')
+    assert len(peptide)==len(counterpart), f"fatal error- counterpart and variant peptide length don't match"
+    for a, b in zip(peptide, counterpart):
+        if a != b and a!='*' and b!='*':
+            return(original,sub)
+    return(None)
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):
     count=0
@@ -305,7 +293,7 @@ def longest(s):
     return(max(s,key=len))
 
 def get_all_observed(vf,vc,theoretical):
-    all_peptides=file_import.il_sensitive_read_csv(theoretical)
+    all_peptides=file_import.il_sensitive_read_csv(theoretical,names=['protein','peptide','start'],to_replace=['peptide'],variant=False)
     return(vf.merge(all_peptides, on='peptide'),vc.merge(all_peptides, on='peptide'))
 
 def normalize_counter(x):

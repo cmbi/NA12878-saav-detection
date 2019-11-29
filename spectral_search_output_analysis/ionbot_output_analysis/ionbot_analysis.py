@@ -51,6 +51,26 @@ def main(args):
     ###gather information about all non-variant matches###
     all_matches_nonvar_vf,all_matches_nonvar_vc=helper_functions.get_all_observed(ibdf_vf,ibdf_vc,args['vfd'])#observed matches
     # all_matches_nonvar_vc.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide').to_csv('all_hits')
+    #check how many nanopore sequences had any sort of peptide support- for Timp lab
+    proteins_found_mult=all_matches_nonvar_vf[all_matches_nonvar_vf['source_dict']=='both']
+    proteins_found_ontonly=all_matches_nonvar_vf[all_matches_nonvar_vf['source_dict']=='ont']
+    proteins_found_mult_counts=proteins_found_mult['protein'].value_counts().reset_index()
+    proteins_found_mult_counts.columns=['protein','counts']
+    proteins_found_mult_counts=proteins_found_mult_counts[proteins_found_mult_counts['protein'].str.contains('_ENSG')]
+    print(f"length of all multiple mapping ont hits: {str(proteins_found_mult_counts.shape[0])}")
+    proteins_found_mult[proteins_found_mult['protein'].str.contains('_ENSG')].to_csv('multimapping_ont_hits.csv',index=False)
+    proteins_found_mult_counts=proteins_found_mult_counts[proteins_found_mult_counts['counts']>2]
+    multimap_protset=set(proteins_found_mult_counts['protein'].to_list())
+    print(f"length of all multiple mapping ont hits with evidence higher than 2 mapping peptides: {str(proteins_found_mult_counts.shape[0])}")
+    proteins_found_ontonly_counts=proteins_found_ontonly['protein'].value_counts().reset_index()
+    proteins_found_ontonly_counts.columns=['protein','counts']
+    proteins_found_ontonly_counts=proteins_found_ontonly_counts[proteins_found_ontonly_counts['protein'].str.contains('_ENSG')]
+    print(f"length of all unique mapping ont hits: {str(proteins_found_mult_counts.shape[0])}")
+    proteins_found_ontonly[proteins_found_ontonly['protein'].str.contains('_ENSG')].to_csv('mapping_ont_only_hits.csv',index=False)
+    proteins_found_ontonly_counts=proteins_found_ontonly_counts[proteins_found_ontonly_counts['counts']>2]
+    print(f"length of all unique mapping ont hits with evidence higher than 2 mapping peptides: {str(proteins_found_mult_counts.shape[0])}")
+    ontonly_protset=set(proteins_found_ontonly_counts['protein'].to_list())
+    print(f"overlap between high-evidence ont only and high-evidence multimap is {len(multimap_protset.intersection(ontonly_protset))}")
     
     # #get strand and chrom info
     # print('...fetching and plotting origin info...')
@@ -90,7 +110,10 @@ def main(args):
     #for variant-free set, filter for true variant peptides after the FDR
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
     prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_normal_combi_vf,detected_normal_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
-    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,on='peptide').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides,how='left',on='peptide',indicator=True)#.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    ionbot_wrong_peps=final_counterpartset_vf[final_counterpartset_vf['_merge']=='left_only']
+    print(f"'Wrong' unique variant peptides found by ionbot={len(ionbot_wrong_peps['peptide'].unique())}")
+    final_counterpartset_vf=final_counterpartset_vf['_merge']=='both'].reset_index(drop=True)
     final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides,on='counterpart').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
 
     #for the variant-free set, get true variant peptides from the FDR re-estimation
@@ -106,6 +129,7 @@ def main(args):
     observed_ctp_coun_vc=final_counterpartset_vc['counterpart'].value_counts().reset_index()
     observed_var_count_vf=final_variantset_vf['variant'].value_counts().reset_index()
     observed_ctp_coun_vf=final_counterpartset_vf['counterpart'].value_counts().reset_index()
+    
 
     # sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
     # sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)

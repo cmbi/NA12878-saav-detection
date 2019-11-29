@@ -23,7 +23,7 @@ def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','star
     for col in to_replace:
         df[col]=df[col].replace(to_replace='I|L',value='x',regex=True)
     if variant:
-        df['sub']=df.apply(lambda x: helper_functions.determine_snv(x['variant'],x['counterpart'])) # to be phased out at next run of interesting_peptide_finder
+        df['sub']=df.apply(lambda x: helper_functions.determine_snv(x['variant'],x['counterpart']),axis=1) # to be phased out at next run of interesting_peptide_finder
     return(df)
 
 def read_df_in_chunks(directory, chunksize):

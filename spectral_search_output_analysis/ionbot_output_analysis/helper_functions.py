@@ -78,42 +78,6 @@ def counter_translator(counterobj):
             ct_prots[ct]+=1
     return(ct_prots)
 
-def fill_cpdt(pep,ids,old_cpdt_pep):
-    '''fill the data structure to match predicted (mutated) peptides to observed
-    
-    how many unique variant peptides are detected, from how many unique proteins?
-    how many total instances of correct/incorrect variant peptides are detected?
-    build up the dictionary with every iteration of the 
-    '''
-    cpdt_pep=old_cpdt_pep
-    notfound=0
-    for isi in ids:
-        i=get_id(isi)
-        found=False
-        possibilities=[i,i+'_h0',i+'_h1']
-        for poss in possibilities:
-            if poss in cpdt_pep.keys():
-                ispeplist=cpdt_pep[poss]#make copy to mutate as you iterate
-                for p,ct in cpdt_pep[poss].items():
-                    if p==pep:
-                        ct+=1
-                        ispeplist[p]=ct
-                        found=True
-                cpdt_pep[poss]=ispeplist
-                # break #only counting the first of the 2 haplotypes- my choices are to pick one or double count, better to double count?
-            if not found:
-                notfound+=1
-                ##this recovers a lot of peptides that would otherwise be filtered out
-                # if '->' not in mod and found==False:
-                #     if pep in full_seqs[i] or 'X' in full_seqs[i]:
-                #         ispeplist[pep]=1
-                #         cpdt_pep[i]=ispeplist
-    if notfound==len(ids):
-        missed=1
-    else:
-        missed=0
-    return(cpdt_pep,missed)
-
 def initiate_counter():
     '''generate all possible AA subsititutions and put them in a counter'''
     all_aa=["A", "R", "N", "D", "C", "E", "Q", "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"]
@@ -136,7 +100,7 @@ def determine_snv(peptide,counterpart):
     assert len(peptide)==len(counterpart), f"fatal error- counterpart and variant peptide length don't match"
     for a, b in zip(peptide, counterpart):
         if a != b and a!='*' and b!='*':
-            return(original,sub)
+            return(b,a)
     return(None)
 
 def detect_peptides(pep,ids,cpdt_pep,isOpenmut,debug=False,include_extra=False):

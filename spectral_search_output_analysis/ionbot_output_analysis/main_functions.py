@@ -82,10 +82,18 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     plots.plot_ib_scores(vf_only["percolator_psm_score_vf"].tolist(),vc_only["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function
    
-def explore_rt_distr(variant_df,nonvariant_df,plotname):
+def explore_rt_dist(variant_df,nonvariant_df,plotname):
     variant_df['delta_rt']=abs(variant_df['rt_observed']-variant_df['rt_predicted'])
     nonvariant_df['delta_rt']=abs(nonvariant_df['rt_observed']-nonvariant_df['rt_predicted'])
     #for those variant findings that are in agreement between the 2 methods
+    overlap=merged[merged['_merge'] == 'both']
     overlap_agreement=overlap[overlap['peptide_vc']==overlap['peptide_vf']]
-    overlap_agreement['delta_rt'].groupby(['peptide_vc']).describe()
+    overlap_stats=overlap_agreement['delta_rt'].groupby(['peptide_vc']).describe()
+    #for those variant findings that are not in agreement between the 2 methods
+    variant_disagreement=overlap[overlap['peptide_vc']!=overlap['peptide_vf']]
+    variant_disagreement_stats=variant_disagreement['delta_rt'].groupby(['peptide_vc']).describe()
+    #for all non-variant findings
+    nonvariant_stats=nonvariant_df['delta_rt'].groupby()
+    #here plot interesting things
+    overlap_stats.plot.hist()
     variant_df.groupby()

@@ -74,7 +74,7 @@ def reverse_complement(df):
     reverse_strand=df[df['sense']=='-']
     forward_strand=df[df['sense']=='+']
     reverse_strand['sequence']=reverse_strand['sequence'].apply(lambda x: make_complement(str(x)))
-    reverse_strand['start_codon_shift']=reverse_strand.apply(lambda x: start_codon_coord(x['start_codon'],x['end']),axis=1)
+    reverse_strand['start_codon_shift']=reverse_strand.apply(lambda x: start_codon_coord(x['start_codon'],x['end'],reverse=True),axis=1)
     forward_strand['start_codon_shift']=forward_strand.apply(lambda x: start_codon_coord(x['start_codon'],x['start']),axis=1)
     # reverse_strand['five_prime_shift']=reverse_strand['end']-reverse_strand['cds_end']
     # forward_strand['five_prime_shift']=forward_strand['cds_start']-forward_strand['start']
@@ -94,9 +94,11 @@ def filter_nones(the_list):
        return(str(None))
     return(new_list)
 
-def start_codon_coord(com_seperated_startlist,start):
+def start_codon_coord(com_seperated_startlist,start,reverse=False):
     '''renumber the start codon based on the exon start
-    note: for minus strand, you should input the "end" instead of "start"'''
+    note: for reverse strand, you should input the "end" instead of "start"'''
+    if reverse:
+        return([int(start) - int(x) for x in com_seperated_startlist])
     return([int(x) - int(start) for x in com_seperated_startlist])
 
 
@@ -200,17 +202,17 @@ def worker_process(transcript):
         #process and return full sequences
         if hasHeterozygous: #if there was a heterozygous variant detected somewhere in the transcript
             return(f">{transcript}_h0\n{sequence_zero}\n>{transcript}_h1\n{sequence_one}\n", \
-            [f"{transcript}_h0\t{','.join(var_het[0])}\t{','.join(het_org[0])}\t \
+            [f"{transcript}\t0\t{','.join(var_het[0])}\t{','.join(het_org[0])}\t \
             {','.join(filter_nones(var_hom[0])) if hasHomozygous else str(None)}\t \
             {','.join(filter_nones(hom_org[0])) if hasHomozygous else str(None)}\t \
             {','.join(start_cod) if len(start_cod)>0 else 'None'}\n",
-            f"{transcript}_h1\t{','.join(var_het[1])}\t{','.join(het_org[1])}\t \
+            f"{transcript}\t1\t{','.join(var_het[1])}\t{','.join(het_org[1])}\t \
             {','.join(filter_nones(var_hom[1])) if hasHomozygous else str(None)}\t \
             {','.join(filter_nones(hom_org[1])) if hasHomozygous else str(None)}\t \
             {','.join(start_cod) if len(start_cod)>0 else 'None'}\n"])
         elif hasHomozygous:
             return(f">{transcript}\n{sequence_zero}\n", \
-            [f"{transcript}\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t \
+            [f"{transcript}\tNone\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t \
             {','.join(filter_nones(hom_org[0]))}\t{','.join(start_cod) if len(start_cod)>0 else 'None'}\n"])
         # else: #no variants= don't return! we only want the sequences that have variants, otherwise creating duplicates
         #     return()
@@ -226,7 +228,7 @@ def print_results(results,outfasta,report):
     r=open(report,'w')
     output = [p.get() for p in results] #list of tuplies
     #write transcript to fasta
-    r.writelines('\t'.join(['transcript','pos_het','het_origin','pos_hom','hom_origin','start_codon_position'])+'\n')
+    r.writelines('\t'.join(['transcript','haplotype','pos_het','het_origin','pos_hom','hom_origin','start_codon_position'])+'\n')
     for o in output:
         if o:
             f.write(o[0])
@@ -269,7 +271,8 @@ if __name__ == '__main__':
     transcripts=exon_df.transcript.unique()
     print(f'building {len(transcripts)} transcripts')
     if args['debug']:
-        sample=transcripts[1:1000]
+        # sample=transcripts[1:1000]
+        sample=['ENST00000618181.4','ENST00000369529.1']
         pool=mp.Pool(processes=1, initializer=child_initialize, initargs=(exon_df,))
         results=[pool.apply_async(worker_process,args=(transcript,)) for transcript in sample]
         print_results(results,args['out'],args['report'])

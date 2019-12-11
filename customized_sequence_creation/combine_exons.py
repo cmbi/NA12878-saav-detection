@@ -62,9 +62,9 @@ def read_gff3_into_frame(gff):
     df['transcript']=df['transcript'].str.split(';',1).apply(lambda x: x[0])
     df['rank']=df['rank'].str.split(';',1).apply(lambda x: x[0])
     if 'start_codon' in gff: #FOR START CODONS 
-        df.drop(columns=['sense','chromosome','end'],inplace=True) #drop redundant
+        df.drop(columns=['sense','chromosome'],inplace=True) #drop redundant
         df=df.groupby(['transcript','rank']).agg(lambda x:list(x))#.agg(dict(start=lambda x: ','.join(str(i) for i in x))) #get list of start codons in case more than one
-        df.rename({'start':'start_codon'},axis=1,inplace=True) #rename start codon
+        df.rename({'start':'start_codon_start','end':'start_codon_end'},axis=1,inplace=True) #rename start codon
     return(df)
 
 def reverse_complement(df):
@@ -74,10 +74,8 @@ def reverse_complement(df):
     reverse_strand=df[df['sense']=='-']
     forward_strand=df[df['sense']=='+']
     reverse_strand['sequence']=reverse_strand['sequence'].apply(lambda x: make_complement(str(x)))
-    reverse_strand['start_codon_shift']=reverse_strand.apply(lambda x: start_codon_coord(x['start_codon'],x['end'],reverse=True),axis=1)
-    forward_strand['start_codon_shift']=forward_strand.apply(lambda x: start_codon_coord(x['start_codon'],x['start']),axis=1)
-    # reverse_strand['five_prime_shift']=reverse_strand['end']-reverse_strand['cds_end']
-    # forward_strand['five_prime_shift']=forward_strand['cds_start']-forward_strand['start']
+    # reverse_strand['start_codon_shift']=reverse_strand.apply(lambda x: start_codon_coord(x['start_codon_end'],x['end'],reverse=True),axis=1)
+    # forward_strand['start_codon_shift']=forward_strand.apply(lambda x: start_codon_coord(x['start_codon_start'],x['start']),axis=1)
     return(pd.concat([forward_strand,reverse_strand],axis=0, ignore_index=True))
 
 def make_complement(sequence):
@@ -94,12 +92,12 @@ def filter_nones(the_list):
        return(str(None))
     return(new_list)
 
-def start_codon_coord(com_seperated_startlist,start,reverse=False):
+def start_codon_coord(start_codon_pos_list,exon_pos,reverse=False):
     '''renumber the start codon based on the exon start
     note: for reverse strand, you should input the "end" instead of "start"'''
     if reverse:
-        return([int(start) - int(x) for x in com_seperated_startlist])
-    return([int(x) - int(start) for x in com_seperated_startlist])
+        return([int(exon_pos) - int(x) for x in start_codon_pos_list])
+    return([int(x) - int(exon_pos) for x in start_codon_pos_list])
 
 
 def variant_renumber(com_seperated_variantlist,len_whole_seq,strand,len_exon):
@@ -141,12 +139,13 @@ def worker_process(transcript):
     #keep track of original sequence length
     len_seq_org=0
     #initialize
-    start_cod=[]
+    # start_cod_hz=[]
+    # start_cod_ho=[]
     try:
         trans_info=exon_df.loc[exon_df["transcript"]==transcript]#get exons in transcript
         #check for consecutive
         int_ranks=sorted([int(x) for x in list(trans_info['rank'].unique())])
-        if int_ranks != list(range(1, max(int_ranks)+1)): 
+        if int_ranks != list(range(min(int_ranks), max(int_ranks)+1)): 
             print(int_ranks)
             raise Exception(f"ranks for transcript {transcript} are inconsistent; exon may be missing")
         #get the start pos
@@ -155,9 +154,9 @@ def worker_process(transcript):
             rank=str(rank)
             seq_rows=trans_info[trans_info["rank"]==rank].reset_index(drop=True)
             #renumber the start codon to the correct place in the transcript
-            if len(seq_rows.iloc[0]['start_codon_shift'])>0:
-                start_cod.append(','.join([str(x+len_seq_org) for x in seq_rows.iloc[0]['start_codon_shift']]))
-            len_seq_org+=abs(seq_rows.iloc[0]['start']-seq_rows.iloc[0]['end'])
+            # if len(seq_rows.iloc[0]['start_codon_shift'])>0:
+            #     start_cod_hz.append(','.join([str(x+len(sequence_zero)) for x in seq_rows.iloc[0]['start_codon_shift']]))
+            #     start_cod_ho.append(','.join([str(x+len(sequence_one)) for x in seq_rows.iloc[0]['start_codon_shift']]))
             if len(seq_rows.index)==1: #if no heterozygous variants in exon
                 assert (seq_rows.iloc[0]['pos_het']=="None"), f"there are heterozygous positions at {seq_rows.iloc[0]['pos_het']}"
                 if seq_rows.iloc[0]["pos_hom"]!="None":
@@ -204,16 +203,14 @@ def worker_process(transcript):
             return(f">{transcript}_h0\n{sequence_zero}\n>{transcript}_h1\n{sequence_one}\n", \
             [f"{transcript}\t0\t{','.join(var_het[0])}\t{','.join(het_org[0])}\t \
             {','.join(filter_nones(var_hom[0])) if hasHomozygous else str(None)}\t \
-            {','.join(filter_nones(hom_org[0])) if hasHomozygous else str(None)}\t \
-            {','.join(start_cod) if len(start_cod)>0 else 'None'}\n",
+            {','.join(filter_nones(hom_org[0])) if hasHomozygous else str(None)}\n",
             f"{transcript}\t1\t{','.join(var_het[1])}\t{','.join(het_org[1])}\t \
             {','.join(filter_nones(var_hom[1])) if hasHomozygous else str(None)}\t \
-            {','.join(filter_nones(hom_org[1])) if hasHomozygous else str(None)}\t \
-            {','.join(start_cod) if len(start_cod)>0 else 'None'}\n"])
+            {','.join(filter_nones(hom_org[1])) if hasHomozygous else str(None)}\n"])
         elif hasHomozygous:
             return(f">{transcript}\n{sequence_zero}\n", \
             [f"{transcript}\tNone\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t \
-            {','.join(filter_nones(hom_org[0]))}\t{','.join(start_cod) if len(start_cod)>0 else 'None'}\n"])
+            {','.join(filter_nones(hom_org[0]))}\n"])
         # else: #no variants= don't return! we only want the sequences that have variants, otherwise creating duplicates
         #     return()
     except Exception as e:
@@ -228,7 +225,7 @@ def print_results(results,outfasta,report):
     r=open(report,'w')
     output = [p.get() for p in results] #list of tuplies
     #write transcript to fasta
-    r.writelines('\t'.join(['transcript','haplotype','pos_het','het_origin','pos_hom','hom_origin','start_codon_position'])+'\n')
+    r.writelines('\t'.join(['transcript','haplotype','pos_het','het_origin','pos_hom','hom_origin'])+'\n')
     for o in output:
         if o:
             f.write(o[0])
@@ -256,27 +253,26 @@ if __name__ == '__main__':
     exon_frame=pd.read_csv(args['exons'],sep='\t')
     print('Reading in transcript annotations...')
     junction_frame=read_gff3_into_frame(args['jun']) #can put bed file 
-    if args['sc']:
-        print('Reading in CDS')
-        startcodon_frame=read_gff3_into_frame(args['sc'])
-        junction_frame=pd.merge(junction_frame,startcodon_frame,how='left',on=['transcript','rank'])
-        junction_frame['start_codon']=junction_frame['start_codon'].apply(lambda d: d if isinstance(d, list) else [])
-        # junction_frame['five_prime_shift']=junction_frame.apply(lambda x: cds_shifter(x['sense'],x['start'],x['end'],x['cds_start'],x['cds_end']))
-    else:
-        junction_frame['start_codon']=np.empty((len(junction_frame), 0)).tolist() #junction_frame['start']
-        # junction_frame['cds_end']=None
+    # if args['sc']:
+    #     print('Reading in start codons')
+    #     startcodon_frame=read_gff3_into_frame(args['sc'])
+    #     junction_frame=pd.merge(junction_frame,startcodon_frame,how='left',on=['transcript','rank'])
+    #     junction_frame['start_codon_start']=junction_frame['start_codon_start'].apply(lambda d: d if isinstance(d, list) else [])
+    #     junction_frame['start_codon_end']=junction_frame['start_codon_end'].apply(lambda d: d if isinstance(d, list) else [])
+    #     # junction_frame['five_prime_shift']=junction_frame.apply(lambda x: cds_shifter(x['sense'],x['start'],x['end'],x['cds_start'],x['cds_end']))
+    # else:
+    #     junction_frame['start_codon_start']=np.empty((len(junction_frame), 0)).tolist() #junction_frame['start']
+    #     junction_frame['start_codon_end']=np.empty((len(junction_frame), 0)).tolist()
+    #     # junction_frame['cds_end']=None
     print("Preparing for analysis...")
     exon_df=reverse_complement(pd.merge(junction_frame, exon_frame, on=['chromosome','start','end']))
     # exon_df.replace({'None':np.nan}, inplace=True)
     transcripts=exon_df.transcript.unique()
     print(f'building {len(transcripts)} transcripts')
     if args['debug']:
-        # sample=transcripts[1:1000]
-        sample=['ENST00000618181.4','ENST00000369529.1']
+        transcripts=['ENST00000337907.7']
         pool=mp.Pool(processes=1, initializer=child_initialize, initargs=(exon_df,))
-        results=[pool.apply_async(worker_process,args=(transcript,)) for transcript in sample]
-        print_results(results,args['out'],args['report'])
     else:
         pool=mp.Pool(processes=int(args['cpu']), initializer=child_initialize, initargs=(exon_df,))
-        results=[pool.apply_async(worker_process,args=(transcript,)) for transcript in transcripts] #each transcript processed with seperate cpu
-        print_results(results,args['out'],args['report'])
+    results=[pool.apply_async(worker_process,args=(transcript,)) for transcript in transcripts] #each transcript processed with seperate cpu
+    print_results(results,args['out'],args['report'])

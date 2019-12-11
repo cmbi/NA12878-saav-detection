@@ -123,15 +123,13 @@ if __name__ == '__main__':
     #import the fasta
     seqs=read_in_fasta(args['fasta'])
     #import the variant information and start codon postition (if applicable)
-    var_info=pd.read_csv(args['report'],delim_whitespace=True,header=0,names=['id','haplotype','pos_het','het_origin','pos_hom','hom_origin','start_codon_position'])
+    var_info=pd.read_csv(args['report'],delim_whitespace=True,header=0,names=['id','haplotype','pos_het','het_origin','pos_hom','hom_origin'])
     if args['cds']: #if sequences are novel, use angel for cds start position
         cds=read_in_fasta(args['cds'],cds=True)
         cds=cds.groupby(['id','haplotype'])['start_codon_position'].apply(list) #in case there is more than ORF in transcript
         var_info=var_info[['id','haplotype','pos_het','het_origin','pos_hom','hom_origin']].merge(cds,on='id')
     else:
-        #only include those with a start codon
-        var_info=var_info[var_info['start_codon_position']!='None']
-        var_info['start_codon_position']=var_info['start_codon_position'].str.split(',') #split start codon positions in case there is more than one
+        var_info['start_codon_position']=var_info.apply(lambda x: ['0'], axis=1) #cds, so start from the beginning
     print("Preparing data...")
     #merge
     df=pd.merge(var_info,seqs,on=['id','haplotype'])
@@ -140,8 +138,8 @@ if __name__ == '__main__':
     unstacked.name='start_codon_position'
     df=df.drop('start_codon_position',axis=1).join(unstacked)
     assert (df['start_codon_position'].astype(int) >= 0).all(), df[df['start_codon_position']<0].head()
-    #adjust the start codon positions: angel needs -1 and gencode -3
-    shift= 1 if args['cds'] else 3
+    #adjust the start codon positions: angel needs -1
+    shift= 1 if args['cds'] else 0
     df['start_codon_position']=df['start_codon_position'].astype(int)-shift
     #renumber the variant positions to protein position
     for colname in ['pos_het','het_origin','pos_hom','hom_origin']:
@@ -160,5 +158,5 @@ if __name__ == '__main__':
     if args['vpep']:
         var_peps= [item for sublist in list(df['variant_peptides']) for item in sublist]
         f=open(args['vpep'],'w')
-        f.writelines(','.join(['peptide','pep_start_in_protein','var_pos_in_protein','variant_origin','var_type']))
+        f.writelines(','.join(['peptide','pep_start_in_protein','var_pos_in_protein','variant_origin','var_type'])+'\n')
         f.writelines('\n'.join(var_peps))

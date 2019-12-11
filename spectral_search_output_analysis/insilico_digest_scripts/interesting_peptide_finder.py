@@ -129,25 +129,25 @@ if __name__ == "__main__":
     ref=read_fasta(args['ref'])
     custom=read_fasta(args['var'])
     merged=pd.merge(custom,ref,on='id',suffixes=('_vc','_vf'))
+    print('Searching for variant peptides...')
     merged['variant_peps']=merged.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf']),axis=1)
     df=merged[['id','haplotype','variant_peps']]
     df=df[df['variant_peps'].map(lambda d: len(d)) > 0] #remove proteins without any variant peptides
     #seperate variant peptides into their own lines
     unstacked=df.apply(lambda x: pd.Series(x['variant_peps']),axis=1).stack().str.strip().reset_index(level=1, drop=True)
-    unstacked.name='variant_peps'
+    unstacked.name='peptide'
     df=df.drop('variant_peps',axis=1).join(unstacked)
-    #split the variant peptides
-    df['variant_peps']=df['variant_peps'].str.split('|')
-    df[['variant_peps','substitution']]=pd.DataFrame(df['variant_peps'].values.tolist(),index=df.index)
+    #separate the peptide and the substitution
+    df['peptide']=df['peptide'].str.split('|')
+    df[['peptide','substitution']]=pd.DataFrame(df['peptide'].values.tolist(),index=df.index)
     if args['prelim']:
         origins=pd.read_csv(args['prelim'])
-        df=pd.merge(df,origins,on=['id','haplotype'])
+        df=pd.merge(df,origins,on='peptide')
     # if args['debug']:
         # ref=ref.head(100)
-    print('Searching for variant peptides...')
-    pool=mp.Pool(processes=int(args['cpu']),initializer=child_initialize, initargs=(ref,custom,))
-    results=[pool.apply_async(snvfinder,args=(pid,)) for pid in ref['protein'].unique()]
-    output = [p.get() for p in results]
+    # pool=mp.Pool(processes=int(args['cpu']),initializer=child_initialize, initargs=(ref,custom,))
+    # results=[pool.apply_async(snvfinder,args=(pid,)) for pid in ref['protein'].unique()]
+    # output = [p.get() for p in results]
     print('Writing to file...')
     if args['out']:
-        write_csv(output,args['out'])
+        write_csv(df,args['out'])

@@ -116,6 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('--fasta', help='Transcript fasta', required=True)
     parser.add_argument('--report', help='File report', required=True)
     parser.add_argument('--cds', help='ANGEL .cds file (required if sequences are novel)', required=False)
+    parser.add_argument('--shifts', help='shifts file for alternative start positions from GENCODE', required=False)
     parser.add_argument('--pfasta', help='Output protein fasta file', required=False)
     parser.add_argument('--vpep', help='Output variant peptide file', required=False)
     args=vars(parser.parse_args())
@@ -138,9 +139,13 @@ if __name__ == '__main__':
     unstacked.name='start_codon_position'
     df=df.drop('start_codon_position',axis=1).join(unstacked)
     assert (df['start_codon_position'].astype(int) >= 0).all(), df[df['start_codon_position']<0].head()
-    #adjust the start codon positions: angel needs -1
+    #adjust the start codon positions: angel needs -1, alternative starts also need shift
     shift= 1 if args['cds'] else 0
     df['start_codon_position']=df['start_codon_position'].astype(int)-shift
+    if args['shifts']:
+        shifts=pd.read_csv(args['shifts'])
+        df=pd.merge(df,shifts,on='id',how='left').fillna(0)
+        df['start_codon_position']=df['shift']
     #renumber the variant positions to protein position
     for colname in ['pos_het','het_origin','pos_hom','hom_origin']:
         df[colname]=df[colname].str.split(',')

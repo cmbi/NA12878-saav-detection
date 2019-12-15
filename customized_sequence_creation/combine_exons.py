@@ -138,9 +138,6 @@ def worker_process(transcript):
     var_hom,hom_org,var_het,het_org=([],[]),([],[]),([],[]),([],[])
     #keep track of original sequence length
     len_seq_org=0
-    #initialize
-    # start_cod_hz=[]
-    # start_cod_ho=[]
     try:
         trans_info=exon_df.loc[exon_df["transcript"]==transcript]#get exons in transcript
         #check for consecutive
@@ -153,10 +150,6 @@ def worker_process(transcript):
         for rank in int_ranks: #iterate through each exon by its rank, by ascending
             rank=str(rank)
             seq_rows=trans_info[trans_info["rank"]==rank].reset_index(drop=True)
-            #renumber the start codon to the correct place in the transcript
-            # if len(seq_rows.iloc[0]['start_codon_shift'])>0:
-            #     start_cod_hz.append(','.join([str(x+len(sequence_zero)) for x in seq_rows.iloc[0]['start_codon_shift']]))
-            #     start_cod_ho.append(','.join([str(x+len(sequence_one)) for x in seq_rows.iloc[0]['start_codon_shift']]))
             if len(seq_rows.index)==1: #if no heterozygous variants in exon
                 assert (seq_rows.iloc[0]['pos_het']=="None"), f"there are heterozygous positions at {seq_rows.iloc[0]['pos_het']}"
                 if seq_rows.iloc[0]["pos_hom"]!="None":
@@ -253,17 +246,6 @@ if __name__ == '__main__':
     exon_frame=pd.read_csv(args['exons'],sep='\t')
     print('Reading in transcript annotations...')
     junction_frame=read_gff3_into_frame(args['jun']) #can put bed file 
-    # if args['sc']:
-    #     print('Reading in start codons')
-    #     startcodon_frame=read_gff3_into_frame(args['sc'])
-    #     junction_frame=pd.merge(junction_frame,startcodon_frame,how='left',on=['transcript','rank'])
-    #     junction_frame['start_codon_start']=junction_frame['start_codon_start'].apply(lambda d: d if isinstance(d, list) else [])
-    #     junction_frame['start_codon_end']=junction_frame['start_codon_end'].apply(lambda d: d if isinstance(d, list) else [])
-    #     # junction_frame['five_prime_shift']=junction_frame.apply(lambda x: cds_shifter(x['sense'],x['start'],x['end'],x['cds_start'],x['cds_end']))
-    # else:
-    #     junction_frame['start_codon_start']=np.empty((len(junction_frame), 0)).tolist() #junction_frame['start']
-    #     junction_frame['start_codon_end']=np.empty((len(junction_frame), 0)).tolist()
-    #     # junction_frame['cds_end']=None
     print("Preparing for analysis...")
     exon_df=reverse_complement(pd.merge(junction_frame, exon_frame, on=['chromosome','start','end']))
     # exon_df.replace({'None':np.nan}, inplace=True)

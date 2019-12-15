@@ -26,7 +26,6 @@ def bed12_to_bed(bed,newbed):
                 info='transcript:'+name+';rank='+str(i+1)+';'
                 end=int(s)+int(lengths[i])
                 f.writelines('\t'.join([chr,s,str(end),'.','.','.',strand,'.','.',info])+'\n')
-    return 'converted'
 
 
-print bed12_to_bed(sys.argv[1],sys.argv[2])
+bed12_to_bed(sys.argv[1],sys.argv[2])

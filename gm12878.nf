@@ -156,6 +156,11 @@ process 'run_angel_and_sqanti2' {
     """
 }
 
+/*
+ * Make CDS gff from PSL file and 
+ * 
+ */
+
 /**********
  * PART 1: Create variant-free dictionary
  *
@@ -168,9 +173,11 @@ process 'find_overlap' {
         file 'dumb_reference.final.cds'
         file 'setA_classification.txt'
         file 'setA.faa'
+        file $pc_translations_filtered
     output:
-        file 'setA_classification_angelverified.txt'
-        file 'setA_angelverified.faa'
+        file 'setA_classification_angelverified.txt' into ont_only_info
+        file 'setA_angelverified.faa' into ont_only_novel_fa
+        file 'ont_only_dictionary.fa' into ont_only_dictionary
 
     script:
     """
@@ -184,15 +191,21 @@ process 'find_overlap' {
         df['id']='>'+df['id']
         df[['id','sequence']].to_csv(outputfile,header=None,index=None,sep='\n')
 
-    sqantiout=pd.read_csv('setA_classification.txt',sep='\t')
-    sqantiout=sqantiout[sqantiout['coding']=='coding']
-    angelout=ph.read_fasta('dumb_reference.final.cds')
-    sqantiaa=ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa')
-    angelout=angelout[~angelout['id'].str.contains('ENST')]
-    angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0])
-    sqantiout=sqantiout[sqantiout['isoform'].isin(angelout['id'].unique())]
-    sqantiout.to_csv('setA_classification_angelverified.txt',sep='\t',index=False)
-    write_to_fasta(sqantiaa[sqantiaa['id'].isin(angelout['id'].unique())].drop_duplicates(subset='sequence',keep='first'),'setA_angel_and_sqanti_verified.faa')
+
+    sqantiout=pd.read_csv('setA_classification.txt',sep='\t') # import sqanti results
+    angelout=ph.read_fasta('dumb_reference.final.cds') # import angel results
+    sqantiaa=ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa') #import sqanti protein sequence
+    gencode=ph.read_fasta($pc_translations_filtered) # import gencode complete proteins
+    gencodeids=gencode['id'].unique() # fetch gencode ids
+    sqantiout=sqantiout[sqantiout['coding']=='coding'] # take only coding sequences in sqanti
+    sqantiout['comparison']=sqantiout['isoform'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
+    sqantiaa['comparison']=sqantiaa['id'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
+    angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0]).apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
+    angelout_novel=angelout[~angelout['id'].isin(gencodeids)] # filter angel by those seqs not in gencode
+    sqantiout=sqantiout[sqantiout['comparison'].isin(angelout_novel['id'].unique())] # take intersection of angel and sqanti
+    sqantiout.drop(['comparison'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
+    write_to_fasta(sqantiaa[sqantiaa['comparison'].isin(angelout_novel['id'].unique())].drop_duplicates(subset='sequence',keep='first'),'setA_angel_and_sqanti_verified.faa') # write protein fasta
+    write_to_fasta(sqantiaa[sqantiaa['comparison'].isin(angelout['id'].unique())].drop_duplicates(subset='sequence',keep='first'),'ont_only_all.fa') # write protein fasta
     """
 }
 

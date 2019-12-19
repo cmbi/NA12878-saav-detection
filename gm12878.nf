@@ -104,6 +104,7 @@ process 'psl_to_fa' {
         file reference_genome
     output:
         file "${psl}.fa" into ont_transcript_fasta
+        file "${psl}_updated.psl" into new_psl
 
     script:
     """
@@ -126,6 +127,7 @@ process 'psl_to_fa' {
     junctions['tStarts']=junctions.apply(lambda x: x['tStarts'][::-1] if x[8]=='-' else x['tStarts'],axis=1)
     junctions['blocksize']=junctions[18].str.split(',').apply(lambda x: list(filter(None, x)))
     junctions['blocksize']=junctions.apply(lambda x: x['blocksize'][::-1] if x[8]=='-' else x['blocksize'],axis=1)
+    #junctions.to_csv('minus_strand_corrected.psl',header=False,sep='\t',index=False)
     junctions['finalseq']=junctions.apply(lambda x: build_seq(x['tStarts'],x['blocksize'],x[13],reference,x[8]),axis=1)
     junctions['header']='>'+junctions[9]
     junctions[['header','finalseq']].to_csv(outputfile,header=None,index=None,sep='\n')
@@ -157,9 +159,20 @@ process 'run_angel_and_sqanti2' {
 }
 
 /*
- * Make CDS gff from PSL file and 
+ * Make CDS gff from PSL file and SQANTI2 classification file cds start/end 
  * 
  */
+
+process 'psl2gff' {
+    input:
+        file 
+    output:
+        file
+
+    """
+    
+    """
+}
 
 /**********
  * PART 1: Create variant-free dictionary
@@ -236,15 +249,17 @@ process 'create_final_dict' {
 process 'convert2bed' { 
 
   input: 
-      file gff_file
-      file psl_file
+      file gff_file_cds_gencode
+      file gff_file_cds_ont
+      file genome
   output:
-      file 'dbs/db_fa' into search_db_path
-      file 'dbs/db_reversed_fa' into search_db_path_decoy
+      file 'gencode.cds.fa' into fa_file_cds_gencode
+      file 'ont.cds.fa' into fa_file_cds_ont
   
   script:
   """
-  bedtools getfasta [OPTIONS] -fi $genome -bed $gff_file
+  bedtools getfasta -fi $genome -bed $gff_file_cds_gencode -fo gencode.cds.fa
+  bedtools getfasta -fi $genome -bed $gff_file_cds_ont -fo ont.cds.fa
 
   """
 }
@@ -256,14 +271,16 @@ process 'convert2bed' {
 process 'incorporate_variants_in_cds' { 
 
   input: 
-      file gff_file
-      file psl_file
+      file fa_file_cds_gencode
+      file fa_file_cds_ont
+      file vcf
   output:
-      file 'dbs/db_fa' into search_db_path
-      file 'dbs/db_reversed_fa' into search_db_path_decoy
+      file 'gencode.cds.variant_containing.txt' into fa_vc_file_cds_gencode
+      file 'ont.cds.variant_containing.txt' into fa_vc_file_cds_ont
   
   script:
   """
+  python2 ../../../gm12878/customized_sequence_creation/phase_exons.py --cds gencode.v29.cds.fa --vcf ../../variants/NA12878.vcf.gz --out gencode.v29.cds.variant_containing.txt
   python2 ../../../gm12878/customized_sequence_creation/phase_exons.py --cds gencode.v29.cds.fa --vcf ../../variants/NA12878.vcf.gz --out gencode.v29.cds.variant_containing.txt
 
   """

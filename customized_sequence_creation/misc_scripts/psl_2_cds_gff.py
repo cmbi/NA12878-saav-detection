@@ -11,7 +11,8 @@ def get_start(cds_start,blocksizes):
     current_blocksize=0
     for index,blocksize in enumerate(blocksizes):
         if cds_start > current_blocksize and cds_start <= current_blocksize + int(blocksize):
-            return(index,(current_blocksize+int(blocksize)-cds_start)) #since enumerate starts at 0
+            shift_from_end_exon=current_blocksize+int(blocksize)-cds_start+1
+            return(index,(int(blocksize)-shift_from_end_exon))
         current_blocksize+=int(blocksize)
 
 def update_block_starts(cds_start,blocksizes,genome_starts):
@@ -46,7 +47,7 @@ def convert_to_gff(df,gffoutfile):
     start_ends=random_df.set_index(['transcript']).apply(pd.Series.explode).reset_index() #separate so one start/end per line
     start_ends['end']=start_ends['start']+start_ends['len'].astype(int)
     new_df=new_df.merge(start_ends, on='transcript').reset_index(drop=True)
-    new_df['attributes']='transcript_id='+new_df['transcript']+'; exon_number:'+new_df['exon_number'].astype(str)+';'
+    new_df['attributes']='transcript_id='+new_df['transcript']+';exon_number='+new_df['exon_number'].astype(str)+';'
     gff.df=new_df[['seq_id','source','type','start','end','score','strand','phase','attributes']]
     gff.header=f'##gff-version 3\n#description: CDS regions of sample genome\n'
     gff.to_gff3(gffoutfile)
@@ -58,7 +59,7 @@ def main():
     parser.add_argument('--out', help='Output gff3', required=True)
     args=vars(parser.parse_args())
     classification=pd.read_csv(args['sq'],sep='\t')
-    classification=classification[classification['coding']=='coding']
+    # classification=classification[(classification['coding']=='coding')&(~classification['subcategory'].str.contains('fragment'))] #shouldn't need this; filtered in the input
     classification=classification[['isoform','CDS_start']]
     psl=pd.read_csv(args['psl'],sep='\t',header=None)
     psl['isoform']=psl[9]
@@ -68,7 +69,7 @@ def main():
     psl['blocksize']=psl[18].str.split(',').apply(lambda x: list(filter(None, x)))
     psl['blocksize']=psl.apply(lambda x: x['blocksize'][::-1] if x[8]=='-' else x['blocksize'],axis=1)
     psl['exon_number']=psl.apply(lambda x: update_block_starts(x['CDS_start'],x['blocksize'],x['tStarts']),axis=1)
-    psl[['blocksize','cds','exon_number']]=pd.DataFrame(psl['exon_number'].tolist(),index=psl.index)
+    psl[['blocksize','tStarts','exon_number']]=pd.DataFrame(psl['exon_number'].tolist(),index=psl.index)
     convert_to_gff(psl,args['out'])
 
 if __name__ == "__main__":

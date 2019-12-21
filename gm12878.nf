@@ -127,7 +127,6 @@ process 'psl_to_fa' {
     junctions['tStarts']=junctions.apply(lambda x: x['tStarts'][::-1] if x[8]=='-' else x['tStarts'],axis=1)
     junctions['blocksize']=junctions[18].str.split(',').apply(lambda x: list(filter(None, x)))
     junctions['blocksize']=junctions.apply(lambda x: x['blocksize'][::-1] if x[8]=='-' else x['blocksize'],axis=1)
-    #junctions.to_csv('minus_strand_corrected.psl',header=False,sep='\t',index=False)
     junctions['finalseq']=junctions.apply(lambda x: build_seq(x['tStarts'],x['blocksize'],x[13],reference,x[8]),axis=1)
     junctions['header']='>'+junctions[9]
     junctions[['header','finalseq']].to_csv(outputfile,header=None,index=None,sep='\n')
@@ -158,21 +157,6 @@ process 'run_angel_and_sqanti2' {
     """
 }
 
-/*
- * Make CDS gff from PSL file and SQANTI2 classification file cds start/end 
- * 
- */
-
-process 'psl2gff' {
-    input:
-        file 
-    output:
-        file
-
-    """
-    
-    """
-}
 
 /**********
  * PART 1: Create variant-free dictionary
@@ -191,6 +175,7 @@ process 'find_overlap' {
         file 'setA_classification_angelverified.txt' into ont_only_info
         file 'setA_angelverified.faa' into ont_only_novel_fa
         file 'ont_only_dictionary.fa' into ont_only_dictionary
+        file 'gencode.v29.complete.nr.pc_translations.fa' into nr_pc_translations
 
     script:
     """
@@ -204,21 +189,30 @@ process 'find_overlap' {
         df['id']='>'+df['id']
         df[['id','sequence']].to_csv(outputfile,header=None,index=None,sep='\n')
 
+    def systematic_sort_drop(df):
+        ind=df['id'].str.len().sort_values().index
+        df1=df.reindex(ind)
+        df1=df1.reset_index(drop=True)
+        return(df1.drop_duplicates(subset='sequence',keep='first'))
 
     sqantiout=pd.read_csv('setA_classification.txt',sep='\t') # import sqanti results
-    angelout=ph.read_fasta('dumb_reference.final.cds') # import angel results
-    sqantiaa=ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa') #import sqanti protein sequence
+    angelout=systematic_sort_drop(ph.read_fasta('dumb_reference.final.cds')) # import angel cds
+    sqantiaa=systematic_sort_drop(ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa')) #import sqanti protein sequence
     gencode=ph.read_fasta($pc_translations_filtered) # import gencode complete proteins
     gencodeids=gencode['id'].unique() # fetch gencode ids
-    sqantiout=sqantiout[sqantiout['coding']=='coding'] # take only coding sequences in sqanti
-    sqantiout['comparison']=sqantiout['isoform'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
-    sqantiaa['comparison']=sqantiaa['id'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
+    angelout=angelout[~angelout['description'].str.contains('partial')] # take only full coding sequences in angel
+    sqantiout=sqantiout[(sqantiout['coding']=='coding')&(~sqantiout['subcategory'].str.contains('fragment'))] # take only full coding sequences in sqanti
+    sqantiout['id']=sqantiout['isoform']
+    sqantiout=pd.merge(sqantiout,sqantiaa[['id','sequence']],on='id')
     angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0]).apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
     angelout_novel=angelout[~angelout['id'].isin(gencodeids)] # filter angel by those seqs not in gencode
-    sqantiout=sqantiout[sqantiout['comparison'].isin(angelout_novel['id'].unique())] # take intersection of angel and sqanti
-    sqantiout.drop(['comparison'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
-    write_to_fasta(sqantiaa[sqantiaa['comparison'].isin(angelout_novel['id'].unique())].drop_duplicates(subset='sequence',keep='first'),'setA_angel_and_sqanti_verified.faa') # write protein fasta
-    write_to_fasta(sqantiaa[sqantiaa['comparison'].isin(angelout['id'].unique())].drop_duplicates(subset='sequence',keep='first'),'ont_only_all.fa') # write protein fasta
+    sqantiout['comparison']=sqantiout['isoform'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
+    overlap=sqantiout[sqantiout['comparison'].isin(angelout_novel['id'].unique())] # take intersection of angel and sqanti excl gencode
+    overlap.drop(['comparison','id','sequence'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
+    write_to_fasta(overlap,'setA_angel_and_sqanti_verified.faa') # write protein fasta for sequences that overlapped between angel and sqanti (excluding gencode)
+    write_to_fasta(sqantiout[sqantiout['comparison'].isin(angelout['id'].unique())],'ont_only_all.fa') # write protein fasta for all sequences that overlapped between angel and sqanti (including gencode)
+    write_to_fasta(systematic_sort_drop(gencode),'gencode.v29.complete.nr.pc_translations.fa')
+
     """
 }
 
@@ -229,24 +223,43 @@ process 'find_overlap' {
 process 'create_final_dict' { 
 
     input:
-        file 'gencode.v29.complete.pc_translations.fa'
-        file 'setA_angel_and_sqanti_verified.faa'
+        file nr_pc_translations
+        file ont_only_novel_fa
     output:
         file 'variant_free_searchdict.fa'
 
     script:
     """
-    cat gencode.v29.complete.pc_translations.fa setA_angel_and_sqanti_verified.faa > variant_free_searchdict.fa
+    cat $nr_pc_translations $ont_only_novel_fa > variant_free_searchdict.fa
     """
 }
 
 /**********
  * PART 2: Create variant-containing sequences
  *
-* Process 2A: Get corresponding genomic fasta sequences with bedtools getfasta (both ref and sample)
+* Process 2A: Make CDS gff from PSL file and SQANTI2 classification file cds start/end  
 */
 
-process 'convert2bed' { 
+process 'psl2gff' {
+    input:
+        file ont_only_info
+        file flair_psl
+    output:
+        file 'ont.cds.gff3' as gff_file_cds_ont
+
+    """
+    python3 psl_2_cds_gff.py --sq $ont_only_info --psl $flair_psl --out ont.cds.gff3
+    """
+}
+
+
+/*
+ * Get corresponding genomic fasta sequences with bedtools getfasta (both ref and sample)
+ * 
+ */
+
+
+process 'fetch' { 
 
   input: 
       file gff_file_cds_gencode
@@ -280,8 +293,10 @@ process 'incorporate_variants_in_cds' {
   
   script:
   """
+  conda activate sqanti2
   python2 ../../../gm12878/customized_sequence_creation/phase_exons.py --cds gencode.v29.cds.fa --vcf ../../variants/NA12878.vcf.gz --out gencode.v29.cds.variant_containing.txt
   python2 ../../../gm12878/customized_sequence_creation/phase_exons.py --cds gencode.v29.cds.fa --vcf ../../variants/NA12878.vcf.gz --out gencode.v29.cds.variant_containing.txt
+  conda deactivate
 
   """
 }
@@ -295,12 +310,13 @@ process 'incorporate_variants_in_cds' {
       file gff_file
       file psl_file
   output:
-      file 'dbs/db_fa' into search_db_path
-      file 'dbs/db_reversed_fa' into search_db_path_decoy
+      file 'dbs/db_fa' into variant_transcripts_gencode
+      file 'dbs/db_reversed_fa' into variant_origin_report_gencode
   
   script:
   """
   python3 ../../../gm12878/customized_sequence_creation/combine_exons.py --cpu 40 --exons gencode.v29.cds.variant_containing.txt --jun ../../ref_grch38/gencode/gencode.v29.cds.gff3 --out cds.variantcontaining.fa --report gencode.v29.vartracking.cds.txt
+  python3 ../../../gm12878/customized_sequence_creation/combine_exons.py --cpu 40 --exons ont.cds.variant_containing.txt --jun ont.cds.gff3 --out ont.vc.transcripts.fa --report ont.vartracking.txt
 
   """
 }
@@ -319,7 +335,8 @@ process 'incorporate_variants_in_cds' {
   
   script:
   """
-  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta cds.variantcontaining.fa --shifts alternative_start_proteins.txt --report gencode.v29.vartracking.cds.txt --pfasta gencode.v29.variant_containing_proteins.cds_based.fa
+  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta cds.variantcontaining.fa --report gencode.v29.vartracking.cds.txt --pfasta gencode.v29.vc.proteins.cds_based.fa --vpep gencode.v29.vc.peptides.txt
+  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta ont.vc.transcripts.fa --report ont.vartracking.txt --pfasta ont.vc.proteins.fa --vpep ont.vc.pep.csv
 
   """
 }

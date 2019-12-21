@@ -62,14 +62,10 @@ def translate(dna):
         protein_sequence += protein[dna[i:i+3]]
     return(protein_sequence)
 
-def translate_from_startcodon(sequence,startpos):
-    '''translate sequence from specified start codon position'''
-    return(translate(sequence[int(startpos):])) #-3 was added when i found that the M was being truncated from all my sequences for some reason
-
-def renumber_variants_from_startcodon(variant_list,start):
+def renumber_variants(variant_list):
     '''get the protein coordinate of the variants'''
     if 'None' not in variant_list[0]:
-        return([math.ceil((int(x)-int(start))/3) for x in variant_list])
+        return([math.ceil(int(x)/3) for x in variant_list])
     return(variant_list)
 
 def digest(protein_sequence,het_variants,het_origins,hom_variants,hom_origins):
@@ -114,8 +110,7 @@ def find_str(s, char):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='track variants')
     parser.add_argument('--fasta', help='Transcript fasta', required=True)
-    parser.add_argument('--report', help='File report', required=True)
-    parser.add_argument('--cds', help='ANGEL .cds file (required if sequences are novel)', required=False)
+    parser.add_argument('--report', help='File variant report', required=True)
     parser.add_argument('--pfasta', help='Output protein fasta file', required=False)
     parser.add_argument('--vpep', help='Output variant peptide file', required=False)
     args=vars(parser.parse_args())
@@ -124,31 +119,17 @@ if __name__ == '__main__':
     seqs=read_in_fasta(args['fasta'])
     #import the variant information and start codon postition (if applicable)
     var_info=pd.read_csv(args['report'],delim_whitespace=True,header=0,names=['id','haplotype','pos_het','het_origin','pos_hom','hom_origin'])
-    if args['cds']: #if sequences are novel, use angel for cds start position
-        cds=read_in_fasta(args['cds'],cds=True)
-        cds=cds.groupby(['id','haplotype'])['start_codon_position'].apply(list) #in case there is more than ORF in transcript
-        var_info=var_info[['id','haplotype','pos_het','het_origin','pos_hom','hom_origin']].merge(cds,on='id')
-    else:
-        var_info['start_codon_position']=var_info.apply(lambda x: ['0'], axis=1) #cds, so start from the beginning
     print("Preparing data...")
     #merge
     df=pd.merge(var_info,seqs,on=['id','haplotype'])
-    #unstack multiple start codons- so only one start codon position per row
-    unstacked=df.apply(lambda x: pd.Series(x['start_codon_position']),axis=1).stack().str.strip().reset_index(level=1, drop=True)
-    unstacked.name='start_codon_position'
-    df=df.drop('start_codon_position',axis=1).join(unstacked)
-    assert (df['start_codon_position'].astype(int) >= 0).all(), df[df['start_codon_position']<0].head()
-    #adjust the start codon positions: angel needs -1, alternative starts also need shift
-    shift= 1 if args['cds'] else 0
-    df['start_codon_position']=df['start_codon_position'].astype(int)-shift
     #renumber the variant positions to protein position
     for colname in ['pos_het','het_origin','pos_hom','hom_origin']:
         df[colname]=df[colname].str.split(',')
         if colname in ['pos_het','pos_hom']:
-            df[colname]=df.apply(lambda x: renumber_variants_from_startcodon(x[colname],x['start_codon_position']),axis=1)
+            df[colname]=df[colname].apply(renumber_variants)
     print("Predicting protein and peptides...")
     #predict protein sequence
-    df['protein_sequence']=df.apply(lambda x: translate_from_startcodon(x['sequence'],x['start_codon_position']),axis=1)
+    df['protein_sequence']=df['sequence'].apply(translate)
     #digest protein sequence and get peptides with variants in them
     df['variant_peptides']=df.apply(lambda x: digest(x['protein_sequence'],x['pos_het'],x['het_origin'],x['pos_hom'],x['hom_origin']),axis=1)
     #write information to fasta

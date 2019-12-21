@@ -3,8 +3,6 @@
 import re, collections, sys
 import pandas as pd
 import numpy as np
-#from enum import Enum
-from tqdm import tqdm
 import gffpandas.gffpandas as gffpd
 import multiprocessing as mp
 import argparse
@@ -205,7 +203,7 @@ def worker_process(transcript):
             [f"{transcript}\tNone\t{str(None)}\t{str(None)}\t{','.join(filter_nones(var_hom[0]))}\t \
             {','.join(filter_nones(hom_org[0]))}\n"])
         # else: #no variants= don't return! we only want the sequences that have variants, otherwise creating duplicates
-        #     return()
+        #     return(f">{transcript}\n{sequence_zero}\n", [""])
     except Exception as e:
         raise e
 

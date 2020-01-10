@@ -5,7 +5,13 @@ import pandas as pd
 import gffpandas.gffpandas as gffpd
 import argparse
 
-def get_start(cds_start,blocksizes):
+def get_ends(tstarts,blocksizes):
+    ends=[]
+    for i,t in enumerate(tstarts):
+        ends.append(int(t)+int(blocksizes[i]))
+    return(ends)
+
+def get_position(cds_start,blocksizes):
     '''return the cds that has the start codon 
     and return the shift between the start codon and beginning of corresponding cds'''
     current_blocksize=0
@@ -15,19 +21,21 @@ def get_start(cds_start,blocksizes):
             return(index,(int(blocksize)-shift_from_end_exon))
         current_blocksize+=int(blocksize)
 
-def update_block_starts(cds_start,blocksizes,genome_starts):
+def update_blocks(cds_start,blocksizes,genome_starts,genome_ends,strand):
     ''' should return 3 lists
     list 1: updated block sizes
     list 2: updated start positions
     list 3: consecutive numbers in a list the same length as the other 2 lists (for ranking)
     '''
-    exon_num,shift=get_start(cds_start,blocksizes)
-    blocksizes=blocksizes[exon_num:]
-    blocksizes[0]=int(blocksizes[0])-shift
+    exon_num,shift=get_position(cds_start,blocksizes)
     genome_starts=genome_starts[exon_num:]
-    genome_starts[0]=int(genome_starts[0])+shift
+    genome_ends=genome_ends[exon_num:]
+    if strand=='+':
+        genome_starts[0]=int(genome_starts[0])+shift
+    elif strand=='-':
+        genome_ends[0]=int(genome_ends[0])-shift
     exonnumbers=list(range(1, len(genome_starts)+1))
-    return(blocksizes,genome_starts,exonnumbers)
+    return(genome_starts,genome_ends,exonnumbers)
 
 def convert_to_gff(df,gffoutfile):
     new_df=pd.DataFrame()
@@ -40,14 +48,14 @@ def convert_to_gff(df,gffoutfile):
     new_df['phase']='.'
     random_df['transcript']=df[9]
     random_df['start']=df['tStarts'].apply(lambda x: [int(d)+1 for d in x]) #0- to 1-based coordinates
-    random_df['len']=df['blocksize'].apply(lambda x: [int(d)-1 for d in x]) #0- to 1-based coordinates
+    random_df['end']=df['tEnds']
     random_df['exon_number']=df['exon_number']
     new_df['source']='ONT'
     new_df['type']='CDS'
     start_ends=random_df.set_index(['transcript']).apply(pd.Series.explode).reset_index() #separate so one start/end per line
-    start_ends['end']=start_ends['start']+start_ends['len'].astype(int)
     new_df=new_df.merge(start_ends, on='transcript').reset_index(drop=True)
     new_df['attributes']='transcript_id='+new_df['transcript']+';exon_number='+new_df['exon_number'].astype(str)+';'
+    new_df['end']=new_df['end'].astype(int)
     gff.df=new_df[['seq_id','source','type','start','end','score','strand','phase','attributes']]
     gff.header=f'##gff-version 3\n#description: CDS regions of sample genome\n'
     gff.to_gff3(gffoutfile)
@@ -68,8 +76,9 @@ def main():
     psl['tStarts']=psl.apply(lambda x: x['tStarts'][::-1] if x[8]=='-' else x['tStarts'],axis=1)
     psl['blocksize']=psl[18].str.split(',').apply(lambda x: list(filter(None, x)))
     psl['blocksize']=psl.apply(lambda x: x['blocksize'][::-1] if x[8]=='-' else x['blocksize'],axis=1)
-    psl['exon_number']=psl.apply(lambda x: update_block_starts(x['CDS_start'],x['blocksize'],x['tStarts']),axis=1)
-    psl[['blocksize','tStarts','exon_number']]=pd.DataFrame(psl['exon_number'].tolist(),index=psl.index)
+    psl['tEnds']=psl.apply(lambda x: get_ends(x['tStarts'],x['blocksize']),axis=1)
+    psl['exon_number']=psl.apply(lambda x: update_blocks(x['CDS_start'],x['blocksize'],x['tStarts'],x['tEnds'],x[8]),axis=1)
+    psl[['tStarts','tEnds','exon_number']]=pd.DataFrame(psl['exon_number'].tolist(),index=psl.index)
     convert_to_gff(psl,args['out'])
 
 if __name__ == "__main__":

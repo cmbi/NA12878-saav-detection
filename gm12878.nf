@@ -54,7 +54,7 @@ ionbot_params = params.ionbot_params
 /**********
  * PART 0: File preparation
  *
- * Filter the gencode GFF + protein file for completeness (no trunacated seqs)
+ * Filter the gencode GFF + protein file for completeness (no 3 or 5' trunacated seqs)
  */
 process 'filter_gencode' { 
 
@@ -161,7 +161,6 @@ process 'run_angel_and_sqanti2' {
 /**********
  * PART 1: Create variant-free dictionary
  *
- * Process 1A: Find overlap of ORF predictors- save to fasta and txt file
  */
 
 process 'find_overlap' { 
@@ -185,59 +184,47 @@ process 'find_overlap' {
     import pandas as pd
     import phylopandas as ph
 
-    def write_to_fasta(df,outputfile):
-        df['id']='>'+df['id']
-        df[['id','sequence']].to_csv(outputfile,header=None,index=None,sep='\n')
+    def write_to_fasta(df,outputfile,ident='id'):
+        df[ident]='>'+df[ident]
+        df[[ident,'sequence']].to_csv(outputfile,header=None,index=None,sep='\n')
 
-    def systematic_sort_drop(df):
-        ind=df['id'].str.len().sort_values().index
+    def systematic_sort_drop(df,idname):
+        ind=df[idname].str.len().sort_values().index
         df1=df.reindex(ind)
         df1=df1.reset_index(drop=True)
         return(df1.drop_duplicates(subset='sequence',keep='first'))
 
-    sqantiout=pd.read_csv('setA_classification.txt',sep='\t') # import sqanti results
-    angelout=systematic_sort_drop(ph.read_fasta('dumb_reference.final.cds')) # import angel cds
-    sqantiaa=systematic_sort_drop(ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa')) #import sqanti protein sequence
     gencode=ph.read_fasta($pc_translations_filtered) # import gencode complete proteins
     gencodeids=gencode['id'].unique() # fetch gencode ids
-    angelout=angelout[~angelout['description'].str.contains('partial')] # take only full coding sequences in angel
-    sqantiout=sqantiout[(sqantiout['coding']=='coding')&(~sqantiout['subcategory'].str.contains('fragment'))] # take only full coding sequences in sqanti
+    angelout=ph.read_fasta('dumb_reference.final.cds') # import angel cds
+    angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0])
+    angelout=angelout[~angelout['description'].str.contains('partial')]
+    angelout['cds_start_angel']=angelout['description'].str.split('pos:').apply(lambda x: x[1])
+    angelout['cds_start_angel']=angelout['cds_start_angel'].str.split('-').apply(lambda x: x[0])
+    sqantiaa=ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa') #import sqanti protein sequence
+    sqantiout=pd.read_csv('setA_classification.txt',sep='\t') # import sqanti results
     sqantiout['id']=sqantiout['isoform']
+    sqantiout=sqantiout[(sqantiout['coding']=='coding')&(~sqantiout['subcategory'].str.contains('fragment'))] # take only full coding sequences in sqanti
     sqantiout=pd.merge(sqantiout,sqantiaa[['id','sequence']],on='id')
-    angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0]).apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
-    angelout_novel=angelout[~angelout['id'].isin(gencodeids)] # filter angel by those seqs not in gencode
-    sqantiout['comparison']=sqantiout['isoform'].apply(lambda x: x.split('_')[0] if 'ENST' in x else x) # make a field for comparing to gencode
-    overlap=sqantiout[sqantiout['comparison'].isin(angelout_novel['id'].unique())] # take intersection of angel and sqanti excl gencode
-    overlap.drop(['comparison','id','sequence'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
-    write_to_fasta(overlap,'setA_angel_and_sqanti_verified.faa') # write protein fasta for sequences that overlapped between angel and sqanti (excluding gencode)
-    write_to_fasta(sqantiout[sqantiout['comparison'].isin(angelout['id'].unique())],'ont_only_all.fa') # write protein fasta for all sequences that overlapped between angel and sqanti (including gencode)
-    write_to_fasta(systematic_sort_drop(gencode),'gencode.v29.complete.nr.pc_translations.fa')
+    sqantinovel=sqantiout[~sqantiout['associated_transcript'].isin(gencodeids)]
+    #sqantinovel['associated_transcript']=sqantinovel.apply(lambda x: x['associated_transcript'] if x['associated_transcript']!='novel' else x['id'],axis=1)
+    overlap_nogencode=systematic_sort_drop(pd.merge(sqantinovel,angelout[['id','cds_start_angel']],on='id'),'id').drop_duplicates(subset='id',keep='first')  # take intersection of angel and sqanti excl gencode
+    overlap=systematic_sort_drop(pd.merge(sqantiout,angelout[['id','cds_start_angel']],on='id'),'id').drop_duplicates(subset='id',keep='first') # take intersection of angel and sqanti excl gencode
+    overlap_nogencode.drop(['id','sequence'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
+    gencode=systematic_sort_drop(gencode,'id') #remove redundant gencode prots
+    combined_dict=pd.concat([gencode[['id','sequence']],overlap_nogencode[['id','sequence']]],ignore_index=True).drop_duplicates(subset='sequence',keep='first') #when duplicates, remove the ONT version of the entry
+    write_to_fasta(combined_dict,'variant_free_searchdict.fa')
+    write_to_fasta(overlap_nogencode,'setA_angel_and_sqanti_verified.faa')#,ident='associated_transcript') # write protein fasta for sequences that overlapped between angel and sqanti (excluding gencode)
+    write_to_fasta(overlap,'ont_only_all.fa')#,ident='associated_transcript') # write protein fasta for all sequences that overlapped between angel and sqanti (including gencode)
+    write_to_fasta(systematic_sort_drop(gencode,'id'),'gencode.v29.complete.nr.pc_translations.fa')
 
-    """
-}
-
-/*
-* Process 1B: combine the novel sequences verified by step 1A with the reference proteome (pc_translations)
-*/
-
-process 'create_final_dict' { 
-
-    input:
-        file nr_pc_translations
-        file ont_only_novel_fa
-    output:
-        file 'variant_free_searchdict.fa'
-
-    script:
-    """
-    cat $nr_pc_translations $ont_only_novel_fa > variant_free_searchdict.fa
     """
 }
 
 /**********
  * PART 2: Create variant-containing sequences
  *
-* Process 2A: Make CDS gff from PSL file and SQANTI2 classification file cds start/end  
+* Process 2A: For ONT seqs: Make CDS gff from PSL file and SQANTI2 classification file cds start/end  
 */
 
 process 'psl2gff' {
@@ -259,7 +246,7 @@ process 'psl2gff' {
  */
 
 
-process 'fetch' { 
+process 'fetch_genomic_seqs' { 
 
   input: 
       file gff_file_cds_gencode
@@ -304,18 +291,22 @@ process 'incorporate_variants_in_cds' {
 /*
 * Process 2D: combine the CDS for every transcript by their rank with combine_exons
 */
- process 'incorporate_variants_in_cds' { 
+ process 'create_full_cds' { 
 
   input: 
-      file gff_file
-      file psl_file
+      file gff_file_cds_ont
+      file gff_file_complete_gencode
+      file fa_vc_file_cds_gencode
+      file fa_vc_file_cds_ont
   output:
-      file 'dbs/db_fa' into variant_transcripts_gencode
-      file 'dbs/db_reversed_fa' into variant_origin_report_gencode
+      file 'gencode.v29.vc.transcripts.fa' into variant_transcripts_gencode
+      file 'gencode.v29.vartracking.txt' into variant_origin_report_gencode
+      file 'ont.vc.transcripts.fa' into variant_transcripts_ont
+      file 'ont.vartracking.txt' into variant_origin_report_ont
   
   script:
   """
-  python3 ../../../gm12878/customized_sequence_creation/combine_exons.py --cpu 40 --exons gencode.v29.cds.variant_containing.txt --jun ../../ref_grch38/gencode/gencode.v29.cds.gff3 --out cds.variantcontaining.fa --report gencode.v29.vartracking.cds.txt
+  python3 ../../../gm12878/customized_sequence_creation/combine_exons.py --cpu 40 --exons gencode.v29.cds.variant_containing.txt --jun ../../ref_grch38/gencode/gencode.v29.cds.gff3 --out gencode.v29.vc.transcripts.fa --report gencode.v29.vartracking.txt
   python3 ../../../gm12878/customized_sequence_creation/combine_exons.py --cpu 40 --exons ont.cds.variant_containing.txt --jun ont.cds.gff3 --out ont.vc.transcripts.fa --report ont.vartracking.txt
 
   """
@@ -324,19 +315,24 @@ process 'incorporate_variants_in_cds' {
 /*
 * Process 2E: Translate CDSs into protein with translate_annotated
 */
-process 'incorporate_variants_in_cds' { 
+process 'translate_and_digest' { 
 
   input: 
-      file gff_file
-      file psl_file
+      file variant_transcripts_gencode
+      file variant_origin_report_gencode
+      file variant_transcripts_ont
+      file variant_origin_report_ont
   output:
-      file 'dbs/db_fa' into search_db_path
-      file 'dbs/db_reversed_fa' into search_db_path_decoy
+      file 'gencode.v29.vc.proteins.fa' into variant_proteins_gencode
+      file 'gencode.v29.peptides.csv' into variant_peptides_gencode
+      file 'ont.vc.proteins.fa' into variant_proteins_ont
+      file 'ont.peptides.csv' into variant_peptides_ont
+  
   
   script:
   """
-  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta cds.variantcontaining.fa --report gencode.v29.vartracking.cds.txt --pfasta gencode.v29.vc.proteins.cds_based.fa --vpep gencode.v29.vc.peptides.txt
-  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta ont.vc.transcripts.fa --report ont.vartracking.txt --pfasta ont.vc.proteins.fa --vpep ont.vc.pep.csv
+  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta $variant_transcripts_gencode --report $variant_origin_report_gencode --pfasta gencode.v29.vc.proteins.cds_based.fa --vpep gencode.v29.vc.peptides.txt
+  python3 ../../../gm12878/customized_sequence_creation/translate_annotated.py --fasta $variant_transcripts_ont --report $variant_origin_report_ont --pfasta ont.vc.proteins.fa --vpep ont.vc.pep.csv
 
   """
 }
@@ -346,6 +342,53 @@ process 'incorporate_variants_in_cds' {
 *
 * Process 3A: replace the sequences in the variant-free dictionary with variant-containing versions where applicable
 */
+
+process 'variant_seq_replacement' { 
+
+  input: 
+      file variant_free_searchdict
+      file variant_proteins_gencode
+      file variant_proteins_ont
+  output:
+      file 'gencode.cds.fa' into variant_containing_searchdict
+  
+  script:
+  """
+  #!/usr/bin/env python3
+
+    import re
+    import pandas as pd
+    import phylopandas as ph
+
+    def write_to_fasta(df,outputfile):
+        df['id']='>'+df['id']+'|h.'+df['haplotype']
+        df[['id','sequence']].to_csv(outputfile,header=None,index=None,sep='\n')
+
+    nonvar=ph.read_fasta(old_dict) #import variant-free dict
+    nonvar['id']=nonvar['id'].str.split('|').apply(lambda x: x[0]).apply(lambda x: x.split('_')[0] if 'ENST' in x else x)
+    var_ont=ph.read_fasta('custom_seq/ont/ont.vc.proteins.fa') #import variant containing seqs
+    var_gencode=ph.read_fasta('custom_seq/gencode/gencode.v29.variant_containing_proteins.cds_based.fa')
+    var_ont['haplotype']=var_ont['description'].str.split('hap:').apply(lambda x: x[1])
+    var_gencode['haplotype']=var_gencode['description'].str.split('hap:').apply(lambda x: x[1])
+    var=pd.concat([var_gencode[['id','haplotype','sequence']],var_ont[['id','haplotype','sequence']]],ignore_index=True).drop_duplicates(keep='first') #concat gencode and ont
+    var[var['sequence'].str.len()<=20].to_csv('variant_dwarf_seqs.faa',index=False) #record dwarf sequences
+    var=var[var['sequence'].str.len()>20] #remove dwarf sequences
+    merged=pd.merge(nonvar[['id','sequence']],var[['id','haplotype','sequence']],how='outer',on='id',suffixes=('_vf','_vc'),indicator=True) #merge non-var and var
+    overlap=merged[merged['_merge']=='both'][['id','haplotype','sequence_vf','sequence_vc']]
+    overlap_same=overlap[overlap['sequence_vf']==overlap['sequence_vc']][['id','haplotype','sequence_vf']]
+    overlap_different=overlap[overlap['sequence_vf']!=overlap['sequence_vc']][['id','haplotype','sequence_vc']]
+    overlap_same.columns=['id','haplotype','sequence']
+    overlap_same['haplotype']='None'
+    overlap_different.columns=['id','haplotype','sequence']
+    non_variant=merged[merged['_merge']=='left_only'][['id','haplotype','sequence_vf']]
+    non_variant.columns=['id','haplotype','sequence']
+    non_variant['haplotype']='None'
+    merged=pd.concat([overlap_same,overlap_different,non_variant],ignore_index=True)
+    #merged=merged[merged['sequence'].str.len()>6] 
+    write_to_fasta(merged,outputfile)
+
+  """
+}
 
 /**********
 * PART 4: Get variant peptides

@@ -38,9 +38,9 @@ def child_initialize(_ref,_custom):
 #         raise e
 #     return('\n'.join(saav_list))
 
-def snvfinder(var_peptides,ref_peptides):
+def snvfinder(var_peptides,ref_peptides,tid):
     try:
-        assert len(var_peptides.intersection(ref_peptides))>0, var_sequence #make sure there is some overlap between the sequences
+        assert len(var_peptides.intersection(ref_peptides))>0, tid #make sure there is some overlap between the sequences
         final_variant_peptides=[]
         for pep in var_peptides:
             counterpart=determine_snv(pep,ref_peptides)
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     custom=read_fasta(args['var'])
     merged=pd.merge(custom,ref,on='id',suffixes=('_vc','_vf'))
     print('Searching for variant peptides...')
-    merged['variant_peps']=merged.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf']),axis=1)
+    merged['variant_peps']=merged.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf'],x['id']),axis=1)
     df=merged[['id','haplotype','variant_peps']]
     df=df[df['variant_peps'].map(lambda d: len(d)) > 0] #remove proteins without any variant peptides
     #seperate variant peptides into their own lines

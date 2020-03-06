@@ -20,31 +20,49 @@ def main(args):
     '''this is the main function that will iterate over the giant pandas df and perform all analyses and make all figures
     this is written in a way that iteration should only be done once.
     '''
+    parser = argparse.ArgumentParser(description='Ionbot output analysis')
+    parser.add_argument('--ont', help='Directory ONT ionbot output files', required=True)
+    parser.add_argument('--ref', help='Directory GENCODE reference ionbot output files', required=True)
+    parser.add_argument('--cvc', help='Directory combi variant-containing', required=True)
+    parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
+    parser.add_argument('--var', help='csv file of selected SAAV peptides', required=True)
+    # parser.add_argument('--ov', help='overlap file: intersection_ont_gencode.txt', required=True)
+    parser.add_argument('--vfd', help='csv file of entire combi variant-free', required=True)
+    parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
+    parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
+    parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
+    # parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
+    parser.add_argument('--rt_pred', help='retention time prediction',required=True)
+    parser.add_argument('--rt_obs', help='retention time observed',required=True)
+    # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
+    args = vars(parser.parse_args()) 
+
     #import ionbot output data
     print("importing ionbot results")
-    # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
-    # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
+    # overlap_prots = [line.strip() for line in open(args['ov'], 'r')]
+    ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
+    ibdf_refonly=file_import.concatenate_csvs(args['ref'])
     ibdf_vf=file_import.concatenate_csvs(args['cvf'])
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #inital QC
     print("plotting initial QC")
-    # plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
+    plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
-    plots.plot_target_decoy(ibdf_vf.dropna(),"qc_pearsonr_decoy_varfree.png", plot_title="Search result variant-free")
-    plots.plot_target_decoy(ibdf_vc.dropna(),"qc_pearsonr_decoy_varcont.png", plot_title="Search result variant-containing")
-    # plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
+    plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
+    plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
 
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var'])
+    theoretical_saav=calculations.saav_counts(variant_peptides['sub'].dropna().to_list())
     # variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
     # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     rt_obs_df=pd.read_csv(args['rt_obs'],sep=',',names=['scan_id','rt_observed'])
     rt_pred_df=pd.read_csv(args['rt_pred'],sep=',',names=['matched_peptide','rt_predicted'])
     # theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
-    theoretical_saav=calculations.saav_counts(variant_peptides['sub'].dropna().to_list())
     
     #collect results
     print("Doing general analysis...")
@@ -73,16 +91,16 @@ def main(args):
     print(f"overlap between high-evidence ont only and high-evidence multimap is {len(multimap_protset.intersection(ontonly_protset))}")
     
     # #get strand and chrom info
-    # print('...fetching and plotting origin info...')
-    # main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
-    # #get support
-    # print('...gauging protein support...')
-    # main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
-    # #get source
-    # print('...summing source dictionaries...')
-    # main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
-    # main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
-    #coverage - need to import full sequences for this #TODO
+    print('...fetching and plotting origin info...')
+    main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
+    #get support
+    print('...gauging protein support...')
+    main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
+    #get source
+    print('...summing source dictionaries...')
+    main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
+    main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
+    # coverage - need to import full sequences for this #TODO
     # plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
 
     #find variants
@@ -147,23 +165,8 @@ def main(args):
     plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     
-parser = argparse.ArgumentParser(description='Ionbot output analysis')
-parser.add_argument('--ont', help='Directory ONT ionbot output files', required=True)
-parser.add_argument('--ref', help='Directory GENCODE reference ionbot output files', required=True)
-parser.add_argument('--cvc', help='Directory combi variant-containing', required=True)
-parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
-parser.add_argument('--var', help='csv file of selected SAAV peptides', required=True)
-# parser.add_argument('--ctp', help='csv file of non-mutated counterparts of the selected SAAV peptides', required=True)
-parser.add_argument('--vfd', help='csv file of entire combi variant-free', required=True)
-parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
-parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
-parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
-# parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
-parser.add_argument('--rt_pred', help='retention time prediction',required=True)
-parser.add_argument('--rt_obs', help='retention time observed',required=True)
-# parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
-args = vars(parser.parse_args()) 
-main(args)
+if __name__ == "__main__":
+    main()
     
     
     

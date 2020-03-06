@@ -193,30 +193,48 @@ process 'find_overlap' {
         df1=df.reindex(ind)
         df1=df1.reset_index(drop=True)
         return(df1.drop_duplicates(subset='sequence',keep='first'))
-
+    
+    #import + filter necessary files
     gencode=ph.read_fasta($pc_translations_filtered) # import gencode complete proteins
     gencodeids=gencode['id'].unique() # fetch gencode ids
     angelout=ph.read_fasta('dumb_reference.final.cds') # import angel cds
     angelout['id']=angelout['id'].str.split('|').apply(lambda x: x[0])
-    angelout=angelout[~angelout['description'].str.contains('partial')]
+    angelout=angelout[~angelout['description'].str.contains('partial')] #filter partial
     angelout['cds_start_angel']=angelout['description'].str.split('pos:').apply(lambda x: x[1])
     angelout['cds_start_angel']=angelout['cds_start_angel'].str.split('-').apply(lambda x: x[0])
     sqantiaa=ph.read_fasta('squanti_out/nvrna.flair.isoforms.setA.true_transcripts.renamed_corrected.faa') #import sqanti protein sequence
     sqantiout=pd.read_csv('setA_classification.txt',sep='\t') # import sqanti results
     sqantiout['id']=sqantiout['isoform']
     sqantiout=sqantiout[(sqantiout['coding']=='coding')&(~sqantiout['subcategory'].str.contains('fragment'))] # take only full coding sequences in sqanti
-    sqantiout=pd.merge(sqantiout,sqantiaa[['id','sequence']],on='id')
+    sqantiout=pd.merge(sqantiout,sqantiaa[['id','sequence']],on='id') #combine aa sequences with annotations
+
+    ### create dictionary ###
+    # in sqanti but not gencode = "novel" sqanti
     sqantinovel=sqantiout[~sqantiout['associated_transcript'].isin(gencodeids)]
     #sqantinovel['associated_transcript']=sqantinovel.apply(lambda x: x['associated_transcript'] if x['associated_transcript']!='novel' else x['id'],axis=1)
-    overlap_nogencode=systematic_sort_drop(pd.merge(sqantinovel,angelout[['id','cds_start_angel']],on='id'),'id').drop_duplicates(subset='id',keep='first')  # take intersection of angel and sqanti excl gencode
+    
+    # take intersection of angel and "novel" sqanti = "novel" agreement sqanti + angel
+    overlap_nogencode=systematic_sort_drop(pd.merge(sqantinovel,angelout[['id','cds_start_angel']],on='id'),'id').drop_duplicates(subset='id',keep='first')  
+    
+    # take intersection of angel and sqanti = all agreement sqanti + angel
     overlap=systematic_sort_drop(pd.merge(sqantiout,angelout[['id','cds_start_angel']],on='id'),'id').drop_duplicates(subset='id',keep='first') # take intersection of angel and sqanti excl gencode
-    overlap_nogencode.drop(['id','sequence'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
+    
+    # remove redudants in gencode before making the final dictionary
     gencode=systematic_sort_drop(gencode,'id') #remove redundant gencode prots
+    
+    # create final variant-free dictionary
     combined_dict=pd.concat([gencode[['id','sequence']],overlap_nogencode[['id','sequence']]],ignore_index=True).drop_duplicates(subset='sequence',keep='first') #when duplicates, remove the ONT version of the entry
+    
+    # create non-novel list for analysis purposes later
+    notnovel=sqantiout[sqantiout['associated_transcript'].isin(gencodeids)].merge(angelout[['id']],on='id')
+    notnovel['associated_transcript'].to_csv('intersection_ont_gencode.txt',index=False)
+    
+    # write to files
+    overlap_nogencode.drop(['id','sequence'],axis=1).to_csv('setA_classification_angelverified.txt',sep='\t',index=False) # write new sqanti annotation file
     write_to_fasta(combined_dict,'variant_free_searchdict.fa')
     write_to_fasta(overlap_nogencode,'setA_angel_and_sqanti_verified.faa')#,ident='associated_transcript') # write protein fasta for sequences that overlapped between angel and sqanti (excluding gencode)
     write_to_fasta(overlap,'ont_only_all.fa')#,ident='associated_transcript') # write protein fasta for all sequences that overlapped between angel and sqanti (including gencode)
-    write_to_fasta(systematic_sort_drop(gencode,'id'),'gencode.v29.complete.nr.pc_translations.fa')
+    write_to_fasta(gencode,'gencode.v29.complete.nr.pc_translations.fa')
 
     """
 }

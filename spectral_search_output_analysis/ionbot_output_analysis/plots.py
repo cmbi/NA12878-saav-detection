@@ -156,7 +156,7 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
     sns.distplot(ibdf_vc[ibdf_vc['DB']=='T']['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
-    plt.savefig("qc_pearsonr_vcvsopenmut.png")
+    plt.savefig("qc_score_vcvsopenmut.png")
     plt.close()
 
 def plot_scores_decoy(ibdf_vf,figname):

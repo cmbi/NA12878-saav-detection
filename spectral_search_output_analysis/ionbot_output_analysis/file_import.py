@@ -2,18 +2,21 @@
 import os
 import pandas as pd
 import helper_functions
+import dask.dataframe as dd
+# import glob
 
 
 def concatenate_csvs(csvpath):
-    directory= os.fsencode(csvpath)
-    ionbotout=pd.DataFrame()
+    # directory= os.fsencode(csvpath)
     values={'unexpected_modification':'none'}
-    for csvfile in os.listdir(directory):
-        csvname=os.fsdecode(csvfile)
-        if csvname.endswith('.csv'):
-            temp=read_df_in_chunks(os.path.join(csvpath,csvname), 1000)
-            ionbotout=pd.concat([ionbotout,temp.fillna(value=values)])
-    return(ionbotout)
+    ionbotout=dd.read_csv(f"{csvpath.strip('/')}/*.mgf.ionbot.csv")
+    ionbotout=ionbotout[ionbotout['ri_126.1277']>0]
+    # ionbotout['scan_id']=ionbotout['title'].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
+    ionbotout=ionbotout.drop(['ri_126.1277','ri_127.1311','ri_128.1344','ri_129.1378','ri_130.1411','ri_131.1382'],axis=1)
+    ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
+    ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
+    ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source)
+    return(ionbotout.compute())
 
 def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','start'],to_replace=['variant','counterpart'],variant=True):
     '''read in the variant peptides and counterparts, replace 
@@ -25,31 +28,6 @@ def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','star
     if variant:
         df['sub']=df.apply(lambda x: helper_functions.determine_snv(x['variant'],x['counterpart']),axis=1) # to be phased out at next run of interesting_peptide_finder
     return(df)
-
-def read_df_in_chunks(directory, chunksize):
-    # read the large csv file with specified chunksize 
-    df_chunk = pd.read_csv(directory, chunksize=chunksize) # chunksize represents number of rows read per chunk
-    chunk_list = []  # append each chunk df here 
-    # Each chunk is in df format
-    for chunk in df_chunk:  
-        # perform data filtering 
-        chunk_filter = pre_filtering(chunk)
-        # Once the data filtering is done, append the chunk to list
-        chunk_list.append(chunk_filter)
-    # concat the list into dataframe 
-    df_concat = pd.concat(chunk_list) # this is your final dataframe
-    return(df_concat)
-
-def pre_filtering(df_chunk):
-    new_chunk=df_chunk[df_chunk['ri_126.1277']>0]
-    new_chunk['scan_id']=new_chunk['title'].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
-    new_chunk=new_chunk[['scan_id','charge','precursor_mass','matched_peptide','modifications','percolator_psm_score','DB','unexpected_modification','ms2pip_pearsonr','proteins','num_unique_pep_ids','q_value']]
-    new_chunk["DB"]=new_chunk["DB"].map({'D':True,'T':False})
-    new_chunk['peptide']=new_chunk['matched_peptide'].replace(to_replace='I|L',value='x',regex=True)
-    # new_chunk['transcript_id']=new_chunk['proteins'].apply(helper_functions.take_first_protein)
-    # new_chunk['transcript_id']=new_chunk['transcript_id'].apply(helper_functions.get_id,base=True) #slim down to transcript name only
-    new_chunk['source_dict']=new_chunk['proteins'].apply(helper_functions.bin_hits_by_source) #get dictionary sources
-    return(new_chunk)
 
 def import_coding_transcriptids(sources):
     '''

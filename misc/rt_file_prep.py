@@ -23,13 +23,14 @@ def main():
     output_all=args['out']+'.csv'
     output_calibration=args['out']+'_calibration.csv'
     ionbotout=dd.read_csv(f"{args['ib'].strip('/')}/*.mgf.ionbot.csv")
-    ionbotout=ionbotout[ionbotout['ri_126.1277']>0]
+    ionbotout=ionbotout[ionbotout['ri_126.1277']>0].fillna('')
     ionbotout['fixed']=ionbotout['modifications'].apply(fixed_to_mod,meta=pd.Series(dtype='str',name='fixed'))
     ionbotout['j']=ionbotout['fixed'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j'))
-    ionbotout['modifications']=ionbotout['modifications']+ionbotout['j']+ionbotout['fixed']
+    ionbotout['j2']=ionbotout['unexpected_modification'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j2'))
+    ionbotout['modifications']=ionbotout['modifications']+ionbotout['j']+ionbotout['fixed']+ionbotout['j2']+ionbotout['unexpected_modification']
     ionbotdf=ionbotout.compute(scheduler='processes',num_workers=30)
     ionbotdf=ionbotdf.sort_values('percolator_psm_score',ascending=False)
-    ionbotdf=ionbotdf[['matched_peptide','modifications','rt']].drop_duplicates(subset=['matched_peptide','modifications']).rename({'rt':'tr'},axis=1)
+    ionbotdf=ionbotdf[['matched_peptide','modifications','rt']].drop_duplicates(subset=['matched_peptide','modifications']).rename({'matched_peptide':'seq','rt':'tr'},axis=1)
     ionbotdf.to_csv(output_all,index=False)
     ionbotdf.head(1000).to_csv(output_calibration,index=False)
     

@@ -76,9 +76,8 @@ def read_fasta(fafile,decoy=False):
     if df['id'].str.contains('\|h.').all():
         df['haplotype']=df['id'].str.split('\|h.')#.apply(lambda x: x[-1])
         df[['id','haplotype']]=pd.DataFrame(df.haplotype.values.tolist(), index= df.index)
-    else:
-        df['haplotype']='None'
-    return(df[['id','haplotype','sequence','peptides']])
+        return(df[['id','haplotype','sequence','peptides']])
+    return(df[['id','sequence','peptides']])
 
 def write_csv(saav_list,outfile):
     '''
@@ -117,7 +116,10 @@ if __name__ == "__main__":
     merged_dd=dd.from_pandas(merged,npartitions=120)
     variant_peps=merged_dd.map_partitions(lambda part: part.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf'],x['id']),axis=1),meta=list).compute(scheduler='processes',num_workers=30)
     merged['variant_peps']=variant_peps
-    df=merged[['id','haplotype','variant_peps']]
+    if args['decoy']:
+        df=merged[['id','variant_peps']]
+    else:
+        df=merged[['id','haplotype','variant_peps']]
     df=df[df['variant_peps'].map(lambda d: len(d)) > 0] #remove proteins without any variant peptides
     #seperate variant peptides into their own lines
     unstacked=df.apply(lambda x: pd.Series(x['variant_peps']),axis=1).stack().str.strip().reset_index(level=1, drop=True)

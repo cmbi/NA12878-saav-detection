@@ -96,6 +96,7 @@ def determine_snv(peptide,counterpart):
     ''' extract the single amino acid substitution from the 
     input: a peptide and a list of peptides
     output: tuple
+    ***OUTDATED, NO LONGER IN USE***
     '''
     assert len(peptide)==len(counterpart), f"fatal error- counterpart and variant peptide length don't match"
     for a, b in zip(peptide, counterpart):
@@ -255,10 +256,6 @@ def remove_empty(variant_pep_dict):
 
 def longest(s):
     return(max(s,key=len))
-
-def get_all_observed(vf,vc,theoretical):
-    all_peptides=file_import.il_sensitive_read_csv(theoretical,names=['protein','peptide','start'],to_replace=['peptide'],variant=False)
-    return(vf.merge(all_peptides, on='peptide'),vc.merge(all_peptides, on='peptide'))
 
 def normalize_counter(x):
     '''normalize a counter object'''

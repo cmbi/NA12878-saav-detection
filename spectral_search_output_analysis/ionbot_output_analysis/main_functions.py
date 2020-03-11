@@ -29,6 +29,8 @@ def protein_support(df_vf,df_vc):
 def origin_info_fetch(df_vf,df_vc,gff,bed):
     '''
     '''
+    df_vf['transcript_id']=df_vf['proteins'].apply(lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
+    df_vc['transcript_id']=df_vc['proteins'].apply(lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
     origin_info=file_import.create_chromosome_reference(gff,bed)
     vf=df_vf.merge(origin_info,on='transcript_id') #this came from taking the first protein on the list and getting its transcript id
     vc=df_vc.merge(origin_info,on='transcript_id')

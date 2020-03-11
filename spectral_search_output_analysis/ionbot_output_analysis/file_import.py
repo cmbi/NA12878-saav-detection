@@ -15,18 +15,16 @@ def concatenate_csvs(csvpath):
     ionbotout=ionbotout.drop(['ri_126.1277','ri_127.1311','ri_128.1344','ri_129.1378','ri_130.1411','ri_131.1382'],axis=1)
     ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
     ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
-    ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source)
-    return(ionbotout.compute())
+    ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source,meta=str)
+    return(ionbotout.compute(scheduler='processes',num_workers=30))
 
-def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','start'],to_replace=['variant','counterpart'],variant=True):
+def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','start'],to_replace=['variant','counterpart']):
     '''read in the variant peptides and counterparts, replace 
     '''
     #names may change if add substitution/variant status: ['protein','variant','counterpart','sub','start','chr','genomic_pos','is_het']
     df=pd.read_csv(csvpath,header=0,names=names)
     for col in to_replace:
         df[col]=df[col].replace(to_replace='I|L',value='x',regex=True)
-    if variant:
-        df['sub']=df.apply(lambda x: helper_functions.determine_snv(x['variant'],x['counterpart']),axis=1) # to be phased out at next run of interesting_peptide_finder
     return(df)
 
 def import_coding_transcriptids(sources):

@@ -57,7 +57,7 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     # ibdf_vf=vf.groupby('peptide').aggregate(aggregation_rules)
     # ibdf_vc=vc.groupby('peptide').aggregate(aggregation_rules)
     #convert everything to sets and find the variants that are/are not in common
-    merged=pd.merge(vf,vc, on='scan_id', how='outer', suffixes=('_vf','_vc'), indicator=True)
+    merged=pd.merge(vf,vc, on='title', how='outer', suffixes=('_vf','_vc'), indicator=True)
     vf_only=merged[merged['_merge'] == 'left_only']
     vc_only=merged[merged['_merge'] == 'right_only']
     overlap=merged[merged['_merge'] == 'both']
@@ -67,15 +67,15 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     plots.plot_peplengths(helper_functions.normalize_counter(Counter(vcopl)),helper_functions.normalize_counter(Counter(vcnvpl)))
     # plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list()))) #does not take into account repeating peptides
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
-    vc_unique=pd.merge(vf['peptide'],vc[['scan_id','peptide','matched_peptide','percolator_psm_score']], on='peptide', how='right', indicator=True) #isolate variant containing only
-    mislabeled=pd.merge(nonvar_vf[['scan_id','peptide','unexpected_modification']],vc_unique.loc[vc_unique['_merge']=='right_only','scan_id'], on='scan_id').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).reset_index()
+    vc_unique=pd.merge(vf['variant_peptide'],vc[['title','variant_peptide','matched_peptide','percolator_psm_score']], on='variant_peptide', how='right', indicator=True) #isolate variant containing only
+    mislabeled=pd.merge(nonvar_vf[['title','peptide','unexpected_modification']],vc_unique.loc[vc_unique['_merge']=='right_only','title'], on='title').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).reset_index()
     plots.plot_unexpected_mods(mislabeled["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods)) #plot what modifications they contained
     #direct comparison of scores of peptides
     # rt_obs_df=pd.read_csv(rt_obs)
-    mislabeled=pd.merge(nonvar_vf[['scan_id','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('scan_id','matched_peptide','percolator_psm_score')], on='scan_id',suffixes=('_vf','_vc'))
+    mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','percolator_psm_score')], on='title',suffixes=('_vf','_vc'))
     #check the distributions
     mislabeled.to_csv('mislabeled_varpeps.csv') #comment this out if not want to write to file
-    mislabeled=pd.merge(mislabeled,rt_obs_df,on='scan_id').groupby(['matched_peptide_vc','matched_peptide_vf'])#.aggregate('mean').reset_index() #group by peptide identification
+    mislabeled=pd.merge(mislabeled,rt_obs_df,on='title').groupby(['matched_peptide_vc','matched_peptide_vf'])#.aggregate('mean').reset_index() #group by peptide identification
     mislabeled_distr=mislabeled[["percolator_psm_score_vc","percolator_psm_score_vf"]].describe()
     scores_all_filtered=mislabeled.loc[mislabeled["percolator_psm_score_vc"]>mislabeled["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
     scores_all_filtered.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv, look at where the vc scores were higher than vf
@@ -85,8 +85,8 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function
    
 def explore_rt_dist(variant_df,nonvariant_df,plotname):
-    variant_df['delta_rt']=abs(variant_df['rt_observed']-variant_df['rt_predicted'])
-    nonvariant_df['delta_rt']=abs(nonvariant_df['rt_observed']-nonvariant_df['rt_predicted'])
+    variant_df['delta_rt']=abs(variant_df['tr']-variant_df['predicted_tr'])
+    nonvariant_df['delta_rt']=abs(nonvariant_df['tr']-nonvariant_df['predicted_tr'])
     #for those variant findings that are in agreement between the 2 methods
     overlap=merged[merged['_merge'] == 'both']
     overlap_agreement=overlap[overlap['peptide_vc']==overlap['peptide_vf']]

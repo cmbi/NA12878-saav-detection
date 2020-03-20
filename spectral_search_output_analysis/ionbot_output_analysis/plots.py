@@ -253,21 +253,23 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
 
 def plot_heatmaps(counter,outfile):
     '''plot the types of substitutions that occur'''
-    if type(counter)==Counter:
-        ser=pd.Series(list(counter.values()),index=pd.MultiIndex.from_tuples(counter.keys()))
-        df=ser.unstack()
-    else:
-        df=counter
+    if type(counter)==dict:
+        counter=pd.DataFrame.from_dict(counter,orient='index')
+        #matrix=ser.unstack()
+    elif type(counter)==pd.Series:
+        counter=counter.apply(lambda x: tuple(x.split(','))).value_counts()
+    df=helper_functions.initiate_counter().merge(pd.DataFrame(counter),left_on='sub',right_index=True,how='left').fillna(0).set_index('sub')
+    df.index=pd.MultiIndex.from_tuples(df.index,names=('original','new'))
+    matrix=df.unstack()#.to_numpy()
     plt.figure("heatmap")
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    sns.heatmap(df)
+    sns.heatmap(matrix)
     # plt.title("Substitutions")
     plt.ylabel("Original")
     plt.xlabel("Variant")
     plt.tight_layout()
     plt.savefig(outfile)
-    
     plt.close()
     
 
@@ -314,14 +316,16 @@ def plot_mut_vs_nonmut(counts,figname):
     # sns.set(style="white", color_codes=True)
     plt.figure('measure direct counterparts')
     # sns.regplot(*zip(*counts),scatter=True,fit_reg=True,color='b',alpha=1)
-    h=sns.jointplot(*zip(*counts), kind='scatter',alpha=0.55,stat_func=calculations.r2) #in the future, should have another object for heterozygous
+    het=counts[counts['var_type']=='heterozygous']
+    hom=counts[counts['var_type']=='homozygous']
+    h=sns.jointplot(het['count_var'],het['count_refctp'], kind='scatter',alpha=0.55,color='r',stat_func=calculations.r2)
+    h.x=hom['count_var']
+    h.y=hom['count_refctp']
+    h.plot_joint(plt.scatter,alpha=0.55,color='b')
     h.set_axis_labels('Variant peptide count', 'Reference counterpart count', fontsize=16)
-    # ax = h.ax_joint
-    # ax.set_xscale('log')
-    # ax.set_yscale('log')
     # h.ax_marg_x.set_xlim(0, 250)
-    h.ax_marg_x.set_xscale('log')
-    h.ax_marg_y.set_yscale('log')
+    #h.ax_marg_x.set_xscale('log')
+    #h.ax_marg_y.set_yscale('log')
     left, right = plt.xlim()
     x = np.linspace(left,right)
     h.ax_joint.plot(x,x,':k')
@@ -330,7 +334,7 @@ def plot_mut_vs_nonmut(counts,figname):
     plt.savefig(figname)
     plt.close()
 
-def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='rt_observed'):
+def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='tr'):
     '''for the variant peptides that were found in one set but not another,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
@@ -403,6 +407,7 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
     combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1)
     combi.fillna(0)
     combi.columns=labels
+    print(combi.head())
     combi.plot(kind="bar",title="Length of variant and normal peptides from combination search dictionaries")
     #stats to look at the difference between the 2 columns
     t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC']) #related or independent samples? (rel or ind?)

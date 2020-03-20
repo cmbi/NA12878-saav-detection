@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-import os
+import os, re
 import pandas as pd
 import helper_functions
 import dask.dataframe as dd
 # import glob
 
 
-def concatenate_csvs(csvpath):
+def concatenate_csvs(csvpath,vf=False):
     # directory= os.fsencode(csvpath)
     values={'unexpected_modification':'none'}
     ionbotout=dd.read_csv(f"{csvpath.strip('/')}/*.mgf.ionbot.csv")
@@ -16,16 +16,19 @@ def concatenate_csvs(csvpath):
     ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
     ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
     ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source,meta=str)
+    if vf:
+        ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
     return(ionbotout.compute(scheduler='processes',num_workers=30))
 
-def il_sensitive_read_csv(csvpath,names=['protein','variant','counterpart','start'],to_replace=['variant','counterpart']):
+def il_sensitive_read_csv(csvpath,to_replace=['peptide','ref_counterpart']):
     '''read in the variant peptides and counterparts, replace 
     '''
     #names may change if add substitution/variant status: ['protein','variant','counterpart','sub','start','chr','genomic_pos','is_het']
-    df=pd.read_csv(csvpath,header=0,names=names)
+    df=pd.read_csv(csvpath)
     for col in to_replace:
         df[col]=df[col].replace(to_replace='I|L',value='x',regex=True)
-    return(df)
+    df['substitution']=df['substitution'].str.replace('I','X').str.replace('L','X')
+    return(df.rename({'peptide':'variant_peptide'},axis=1))
 
 def import_coding_transcriptids(sources):
     '''

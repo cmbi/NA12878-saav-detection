@@ -32,7 +32,7 @@ def main():
     parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
     parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
     # parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
-    # parser.add_argument('--rt_pred', help='retention time prediction',required=True)
+    parser.add_argument('--rt', help='retention time (obs&pred)',required=True)
     # parser.add_argument('--rt_obs', help='retention time observed',required=True)
     # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
     args = vars(parser.parse_args()) 
@@ -42,7 +42,7 @@ def main():
     # overlap_prots = [line.strip() for line in open(args['ov'], 'r')]
     ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
     ibdf_refonly=file_import.concatenate_csvs(args['ref'])
-    ibdf_vf=file_import.concatenate_csvs(args['cvf'])
+    ibdf_vf=file_import.concatenate_csvs(args['cvf'],vf=True)
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
     #inital QC
@@ -56,13 +56,12 @@ def main():
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var'])
-    theoretical_saav=calculations.saav_counts(variant_peptides['substitution'].dropna().to_list())
+    # theoretical_saav=calculations.saav_counts(variant_peptides['substitution'].dropna().to_list())
     # variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
     # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
-    # rt_obs_df=pd.read_csv(args['rt_obs'],sep=',',names=['scan_id','rt_observed'])
+    rt_df=pd.read_csv(args['rt']).rename({'seq':'matched_peptide'},axis=1)
     # rt_pred_df=pd.read_csv(args['rt_pred'],sep=',',names=['matched_peptide','rt_predicted'])
-    # theoretical_saav= calculations.saav_counts(variant_peptides,variant_counterparts)
     
     #collect results
     print("Doing general analysis...")
@@ -70,26 +69,6 @@ def main():
     all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)] #observed matches
     all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)]
     # all_matches_nonvar_vc.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide').to_csv('all_hits')
-    #check how many nanopore sequences had any sort of peptide support- for Timp lab
-    proteins_found_mult=all_matches_nonvar_vf[all_matches_nonvar_vf['source_dict']=='both']
-    proteins_found_ontonly=all_matches_nonvar_vf[all_matches_nonvar_vf['source_dict']=='ont']
-    proteins_found_mult_counts=proteins_found_mult['protein'].value_counts().reset_index()
-    proteins_found_mult_counts.columns=['protein','counts']
-    proteins_found_mult_counts=proteins_found_mult_counts[proteins_found_mult_counts['protein'].str.contains('_ENSG')]
-    print(f"length of all multiple mapping ont hits: {str(proteins_found_mult_counts.shape[0])}")
-    proteins_found_mult[proteins_found_mult['protein'].str.contains('_ENSG')].to_csv('multimapping_ont_hits.csv',index=False)
-    proteins_found_mult_counts=proteins_found_mult_counts[proteins_found_mult_counts['counts']>2]
-    multimap_protset=set(proteins_found_mult_counts['protein'].to_list())
-    print(f"length of all multiple mapping ont hits with evidence higher than 2 mapping peptides: {str(proteins_found_mult_counts.shape[0])}")
-    proteins_found_ontonly_counts=proteins_found_ontonly['protein'].value_counts().reset_index()
-    proteins_found_ontonly_counts.columns=['protein','counts']
-    proteins_found_ontonly_counts=proteins_found_ontonly_counts[proteins_found_ontonly_counts['protein'].str.contains('_ENSG')]
-    print(f"length of all unique mapping ont hits: {str(proteins_found_mult_counts.shape[0])}")
-    proteins_found_ontonly[proteins_found_ontonly['protein'].str.contains('_ENSG')].to_csv('mapping_ont_only_hits.csv',index=False)
-    proteins_found_ontonly_counts=proteins_found_ontonly_counts[proteins_found_ontonly_counts['counts']>2]
-    print(f"length of all unique mapping ont hits with evidence higher than 2 mapping peptides: {str(proteins_found_mult_counts.shape[0])}")
-    ontonly_protset=set(proteins_found_ontonly_counts['protein'].to_list())
-    print(f"overlap between high-evidence ont only and high-evidence multimap is {len(multimap_protset.intersection(ontonly_protset))}")
     
     # #get strand and chrom info
     print('...fetching and plotting origin info...')
@@ -107,59 +86,67 @@ def main():
     #find variants
     print('Finding variants...')
     #for the variant-free set, recalculate FDR based on the subset of peptides that were predicted to have a SAAV
-    detected_variant_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #get all peptides that are predicted to have a SAAV
-    detected_normal_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #all not having saav
-    detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
-    detected_normal_decoy_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
+    detected_variant_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]!="") & (ibdf_vf["DB"]==False)] #get all peptides that are predicted to have a SAAV
+    detected_nonvar_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]=="") & (ibdf_vf["DB"]==False)] #all not having saav
+    detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]!="") & (ibdf_vf["DB"]==True)]
+    detected_nonvar_decoy_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]=="") & (ibdf_vf["DB"]==True)]
+    #detected_variant_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #get all peptides that are predicted to have a SAAV
+    #detected_nonvar_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #all not having saav
+    #detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
+    #detected_nonvar_decoy_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
 
     #for the variant-containing set, recalculate FDR based on the variant subset only
-    observed_variants_vc=ibdf_vc.merge(variant_peptides, on='peptide') # target variants vc
-    observed_decoy_vc=ibdf_vc.merge(decoy_variants, on='peptide') # decoy variants vc
+    observed_variants_vc=ibdf_vc.merge(variant_peptides.rename({'variant_peptide':'peptide'},axis=1), on='peptide').rename({'peptide':'variant_peptide'},axis=1) # target variants vc
+    observed_decoy_vc=ibdf_vc.merge(decoy_variants.rename({'variant_peptide':'peptide'},axis=1), on='peptide').rename({'peptide':'variant_peptide'},axis=1) # decoy variants vc
     observed_decoy_vc=observed_decoy_vc[observed_decoy_vc["DB"]==True]
-    observed_variant_counterparts_vc=ibdf_vc.merge(variant_peptides, on='counterpart') # target counterparts vc
-    observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_variants, on='counterpart') # decoy counterparts vc
+    observed_variant_counterparts_vc=ibdf_vc.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1), on='peptide').rename({'peptide':'ref_counterpart'},axis=1) # target counterparts vc
+    observed_decoy_counterparts_vc=ibdf_vc.merge(decoy_variants.rename({'ref_counterpart':'peptide'},axis=1), on='peptide').rename({'peptide':'ref_counterpart'},axis=1) # decoy counterparts vc
 
     #just to get a count of how many variants were found in variant free set
     # print("variants found in variant-free before FDR correction:"+ )
     # print("variants found in the variant-containing before FDR correction:"+)
-    print(str(ibdf_vf.merge(variant_peptides, on='peptide').shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.shape[0])+' variants found in the variant-containing output before FDR correction.')
+    print(str(detected_variant_combi_vf.shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.shape[0])+' variants found in the variant-containing output before FDR correction.')
 
     ###FDR###
     print('...filtering false positives...')
     #for variant-free set, filter for true variant peptides after the FDR
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
-    prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_normal_combi_vf,detected_normal_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
-    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides.rename({'peptide':'variant_peptide','ref_counterpart':'peptide'},axis=1),how='left',on='peptide',indicator=True)#.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
-    ionbot_wrong_peps=final_counterpartset_vf[final_counterpartset_vf['_merge']=='left_only']
-    print(f"'Wrong' unique variant peptides found by ionbot={len(ionbot_wrong_peps['peptide'].unique())}")
-    final_counterpartset_vf=final_counterpartset_vf[final_counterpartset_vf['_merge']=='both'].reset_index(drop=True)
-    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides,on='counterpart').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_nonvar_combi_vf,detected_nonvar_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
+    final_variantset_vf=prelim_variantset_vf.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1),how='left',on='peptide',indicator=True).rename({'peptide':'ref_counterpart'},axis=1).merge(rt_df,how='left',on='matched_peptide')
+    ionbot_wrong_peps=final_variantset_vf[final_variantset_vf['_merge']=='left_only']
+    print(f"'Wrong' unique variant peptides found by ionbot after FDR correction={len(ionbot_wrong_peps['variant_peptide'].unique())}")
+    final_variantset_vf=final_variantset_vf[final_variantset_vf['_merge']=='both'].drop(columns=['_merge']).reset_index(drop=True)
+    print(f"out of all {final_variantset_vf.shape[0]} variant peptides correctly detected by ionbot, {final_variantset_vf[final_variantset_vf['substitution']==final_variantset_vf['pred_aa_sub']]} of them had the correct aa substitution")
+    final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1)).rename({'peptide':'ref_counterpart'},axis=1).merge(rt_df,how='left',on='matched_peptide')#.merge(rt_pred_df,how='left',on='matched_peptide')
 
     #for the variant-free set, get true variant peptides from the FDR re-estimation
-    final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
-    final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png').merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide')
+    final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
+    final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
     print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output after FDR correction.')
-    pd.merge(final_variantset_vc,final_counterpartset_vf, on='title',how='outer', suffixes=('_vc','_vf'), indicator=True).to_csv('finalvariantlist.csv',index=False)
-    pd.merge(final_counterpartset_vc,final_counterpartset_vf,on='title',how='outer', suffixes=('_vc','_vf'), indicator=True).to_csv('finalcounterpartlist.csv',index=False)
+    final_variantset_vc.to_csv('variants_vc.csv',index=False)
+    final_counterpartset_vc.to_csv('variants_vc_ctp.csv',index=False)
+    final_variantset_vf.to_csv('variants_vf.csv',index=False)
+    final_counterpartset_vf.to_csv('variants_vf_ctp.csv',index=False)
+
 
     print('Analyzing variants...')
     #get value counts of observed
-    observed_var_count_vc=final_variantset_vc['variant'].value_counts().reset_index()
-    observed_ctp_coun_vc=final_counterpartset_vc['counterpart'].value_counts().reset_index()
-    observed_var_count_vf=final_variantset_vf['variant'].value_counts().reset_index()
-    observed_ctp_coun_vf=final_counterpartset_vf['counterpart'].value_counts().reset_index()
-    # sub_type_vc,sub_count_vc=calculations.saav_counts(final_variantset_vc,final_counterpartset_vc,observed=True)
-    # sub_type_vf,sub_count_vf=calculations.saav_counts(final_variantset_vf,final_counterpartset_vf,observed=True)
-        
-    plots.plot_heatmaps(theoretical_saav,'heatmap_theoretical_subs.png')
+    #observed_var_count_vc=final_variantset_vc['peptide'].value_counts().reset_index()
+    #observed_ctp_count_vc=final_counterpartset_vc['peptide'].value_counts().reset_index()
+    #observed_var_count_vf=final_variantset_vf['peptide'].value_counts().reset_index()
+    #observed_ctp_count_vf=final_counterpartset_vf['peptide'].value_counts().reset_index()
+    # sub_type_vc,sub_count_vc=calculations.saav_counts(,observed=True)
+    # sub_type_vf,sub_count_vf=calculations.saav_counts(,observed=True)
+
+    
+    plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
     plots.plot_heatmaps(MatrixInfo.blosum62,'blosum62matrix.png')
     plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
     plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
-    plots.plot_mut_vs_nonmut(sub_count_vc,'variant_vs_counterpart_vc.png')
-    plots.plot_mut_vs_nonmut(sub_count_vf,'variant_vs_counterpart_vf.png')
-    sys.exit()
+    plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')
+    plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vf,final_counterpartset_vf,variant_peptides),'variant_vs_counterpart_vf.png')
     print("Making final plots...")
-    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc, args['rt_pred'], args['rt_obs'])
+    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc)
     plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     

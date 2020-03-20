@@ -13,6 +13,14 @@ def fixed_to_mod(seq,aa="C",mod_name="Carbamidomethyl"):
     for match in matches:
         ret_str.append("{}|{}".format(match.start(0)+1,mod_name))
     return "|".join(ret_str)
+
+def overall_mod(dd):
+    dd=dd[dd['ri_126.1277']>0].fillna('')
+    dd['fixed']=dd['modifications'].apply(fixed_to_mod,meta=pd.Series(dtype='str',name='fixed'))
+    dd['j']=dd['fixed'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j'))
+    dd['j2']=dd['unexpected_modification'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j2'))
+    dd['modifications']=dd['modifications']+dd['j']+dd['fixed']+dd['j2']+dd['unexpected_modification']
+    return(dd.compute(scheduler='processes',num_workers=30))
     
 def main():
     parser = argparse.ArgumentParser(description='Ionbot output analysis')
@@ -22,13 +30,7 @@ def main():
 
     output_all=args['out']+'.csv'
     output_calibration=args['out']+'_calibration.csv'
-    ionbotout=dd.read_csv(f"{args['ib'].strip('/')}/*.mgf.ionbot.csv")
-    ionbotout=ionbotout[ionbotout['ri_126.1277']>0].fillna('')
-    ionbotout['fixed']=ionbotout['modifications'].apply(fixed_to_mod,meta=pd.Series(dtype='str',name='fixed'))
-    ionbotout['j']=ionbotout['fixed'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j'))
-    ionbotout['j2']=ionbotout['unexpected_modification'].apply(lambda x: '' if x=='' else '|',meta=pd.Series(dtype='str',name='j2'))
-    ionbotout['modifications']=ionbotout['modifications']+ionbotout['j']+ionbotout['fixed']+ionbotout['j2']+ionbotout['unexpected_modification']
-    ionbotdf=ionbotout.compute(scheduler='processes',num_workers=30)
+    ionbotdf=import_data(dd.read_csv(f"{args['ib'].strip('/')}/*.mgf.ionbot.csv"))
     ionbotdf=ionbotdf.sort_values('percolator_psm_score',ascending=False)
     ionbotdf=ionbotdf[['matched_peptide','modifications','rt']].drop_duplicates(subset=['matched_peptide','modifications']).rename({'matched_peptide':'seq','rt':'tr'},axis=1)
     ionbotdf.to_csv(output_all,index=False)

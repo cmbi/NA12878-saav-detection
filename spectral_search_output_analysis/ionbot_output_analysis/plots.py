@@ -260,11 +260,12 @@ def plot_heatmaps(counter,outfile):
         counter=counter.apply(lambda x: tuple(x.split(','))).value_counts()
     df=helper_functions.initiate_counter().merge(pd.DataFrame(counter),left_on='sub',right_index=True,how='left').fillna(0).set_index('sub')
     df.index=pd.MultiIndex.from_tuples(df.index,names=('original','new'))
+    df.columns=['s']
     matrix=df.unstack()#.to_numpy()
     plt.figure("heatmap")
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    sns.heatmap(matrix)
+    sns.heatmap(matrix['s'])
     # plt.title("Substitutions")
     plt.ylabel("Original")
     plt.xlabel("Variant")

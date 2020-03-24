@@ -67,9 +67,9 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     plots.plot_peplengths(helper_functions.normalize_counter(Counter(vcopl)),helper_functions.normalize_counter(Counter(vcnvpl)))
     # plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list()))) #does not take into account repeating peptides
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
-    vc_unique=pd.merge(vf['variant_peptide'],vc[['title','variant_peptide','matched_peptide','percolator_psm_score']], on='variant_peptide', how='right', indicator=True) #isolate variant containing only
-    mislabeled=pd.merge(nonvar_vf[['title','peptide','unexpected_modification']],vc_unique.loc[vc_unique['_merge']=='right_only','title'], on='title').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).reset_index()
-    plots.plot_unexpected_mods(mislabeled["unexpected_modification"].apply(helper_functions.categorize_mods),nonvar_vf["unexpected_modification"].apply(helper_functions.categorize_mods)) #plot what modifications they contained
+    vc_unique=pd.merge(vf['title'],vc[['title','variant_peptide','matched_peptide','percolator_psm_score','rt','predicted_tr']], on='title', how='right', indicator=True) #isolate variant containing only
+    mislabeled_small=pd.merge(nonvar_vf[['title','peptide','unexpected_modification']].fillna('none'),vc_unique.loc[vc_unique['_merge']=='right_only','title'], on='title').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).fillna("none").reset_index()
+    plots.plot_unexpected_mods(mislabeled_small["unexpected_modification"],nonvar_vf.fillna('').apply(lambda x: helper_functions.categorize_mods(x["unexpected_modification"],x["pred_aa_sub"]),axis=1))
     #direct comparison of scores of peptides
     # rt_obs_df=pd.read_csv(rt_obs)
     mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','percolator_psm_score')], on='title',suffixes=('_vf','_vc'))

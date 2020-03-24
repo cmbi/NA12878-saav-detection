@@ -335,13 +335,11 @@ def plot_mut_vs_nonmut(counts,figname):
     plt.savefig(figname)
     plt.close()
 
-def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='tr'):
+def plot_ib_scores_directcomp(combi):
     '''for the variant peptides that were found in one set but not another,
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
     '''
-    # rt_pred=pd.read_csv(rtpredfile)
-    # rt_pred.columns=['matched_peptide','predicted_retention_time']
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
     plt.figure("Percolator scores discrepant hits")
@@ -349,7 +347,7 @@ def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='tr'):
     # combi.groupby("matched_peptide_vf").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     # combi=pd.merge(combi,rt_pred,on='matched_peptide')
-    # combi['delta_retention_time']=(combi[observed_colname]-combi['predicted_retention_time']).abs()
+    combi['delta_retention_time']=(combi['rt']-combi['predicted_tr']).abs()
     # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
     combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="delta_retention_time",colormap='viridis')
     left, right = plt.xlim()
@@ -360,7 +358,7 @@ def plot_ib_scores_directcomp(combi,rtpredfile,observed_colname='tr'):
     plt.ylabel("Scores variant-containing")
     plt.xlabel("Scores variant-free")
     plt.legend()
-    plt.title('Percolator scores for discrepant peptides found only in the variant-containing search')
+    plt.title('VF percolator scores for variant peptides found only in the VC search')
     plt.savefig("discrepant_peptide_direct_comparison.png")
     
     plt.close()
@@ -382,14 +380,14 @@ def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf
 def plot_unexpected_mods(mods_vf,mods_nonvar_vf):
     mod_ct_vf=helper_functions.normalize_counter(Counter(dict(mods_vf.value_counts())))
     plt.figure('discrepant peptide lengths')
-    chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(10)),orient='index')
+    chist_vf=pd.DataFrame.from_dict(dict(mod_ct_vf.most_common(20)),orient='index')
     figname='nonvariant_unexpected_mods.png'
     title='All unexpected modifications found in non-variant peptides'
     mod_ct_non_var_vf=helper_functions.normalize_counter(Counter(dict(mods_nonvar_vf.value_counts())))
-    chist_non_var_vf=pd.DataFrame.from_dict(dict(mod_ct_non_var_vf.most_common(10)),orient='index')
-    combi=pd.concat([chist_non_var_vf,chist_vf],axis=1,sort=False)
-    combi.fillna(0)
+    chist_non_var_vf=pd.DataFrame.from_dict(dict(mod_ct_non_var_vf.most_common(20)),orient='index')
+    combi=pd.concat([chist_non_var_vf,chist_vf],axis=1,sort=False).fillna(0)
     combi.columns=['All nonvariant VF', 'Mislabeled as nonvariant VF']
+    combi=combi[~((combi['All nonvariant VF']<2)&(combi['Mislabeled as nonvariant VF']<2))]
     combi.plot(kind='bar',title=title)
     plt.ylabel("% Peptides")
     plt.xlabel("PTMs")
@@ -405,19 +403,17 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
     chist_nonvar_vc=pd.DataFrame.from_dict(lenct_nonvar_vc,orient='index').sort_index()
-    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1)
-    combi.fillna(0)
+    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1).fillna(0)
     combi.columns=labels
-    print(combi.head())
     combi.plot(kind="bar",title="Length of variant and normal peptides from combination search dictionaries")
     #stats to look at the difference between the 2 columns
     t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC']) #related or independent samples? (rel or ind?)
-    print("peptide length statistics")
+    print("peptide length statistics (independent t-test)")
     print("t = " + str(t2))
     print("p = " + str(p2))
     # combi=combi.reindex(new_index)
-    # plt.ylabel("Density")
-    # plt.xlabel("Length peptide")
+    plt.ylabel("Percentage")
+    plt.xlabel("Length peptide")
     plt.legend(loc='upper right')
     plt.savefig(figname)
     plt.clf()

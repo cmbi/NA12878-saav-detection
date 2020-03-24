@@ -66,8 +66,8 @@ def main():
     #collect results
     print("Doing general analysis...")
     ###gather information about all non-variant matches###
-    all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)] #observed matches
-    all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)]
+    all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)].merge(rt_df,on='matched_peptide') #observed matches
+    all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)].merge(rt_df,on='matched_peptide')
     # all_matches_nonvar_vc.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide').to_csv('all_hits')
     
     # #get strand and chrom info

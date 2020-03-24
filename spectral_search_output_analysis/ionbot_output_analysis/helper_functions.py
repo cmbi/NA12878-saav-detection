@@ -299,13 +299,16 @@ def detected_proteins(ids,pco):
         proteins_covered[idu]+=1
     return(proteins_covered)
 
-def categorize_mods(mod):
-    if len(re.findall('[A-Z]->[A-Z]',mod))>0:
-        return('SAAV')
-    elif mod=='nan':
-        return("none")
-    s_mod=re.split('\[[a-z]\]',mod)[0]
-    return(s_mod)
+def categorize_mods(mod,pred_aa_sub):
+    saav=False
+    if pred_aa_sub!='':
+        saav=True
+    if mod!='':
+        if saav:
+            return('SAAV + mod')
+        else:
+            return(mod)
+    return('SAAV' if saav else 'none')
 
 def take_first_protein(protstring):
     if '||' in protstring:
@@ -330,7 +333,7 @@ def normalize_counter(x):
     '''normalize a counter object'''
     total = sum(x.values(), 0.0)
     for key in x:
-        x[key] /= total
+        x[key] = (x[key]/total) * 100
     return(x)
 
 def match_var_nonvar(df_var,df_nonvar,var_pep_df):

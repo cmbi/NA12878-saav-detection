@@ -75,11 +75,11 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','percolator_psm_score']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','percolator_psm_score')], on='title',suffixes=('_vf','_vc'))
     #check the distributions
     mislabeled.to_csv('mislabeled_varpeps.csv') #comment this out if not want to write to file
-    mislabeled=pd.merge(mislabeled,rt_obs_df,on='title').groupby(['matched_peptide_vc','matched_peptide_vf'])#.aggregate('mean').reset_index() #group by peptide identification
-    mislabeled_distr=mislabeled[["percolator_psm_score_vc","percolator_psm_score_vf"]].describe()
+    # mislabeled=mislabeled.groupby(['matched_peptide_vc','matched_peptide_vf'])#.aggregate('mean').reset_index() #group by peptide identification
+    # mislabeled_distr=mislabeled[["percolator_psm_score_vc","percolator_psm_score_vf"]].describe()
     scores_all_filtered=mislabeled.loc[mislabeled["percolator_psm_score_vc"]>mislabeled["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free
     scores_all_filtered.to_csv('vc_higher_than_vf.csv',index=False) #first print to csv, look at where the vc scores were higher than vf
-    plots.plot_ib_scores_directcomp(mislabeled.rename(columns={"matched_peptide_vc":"matched_peptide"}),rt_pred) #direct comparison plot: what scores they had in each of the libraries
+    plots.plot_ib_scores_directcomp(mislabeled.rename(columns={"matched_peptide_vc":"matched_peptide"})) #direct comparison plot: what scores they had in each of the libraries
     #general comparison of the scores
     plots.plot_ib_scores(vf_only["percolator_psm_score_vf"].tolist(),vc_only["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vc"].tolist(),overlap["percolator_psm_score_vf"].tolist(),nonvar_vc["percolator_psm_score"].tolist(),nonvar_vf["percolator_psm_score"].tolist())
     #to explore: return scan ids and check the ids that were not identified with variant free method in a later function

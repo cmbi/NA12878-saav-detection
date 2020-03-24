@@ -187,12 +187,12 @@ def plot_source_piechart(source_counter,figname):
 def plot_chromosomal_dist(distr_vc,distr_vf):
     sns.set(rc={'figure.figsize':(11.7,8.27)})
     sns.set_style(style='white')
-    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
+    new_index= ['chr1', 'chr2', 'chr3', 'chr4','chr5','chr6','chr7','chr8','chr9','chr10','chr11','chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr19','chr20','chr21','chr22','chrX','chrY']
     plt.figure('chromosomal distribution')
     chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
     chist_vf=pd.DataFrame.from_dict(distr_vf,orient='index')#.sort_index()
     combi=pd.concat([chist,chist_vf],axis=1,sort=True)
-    # combi=combi.reindex(new_index)
+    combi=combi.reindex(new_index)
     combi.columns=['Combi variant-containing','Combi variant-free']
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
     plt.ylabel("# Peptides")
@@ -421,8 +421,8 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
 
 def plot_final_venns(df_vc,df_vf):
     #get appropriate counters
-    vc=Counter(dict(df_vc['peptide'].value_counts()))
-    vf=Counter(dict(df_vf['peptide'].value_counts()))
+    vc=Counter(dict(df_vc['variant_peptide'].value_counts()))
+    vf=Counter(dict(df_vf['variant_peptide'].value_counts()))
     #create diagrams
     plt.figure('venn variant psms')
     vda=venn2([vc,vf],('Combi variant-containing','Combi variant-free')) #venn for the overlap in detected peptides

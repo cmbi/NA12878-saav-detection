@@ -351,5 +351,5 @@ def sub_conversion(list_aa):
         new_list=[]
         for l in list_aa:
             new_list.append(codes[l])
-        return(','.join(new_list)) #can also be a tuple later if desired
+        return(','.join(new_list[::-1])) #can also be a tuple later if desired
     return('')

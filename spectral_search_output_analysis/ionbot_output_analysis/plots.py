@@ -254,7 +254,7 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     
     plt.close()
 
-def plot_heatmaps(counter,bl=False,outfile):
+def plot_heatmaps(counter,outfile,bl=False):
     '''plot the types of substitutions that occur'''
     if type(counter)==dict:
         counter=pd.DataFrame.from_dict(counter,orient='index')

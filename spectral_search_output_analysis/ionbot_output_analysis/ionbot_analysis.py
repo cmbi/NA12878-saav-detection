@@ -131,7 +131,7 @@ def main():
     print('Analyzing variants...')
     
     plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
-    plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),bl=True,'blosum62matrix.png')
+    plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),'blosum62matrix.png',bl=True)
     plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
     plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
     plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')

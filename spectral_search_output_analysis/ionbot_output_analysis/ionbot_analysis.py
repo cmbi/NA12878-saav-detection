@@ -55,21 +55,18 @@ def main():
 
     #import other data
     print('importing helper data')
-    variant_peptides=file_import.il_sensitive_read_csv(args['var'])
+    variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()
     # theoretical_saav=calculations.saav_counts(variant_peptides['substitution'].dropna().to_list())
-    # variant_counterparts=file_import.il_sensitive_read_csv(args['ctp'])
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
     # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     rt_df=pd.read_csv(args['rt']).rename({'seq':'matched_peptide'},axis=1)
-    # rt_pred_df=pd.read_csv(args['rt_pred'],sep=',',names=['matched_peptide','rt_predicted'])
     
     #collect results
     print("Doing general analysis...")
     ###gather information about all non-variant matches###
     all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)].merge(rt_df,on='matched_peptide') #observed matches
     all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)].merge(rt_df,on='matched_peptide')
-    # all_matches_nonvar_vc.merge(rt_obs_df,how='left',on='scan_id').merge(rt_pred_df,how='left',on='matched_peptide').to_csv('all_hits')
-    
+        
     # #get strand and chrom info
     print('...fetching and plotting origin info...')
     main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
@@ -81,6 +78,7 @@ def main():
     main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
     main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
     # coverage - need to import full sequences for this #TODO
+    # this is easier in the new ionbot output since the position numbers are included with the protein output
     # plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
 
     #find variants
@@ -128,19 +126,12 @@ def main():
     final_variantset_vf.to_csv('variants_vf.csv',index=False)
     final_counterpartset_vf.to_csv('variants_vf_ctp.csv',index=False)
 
+    ##find variant peptides in the lower-ranked 
 
     print('Analyzing variants...')
-    #get value counts of observed
-    #observed_var_count_vc=final_variantset_vc['peptide'].value_counts().reset_index()
-    #observed_ctp_count_vc=final_counterpartset_vc['peptide'].value_counts().reset_index()
-    #observed_var_count_vf=final_variantset_vf['peptide'].value_counts().reset_index()
-    #observed_ctp_count_vf=final_counterpartset_vf['peptide'].value_counts().reset_index()
-    # sub_type_vc,sub_count_vc=calculations.saav_counts(,observed=True)
-    # sub_type_vf,sub_count_vf=calculations.saav_counts(,observed=True)
-
     
     plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
-    plots.plot_heatmaps(MatrixInfo.blosum62,'blosum62matrix.png')
+    plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),bl=True,'blosum62matrix.png')
     plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
     plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
     plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')

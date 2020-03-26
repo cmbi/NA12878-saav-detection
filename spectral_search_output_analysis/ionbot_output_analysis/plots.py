@@ -114,6 +114,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     how many proteins have 1,2,3... peptides supporting their existence? unambiguously?
     1 counter that counts all peptides, another counter that counts only unique peptides'''
     plt.figure('support')
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
     recountpev=helper_functions.counter_translator(prot_evidence)
     recountunamb=helper_functions.counter_translator(unamb_prot_evidence)
     print("count #proteins with higher than 20 peptide evidence:"+str(recountpev['20+']))
@@ -149,7 +150,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
     sns.distplot(ibdf_vf[ibdf_vf['DB']==False]['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
@@ -161,7 +162,7 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
 
 def plot_scores_decoy(ibdf_vf,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
     sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
     sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
@@ -175,6 +176,8 @@ def plot_scores_decoy(ibdf_vf,figname):
 def plot_source_piechart(source_counter,figname):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
     plt.figure('source piechart')
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
+    sns.set_style(style='white')
     explode = (0.1, 0, 0)
     labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
     plt.pie([source_counter['ont'],source_counter['ref'],source_counter['both']],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
@@ -185,7 +188,7 @@ def plot_source_piechart(source_counter,figname):
     plt.close()
 
 def plot_chromosomal_dist(distr_vc,distr_vf):
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
     sns.set_style(style='white')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     plt.figure('chromosomal distribution')
@@ -204,7 +207,7 @@ def plot_chromosomal_dist(distr_vc,distr_vf):
     plt.close()
 
 def plot_strand_dist(distr_vc,distr_vf):
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
     sns.set_style(style='white')
     plt.figure('strand distribution')
     chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
@@ -251,21 +254,21 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     
     plt.close()
 
-def plot_heatmaps(counter,outfile):
+def plot_heatmaps(counter,bl=False,outfile):
     '''plot the types of substitutions that occur'''
     if type(counter)==dict:
         counter=pd.DataFrame.from_dict(counter,orient='index')
+        counter.columns=['substitution']
         #matrix=ser.unstack()
     elif type(counter)==pd.Series:
         counter=counter.apply(lambda x: tuple(x.split(','))).value_counts()
-    df=helper_functions.initiate_counter().merge(pd.DataFrame(counter),left_on='sub',right_index=True,how='left').fillna(0).set_index('sub')
+    df=helper_functions.initiate_counter(bl).merge(pd.DataFrame(counter),left_on='sub',right_index=True,how='left').fillna(0).set_index('sub')
     df.index=pd.MultiIndex.from_tuples(df.index,names=('original','new'))
-    df.columns=['s']
     matrix=df.unstack()#.to_numpy()
     plt.figure("heatmap")
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
     sns.set_style(style='white')
-    sns.heatmap(matrix['s'])
+    sns.heatmap(matrix['substitution'])
     # plt.title("Substitutions")
     plt.ylabel("Original")
     plt.xlabel("Variant")
@@ -282,7 +285,7 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     cpt_pep_abundance,nmpa=calculations.calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
     calculations.calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
     #make plot
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
+    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
     sns.set_style(style='white')
     plt.figure('mutant peptides')
     # plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
@@ -301,17 +304,17 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     plt.close()
     
 
-def plot_mut_vs_prob(counts,figname):
-    '''plot variant observed count vs CPDT probability for that peptide'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
-    plt.figure('measure probability vs observed peptides')
-    sns.jointplot(*zip(*counts))
-    plt.xlabel('Variant peptide theoretical detectability')
-    plt.ylabel('Variant peptide observed count')
-    plt.tight_layout()
-    plt.savefig(figname)
-    plt.close()
+# def plot_mut_vs_prob(counts,figname):
+#     '''plot variant observed count vs CPDT probability for that peptide'''
+#     sns.set(rc={'figure.figsize':(11.7,8.27)})
+#     sns.set_style(style='white')
+#     plt.figure('measure probability vs observed peptides')
+#     sns.jointplot(*zip(*counts))
+#     plt.xlabel('Variant peptide theoretical detectability')
+#     plt.ylabel('Variant peptide observed count')
+#     plt.tight_layout()
+#     plt.savefig(figname)
+#     plt.close()
 
 def plot_mut_vs_nonmut(counts,figname):
     # sns.set(style="white", color_codes=True)

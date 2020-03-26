@@ -72,9 +72,9 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     plots.plot_unexpected_mods(mislabeled_small["unexpected_modification"],nonvar_vf.fillna('').apply(lambda x: helper_functions.categorize_mods(x["unexpected_modification"],x["pred_aa_sub"]),axis=1))
     #direct comparison of scores of peptides
     # rt_obs_df=pd.read_csv(rt_obs)
-    mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','percolator_psm_score','rt','predicted_tr']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','percolator_psm_score')], on='title',suffixes=('_vf','_vc'))
+    mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','best_psm','percolator_psm_score','rt','predicted_tr']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','best_psm','percolator_psm_score')], on='title',suffixes=('_vf','_vc'))
     #check the distributions
-    mislabeled.to_csv('mislabeled_varpeps.csv') #comment this out if not want to write to file
+    mislabeled.to_csv('mislabeled_varpeps.csv',index=False) #comment this out if not want to write to file
     # mislabeled=mislabeled.groupby(['matched_peptide_vc','matched_peptide_vf'])#.aggregate('mean').reset_index() #group by peptide identification
     # mislabeled_distr=mislabeled[["percolator_psm_score_vc","percolator_psm_score_vf"]].describe()
     scores_all_filtered=mislabeled.loc[mislabeled["percolator_psm_score_vc"]>mislabeled["percolator_psm_score_vf"]] #information for scan ids that are higher in variant containing than variant free

@@ -114,7 +114,7 @@ def main():
     ionbot_wrong_peps=final_variantset_vf[final_variantset_vf['_merge']=='left_only']
     print(f"'Wrong' unique variant peptides found by ionbot after FDR correction={len(ionbot_wrong_peps['variant_peptide'].unique())}")
     final_variantset_vf=final_variantset_vf[final_variantset_vf['_merge']=='both'].drop(columns=['_merge']).reset_index(drop=True)
-    print(f"out of all {final_variantset_vf.shape[0]} variant peptides correctly detected by ionbot, {final_variantset_vf[final_variantset_vf['substitution']==final_variantset_vf['pred_aa_sub']]} of them had the correct aa substitution")
+    print(f"out of all {str(final_variantset_vf.shape[0])} variant peptides correctly detected by ionbot, {final_variantset_vf[final_variantset_vf['substitution']==final_variantset_vf['pred_aa_sub']].shape[0]} of them had the correct aa substitution")
     final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1)).rename({'peptide':'ref_counterpart'},axis=1).merge(rt_df,how='left',on='matched_peptide')#.merge(rt_pred_df,how='left',on='matched_peptide')
 
     #for the variant-free set, get true variant peptides from the FDR re-estimation

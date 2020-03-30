@@ -2,23 +2,27 @@
 import os, re
 import pandas as pd
 import helper_functions
-import dask.dataframe as dd
-# import glob
+# import dask.dataframe as dd
+import glob
 
 
 def concatenate_csvs(csvpath,vf=False):
     # directory= os.fsencode(csvpath)
     values={'unexpected_modification':'none'}
-    ionbotout=dd.read_csv(f"{csvpath.strip('/')}/*.mgf.ionbot.csv")
-    ionbotout=ionbotout[ionbotout['ri_126.1277']>0]
-    # ionbotout['scan_id']=ionbotout['title'].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
-    ionbotout=ionbotout.drop(['ri_126.1277','ri_127.1311','ri_128.1344','ri_129.1378','ri_130.1411','ri_131.1382'],axis=1)
-    ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
-    ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
-    ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source,meta=str)
-    if vf:
-        ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x),meta=str).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '',meta=str).apply(helper_functions.sub_conversion,meta=str)
-    return(ionbotout.compute(scheduler='processes',num_workers=30))
+    ib=[]
+    for filename in glob.glob(f"{csvpath.strip('/')}/*.mgf.ionbot.csv"):
+        ionbotout=pd.read_csv(filename)
+        ionbotout=ionbotout[ionbotout['ri_126.1277']>0]
+        # ionbotout['scan_id']=ionbotout['title'].str.split(' ').apply(lambda x: x[0]) #get unique identifier in the title column
+        ionbotout=ionbotout.drop(['ri_126.1277','ri_127.1311','ri_128.1344','ri_129.1378','ri_130.1411','ri_131.1382'],axis=1)
+        ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
+        ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
+        ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source)
+        if vf:
+            ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
+        ib.append(ionbotout)
+    return(pd.concat(ib,axis=0))
+    # return(ionbotout.compute(scheduler='processes',num_workers=30))
 
 def il_sensitive_read_csv(csvpath,to_replace=['peptide','ref_counterpart']):
     '''read in the variant peptides and counterparts, replace 

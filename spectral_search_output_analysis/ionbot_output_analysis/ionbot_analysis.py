@@ -50,11 +50,11 @@ def main():
 
     #inital QC
     print("plotting initial QC")
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
     plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
-    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
     
     #import other data
     print('importing helper data')
@@ -136,15 +136,15 @@ def main():
 
     print('Analyzing variants...')
     
-    plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
-    plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),'blosum62matrix.png',bl=True)
-    plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
-    plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
-    plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')
-    plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vf,final_counterpartset_vf,variant_peptides),'variant_vs_counterpart_vf.png')
+    # plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
+    # plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),'blosum62matrix.png',bl=True)
+    # plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
+    # plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
+    # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')
+    # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vf,final_counterpartset_vf,variant_peptides),'variant_vs_counterpart_vf.png')
     print("Making final plots...")
     main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc)
-    plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
+    # plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     
 if __name__ == "__main__":

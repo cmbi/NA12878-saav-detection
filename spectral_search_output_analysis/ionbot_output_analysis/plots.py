@@ -141,7 +141,7 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
     sns.distplot(ibdf_vf['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
     plt.legend(loc=1)
-    plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
+    plt.title('Correlation between theoretical and observed PSMs in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     
     plt.close()
@@ -208,15 +208,17 @@ def plot_chromosomal_dist(distr_vc,distr_vf):
     plt.close()
 
 def plot_strand_dist(distr_vc,distr_vf):
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
-    sns.set_style(style='white')
+    # sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    # sns.set_style(style='white')
     plt.figure('strand distribution')
     chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
     chist_vf=pd.DataFrame.from_dict(distr_vf,orient='index')#.sort_index()
-    combi=pd.concat([chist,chist_vf],axis=1)
+    combi=pd.concat([chist,chist_vf],axis=1,sort=True)
     combi.columns=['Combi variant-containing','Combi variant-free']
+    combi['Combi variant-containing']=combi['Combi variant-containing']*100
+    combi['Combi variant-free']=combi['Combi variant-free']*100
     combi.plot(kind='bar',legend=False,title="Strand distribution of peptide hits")
-    plt.ylabel("# Peptides")
+    plt.ylabel("%  Identified peptides")
     plt.xlabel("Strand")
     plt.legend(loc='upper right')
     plt.tight_layout()
@@ -231,8 +233,8 @@ def plot_coverage_plots(cpdt_pep,fullseqs,fignamehorizontal,fignamevertical):
     - chromosome distribution
     '''
     high_cov_hor,cov_vert,perc_cov_dist=calculations.coverage_measure(cpdt_pep,fullseqs)
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
+    # sns.set(rc={'figure.figsize':(11.7,8.27)})
+    # sns.set_style(style='white')
     #horizontal coverage
     plt.figure('horizontal coverage')
     plt.hist(perc_cov_dist,bins=300)
@@ -407,7 +409,7 @@ def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
     chist_nonvar_vc=pd.DataFrame.from_dict(lenct_nonvar_vc,orient='index').sort_index()
-    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1).fillna(0)
+    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1,sort=True).fillna(0)
     combi.columns=labels
     combi.plot(kind="bar",title="Length of variant and normal peptides from combination search dictionaries")
     #stats to look at the difference between the 2 columns

@@ -45,6 +45,9 @@ def main():
     ibdf_vf=file_import.concatenate_csvs(args['cvf'],vf=True)
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
+    #print(ibdf_ontonly.head())
+    #print(ibdf_refonly.head())
+
     #inital QC
     print("plotting initial QC")
     plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
@@ -52,7 +55,7 @@ def main():
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
     plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
-
+    
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()
@@ -66,10 +69,12 @@ def main():
     ###gather information about all non-variant matches###
     all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)].merge(rt_df,on='matched_peptide') #observed matches
     all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)].merge(rt_df,on='matched_peptide')
+    all_match_unique_vf=all_matches_nonvar_vf.drop_duplicates(subset=['peptide'])
+    all_match_unique_vc=all_matches_nonvar_vc.drop_duplicates(subset=['peptide'])
         
     # #get strand and chrom info
     print('...fetching and plotting origin info...')
-    main_functions.origin_info_fetch(all_matches_nonvar_vf,all_matches_nonvar_vc,args['gff'],args['bed'])
+    main_functions.origin_info_fetch(all_match_unique_vf,all_match_unique_vc,args['gff'],args['bed'])
     #get support
     print('...gauging protein support...')
     main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
@@ -77,6 +82,7 @@ def main():
     print('...summing source dictionaries...')
     main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
     main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
+    main_functions.dict_source_bin(all_match_unique_vf['source_dict'],all_match_unique_vc['source_dict'],"sources_psm_obs_uniq_vf.png","sources_psm_obs_uniq_vc.png") #what we see
     # coverage - need to import full sequences for this #TODO
     # this is easier in the new ionbot output since the position numbers are included with the protein output
     # plots.plot_coverage_plots(cpdt_pep,full_seqs,"horizontal_coverage_varfree.png","vertical_coverage_varfree.png")
@@ -143,7 +149,5 @@ def main():
     
 if __name__ == "__main__":
     main()
-    
-    
     
     

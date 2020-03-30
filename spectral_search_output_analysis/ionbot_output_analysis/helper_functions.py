@@ -283,7 +283,7 @@ def match_var_nonvar(df_var,df_nonvar,var_pep_df):
     pep_ct_refctp=df_nonvar['ref_counterpart'].value_counts().reset_index()
     pep_ct_refctp.columns=['ref_counterpart','count_refctp']
     var_pep_df=var_pep_df.merge(pep_ct_refctp,on='ref_counterpart',how='left').fillna(0)
-    return(var_pep_df[var_pep_df['count_var']!=0].drop(columns=['id','haplotype']).drop_duplicates())
+    return(var_pep_df[var_pep_df['count_var']!=0].drop_duplicates())
 
 def sub_conversion(list_aa):
     if len(list_aa)==2:

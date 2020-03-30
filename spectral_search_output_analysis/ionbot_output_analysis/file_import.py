@@ -17,7 +17,7 @@ def concatenate_csvs(csvpath,vf=False):
     ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
     ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source,meta=str)
     if vf:
-        ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
+        ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x),meta=str).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '',meta=str).apply(helper_functions.sub_conversion,meta=str)
     return(ionbotout.compute(scheduler='processes',num_workers=30))
 
 def il_sensitive_read_csv(csvpath,to_replace=['peptide','ref_counterpart']):

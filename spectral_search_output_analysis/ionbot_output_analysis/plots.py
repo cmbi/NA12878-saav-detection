@@ -18,7 +18,8 @@ import logging
 # matplotlib.rcParams['axes.titlesize'] = 'xx-large'
 # matplotlib.rcParams['axes.labelsize'] = 'x-large'
 # matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
-matplotlib.rcParams.update({'font.size': 22})
+# matplotlib.rcParams.update({'font.size': 22})
+sns.set_context('paper')
 
 def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title='Search result'):
     """
@@ -38,7 +39,6 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     plot_title - Plot title
     save_as - If not None, but string, save file to this filename
     """
-
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score']
@@ -87,14 +87,11 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     decoy_col: Name of decoy column
     fdr_levels: List of FDR float values to plot as vertical lines
     """
-    matplotlib.rcParams.update({'font.size': 22})
-
+    #matplotlib.rcParams.update({'font.size': 22})
     for label, df_in in df_dict.items():
         df = df_in.reset_index(drop=True).sort_values(q_value_col, ascending=True).copy()
-        df[decoy_col]=df[decoy_col]=='D'
         df['count'] = (~df[decoy_col]).cumsum()
         plt.plot(df[q_value_col], df['count'], label=label, alpha=0.5)
-
     for fdr in fdr_levels:
 	    plt.plot([fdr]*2, np.linspace(0, np.max(df['count']), 2), linestyle='--', color='black', label='{} FDR'.format(fdr))
     plt.ylabel('Number of identified spectra')
@@ -102,7 +99,7 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     #plt.xscale("log", nonposy='clip')
     plt.xscale("log")
     plt.xlim(0.0001, 1)
-    plt.legend()
+    plt.legend(loc=2)
     plt.title('q-value comparison search dictionaries')
     plt.tight_layout()
     plt.savefig('qval_comparison.png')
@@ -114,7 +111,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     how many proteins have 1,2,3... peptides supporting their existence? unambiguously?
     1 counter that counts all peptides, another counter that counts only unique peptides'''
     plt.figure('support')
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
+    #sns.set(font_scale=2)
     recountpev=helper_functions.counter_translator(prot_evidence)
     recountunamb=helper_functions.counter_translator(unamb_prot_evidence)
     print("count #proteins with higher than 20 peptide evidence:"+str(recountpev['20+']))
@@ -127,7 +124,7 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
     combi.columns=['Any peptide evidence','Unambiguous assignments']
     combi.plot(kind='bar',legend=False,title="Peptide support for proteins")
     plt.ylabel("# proteins")
-    plt.ylim(0,20000)
+    #plt.ylim(0,20000)
     plt.xlabel("# peptides")
     plt.legend(loc='upper right')
     plt.savefig(figname)
@@ -136,13 +133,14 @@ def plot_support(prot_evidence,unamb_prot_evidence,figname):
 
 def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
+    #sns.set(rc={'figure.figsize':(11.7,8.27)})
+    #sns.set_style(style='white')
+    sns.set_context('paper')
     plt.figure("Pearson R distribution")
     sns.distplot(ibdf_refonly['percolator_psm_score'], hist=False, label='Human reference only',axlabel='Percolator score')
     sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
     sns.distplot(ibdf_vf['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
-    plt.legend()
+    plt.legend(loc=1)
     plt.title('Correlation between theoretical and observed spectra of matched peptides in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     
@@ -150,8 +148,9 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
-    sns.set_style(style='white')
+    #sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    #sns.set_style(style='white')
+    sns.set_context('paper')
     plt.figure("Pearson R distribution 2")
     sns.distplot(ibdf_vf[ibdf_vf['DB']==False]['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
     sns.distplot(ibdf_vc[ibdf_vc['DB']==False]['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
@@ -162,8 +161,8 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
 
 def plot_scores_decoy(ibdf_vf,figname):
     '''look at the quality of the matches per dictionary before the dataset has been filtered'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
-    sns.set_style(style='white')
+    #sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    #sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
     sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
     sns.distplot(ibdf_vf[ibdf_vf['DB']=='D']['percolator_psm_score'], label='Decoy',axlabel='Percolator score')
@@ -176,8 +175,8 @@ def plot_scores_decoy(ibdf_vf,figname):
 def plot_source_piechart(source_counter,figname):
     '''this function will plot the source piechart of sources of the hits and save it to a pdf'''
     plt.figure('source piechart')
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=3)
-    sns.set_style(style='white')
+    #sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    #sns.set_style(style='white')
     explode = (0.1, 0, 0)
     labels='Exclusively ONT transcriptome','Exclusively reference (gencode)', 'Both'
     plt.pie([source_counter['ont'],source_counter['ref'],source_counter['both']],autopct='%1.1f%%', explode=explode,colors=['#de2d26','#3182bd','#756bb1'])
@@ -188,8 +187,8 @@ def plot_source_piechart(source_counter,figname):
     plt.close()
 
 def plot_chromosomal_dist(distr_vc,distr_vf):
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
-    sns.set_style(style='white')
+    #sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    #sns.set_style(style='white')
     new_index= ['chr1', 'chr2', 'chr3', 'chr4','chr5','chr6','chr7','chr8','chr9','chr10','chr11','chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr19','chr20','chr21','chr22','chrX','chrY']
     plt.figure('chromosomal distribution')
     chist=pd.DataFrame.from_dict(distr_vc,orient='index')#.sort_index()
@@ -197,8 +196,10 @@ def plot_chromosomal_dist(distr_vc,distr_vf):
     combi=pd.concat([chist,chist_vf],axis=1,sort=True)
     combi=combi.reindex(new_index)
     combi.columns=['Combi variant-containing','Combi variant-free']
+    combi['Combi variant-containing']=combi['Combi variant-containing']*100
+    combi['Combi variant-free']=combi['Combi variant-free']*100
     combi.plot(kind='bar',legend=False,title="Chromosomal distribution of peptide hits")
-    plt.ylabel("# Peptides")
+    plt.ylabel("%  Identified peptides")
     plt.xlabel("Chromosome")
     plt.legend(loc='upper right')
     plt.tight_layout()
@@ -266,7 +267,7 @@ def plot_heatmaps(counter,outfile,bl=False):
     df.index=pd.MultiIndex.from_tuples(df.index,names=('original','new'))
     matrix=df.unstack()#.to_numpy()
     plt.figure("heatmap")
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
+    sns.set(rc={'figure.figsize':(11.7,11)},font_scale=2)
     sns.set_style(style='white')
     sns.heatmap(matrix['substitution'])
     # plt.title("Substitutions")

@@ -29,21 +29,32 @@ def protein_support(df_vf,df_vc):
 def origin_info_fetch(df_vf,df_vc,gff,bed):
     '''
     '''
-    df_vf['transcript_id']=df_vf['proteins'].apply(lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
-    df_vc['transcript_id']=df_vc['proteins'].apply(lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
+    def fetch_umambig(prot_string):
+        if '||' not in prot_string:
+            if '|h' in prot_string:
+                return(prot_string.split('|h')[0])
+            else:
+                return(prot_string.split('((')[0])
+        return('ambiguous')
+    df_vf['transcript_id']=df_vf['proteins'].apply(fetch_umambig)#lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
+    df_vc['transcript_id']=df_vc['proteins'].apply(fetch_umambig)#lambda x: x.split('|h')[0] if '|h' in x else x.split('((')[0])
     origin_info=file_import.create_chromosome_reference(gff,bed)
-    vf=df_vf.merge(origin_info,on='transcript_id') #this came from taking the first protein on the list and getting its transcript id
+    vf=df_vf.merge(origin_info,on='transcript_id')
     vc=df_vc.merge(origin_info,on='transcript_id')
-    strand_vf=Counter(dict(vf['strand'].value_counts()))
-    strand_vc=Counter(dict(vc['strand'].value_counts()))
-    chrom_vf=Counter(dict(vf['chromosome'].value_counts()))
-    chrom_vc=Counter(dict(vc['chromosome'].value_counts()))
+    strand_vf=Counter(dict(vf['strand'].value_counts(normalize=True)))
+    strand_vc=Counter(dict(vc['strand'].value_counts(normalize=True)))
+    chrom_vf=Counter(dict(vf['chromosome'].value_counts(normalize=True)))
+    chrom_vc=Counter(dict(vc['chromosome'].value_counts(normalize=True)))
+    vf[vf['chromosome'].isin(['chr12','chr14','chr22'])].to_csv('different_chr_origins_vf.csv')
+    vc[vc['chromosome'].isin(['chr12','chr14','chr22'])].to_csv('different_chr_origins_vc.csv')
     plots.plot_chromosomal_dist(chrom_vc,chrom_vf)
     plots.plot_strand_dist(strand_vc,strand_vf)
 
 def dict_source_bin(df_vf,df_vc,figname_vf,figname_vc):
     vf=Counter(dict(df_vf.value_counts()))
     vc=Counter(dict(df_vc.value_counts()))
+    df_vf.value_counts().to_csv(figname_vf+'.csv')
+    df_vc.value_counts().to_csv(figname_vc+'.csv')
     plots.plot_source_piechart(vf,figname_vf)
     plots.plot_source_piechart(vc,figname_vc)        
 

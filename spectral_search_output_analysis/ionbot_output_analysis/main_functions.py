@@ -58,7 +58,7 @@ def dict_source_bin(df_vf,df_vc,figname_vf,figname_vc):
     plots.plot_source_piechart(vf,figname_vf)
     plots.plot_source_piechart(vc,figname_vc)        
 
-def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
+def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,var_peps):
     '''check out the differences in identifications between the 2 combination dictionaries
     why doesn't ionbot catch everything? look at the ones that it does not catch but the variant-containing dictionary does
     plot lengths of the missed/caught peptides (longer than average?)
@@ -75,7 +75,8 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc):
     #plot lengths of the variant peptides caught by VC but not VF against nonvariant VC
     vcopl=[len(i) for i in vc_only['matched_peptide_vc'].unique()]
     vcnvpl=[len(i) for i in nonvar_vc['matched_peptide'].unique()]
-    plots.plot_peplengths(helper_functions.normalize_counter(Counter(vcopl)),helper_functions.normalize_counter(Counter(vcnvpl)))
+    vpl=[len(i) for i in var_peps['variant_peptide'].unique()]
+    plots.plot_peplengths(helper_functions.normalize_counter(Counter(vcopl)),helper_functions.normalize_counter(Counter(vpl)),helper_functions.normalize_counter(Counter(vcnvpl)))
     # plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list()))) #does not take into account repeating peptides
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
     vc_unique=pd.merge(vf['title'],vc[['title','variant_peptide','matched_peptide','percolator_psm_score','rt','predicted_tr']], on='title', how='right', indicator=True) #isolate variant containing only

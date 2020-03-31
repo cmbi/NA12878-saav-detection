@@ -76,7 +76,7 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     plt.close()
 
 
-def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_levels=None):
+def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_levels=None,plotname='qval_comparison.png'):
     """
     Plot number of identifications at all q-values for multiple datasets.
 
@@ -99,10 +99,10 @@ def plot_qvalues_comparison(df_dict, q_value_col='q_value', decoy_col='DB', fdr_
     #plt.xscale("log", nonposy='clip')
     plt.xscale("log")
     plt.xlim(0.0001, 1)
-    plt.legend(loc=2)
+    plt.legend(loc=2,fontsize='xx-small')
     plt.title('q-value comparison search dictionaries')
     plt.tight_layout()
-    plt.savefig('qval_comparison.png')
+    plt.savefig(plotname)
     
     plt.close()
 
@@ -144,6 +144,15 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     plt.title('Correlation between theoretical and observed PSMs in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
     
+    plt.close()
+
+def quickplot(df,filename):
+    '''plot the score distribution of one of the csv files'''
+    sns.set_context('paper')
+    plt.figure("Pearson R distribution")
+    sns.distplot(df['percolator_psm_score'], hist=False, label=filename,axlabel='Percolator score')
+    plt.legend(loc=1)
+    plt.savefig(filename+".png")
     plt.close()
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):
@@ -402,14 +411,15 @@ def plot_unexpected_mods(mods_vf,mods_nonvar_vf):
     plt.clf()
     plt.close()
 
-def plot_peplengths(lenct_vc,lenct_nonvar_vc,variant=False):
-    labels=['Variant VC','Non-variant VC']
+def plot_peplengths(lenct_vc,lenct_var,lenct_nonvar_vc,variant=False):
+    labels=['Variant VC','All variant peptides','Non-variant peptides']
     figname='variant_peptide_length.png'
     plt.figure('discrepant peptide lengths')
     # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
     chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
+    chist_var=pd.DataFrame.from_dict(lenct_var,orient='index').sort_index()
     chist_nonvar_vc=pd.DataFrame.from_dict(lenct_nonvar_vc,orient='index').sort_index()
-    combi=pd.concat([chist_vc,chist_nonvar_vc],axis=1,sort=True).fillna(0)
+    combi=pd.concat([chist_vc,chist_var,chist_nonvar_vc],axis=1,sort=True).fillna(0)
     combi.columns=labels
     combi.plot(kind="bar",title="Length of variant and normal peptides from combination search dictionaries")
     #stats to look at the difference between the 2 columns

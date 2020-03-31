@@ -2,6 +2,7 @@
 import os, re
 import pandas as pd
 import helper_functions
+import plots
 # import dask.dataframe as dd
 import glob
 
@@ -9,7 +10,8 @@ import glob
 def concatenate_csvs(csvpath,vf=False):
     # directory= os.fsencode(csvpath)
     values={'unexpected_modification':'none'}
-    ib=[]
+    ib={}
+    addon='vf' if vf else 'vc'
     for filename in glob.glob(f"{csvpath.strip('/')}/*.mgf.ionbot.csv"):
         ionbotout=pd.read_csv(filename)
         ionbotout=ionbotout[ionbotout['ri_126.1277']>0]
@@ -18,10 +20,12 @@ def concatenate_csvs(csvpath,vf=False):
         ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
         ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
         ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source)
+        plots.quickplot(ionbotout,filename)
         if vf:
             ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
-        ib.append(ionbotout)
-    return(pd.concat(ib,axis=0))
+        ib[filename]=ionbotout
+    plots.plot_qvalue_comparison(ib,fdr_levels=[0.01],plotname='vf_qc.png' if vf else 'vc_qc.png')
+    return(pd.concat(ib.values(),axis=0))
     # return(ionbotout.compute(scheduler='processes',num_workers=30))
 
 def il_sensitive_read_csv(csvpath,to_replace=['peptide','ref_counterpart']):
@@ -53,32 +57,6 @@ def import_coding_transcriptids(sources):
                         transcript_ids.append(line.strip()[1:])
     return(transcript_ids)
 
-# def import_cpdt(cpdt,fullSeq):
-#     ''' read the cpdt files into a data structure
-#     this function can also handle the cpdt files generated with interesting_peptide_finder (only peptides with SNVs)
-#     {protein_ID:{pep1:0, pep2:0, pep3:0}} #counts
-#     {pep1:prob, pep2:prob, pep3:prob} #probabilities
-#     '''
-#     cpdt_pep={}
-#     cpdt_probs={}
-#     full_seqs={}
-#     with open(cpdt) as c:
-#         for line in c:
-#             if line.startswith('>'):
-#                 key=line.strip()[1:]
-#                 key=helper_functions.get_id(key)
-#                 cpdt_pep[key]={}
-#                 full_seqs[key]=''
-#             elif 'PEPTIDE' in line:
-#                 lp=line.split('PEPTIDE ')[1]
-#                 lp=lp.split(':')
-#                 cpdt_pep[key][lp[0]]=0
-#                 cpdt_probs[lp[0]]=float(lp[1].strip())
-#             elif 'PEPTIDE' not in line:
-#                 full_seqs[key]=line.strip()
-#     if fullSeq:
-#         return(cpdt_pep, full_seqs)
-#     return(cpdt_pep,cpdt_probs)
 
 def import_gff(gfffile,isBed):
     '''use the gfffile to associate what proteins belong to which chromosome, in order to show the chromosomal distribution
@@ -110,17 +88,4 @@ def create_chromosome_reference(gfffile,bedfile):
     info_ont=import_gff(bedfile,True) #import bed file annotations from ont (converted from psl)
     return(pd.concat([info_ref,info_ont]))
 
-# def import_cpdt_simple(cpdt):
-#     cpdt_pep={}
-#     with open(cpdt) as c:
-#         for line in c:
-#             if line.startswith('>'):
-#                 key=line.strip()[1:]
-#                 key=helper_functions.get_id(key)
-#                 cpdt_pep[key]=[]
-#             elif 'PEPTIDE' in line:
-#                 lp=line.split('PEPTIDE ')[1]
-#                 lp=lp.split(':')[0]
-#                 cpdt_pep[key].append(lp)
-#     return(cpdt_pep)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse
+import argparse, sys
 import main_functions
 import calculations
 import helper_functions
@@ -40,17 +40,16 @@ def main():
     #import ionbot output data
     print("importing ionbot results")
     # overlap_prots = [line.strip() for line in open(args['ov'], 'r')]
-    ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
-    ibdf_refonly=file_import.concatenate_csvs(args['ref'])
+    # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
+    # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
     ibdf_vf=file_import.concatenate_csvs(args['cvf'],vf=True)
     ibdf_vc=file_import.concatenate_csvs(args['cvc'])
 
-    #print(ibdf_ontonly.head())
-    #print(ibdf_refonly.head())
+    sys.exit()
 
     #inital QC
     print("plotting initial QC")
-    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly,'Ref only':ibdf_refonly,'Combi variant-containing':ibdf_vc,'Combi variant-free':ibdf_vf},fdr_levels=[0.01])
+    plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly.dropna(subset=['q_value','DB']),'Ref only':ibdf_refonly.dropna(subset=['q_value','DB']),'Combi variant-containing':ibdf_vc.dropna(subset=['q_value','DB']),'Combi variant-free':ibdf_vf.dropna(subset=['q_value','DB'])},fdr_levels=[0.01])
     plots.plot_scores(ibdf_ontonly.dropna(),ibdf_refonly.dropna(),ibdf_vf.dropna())
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
@@ -143,7 +142,7 @@ def main():
     # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')
     # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vf,final_counterpartset_vf,variant_peptides),'variant_vs_counterpart_vf.png')
     print("Making final plots...")
-    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc)
+    main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc,variant_peptides)
     # plots.plot_final_venns(final_variantset_vc,final_variantset_vf)
     return("Finished")
     

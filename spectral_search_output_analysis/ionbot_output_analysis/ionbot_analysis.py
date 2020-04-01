@@ -40,13 +40,12 @@ def main():
     #import ionbot output data
     print("importing ionbot results")
     # overlap_prots = [line.strip() for line in open(args['ov'], 'r')]
-    # ibdf_ontonly=file_import.concatenate_csvs(args['ont'])
-    # ibdf_refonly=file_import.concatenate_csvs(args['ref'])
-    ibdf_vf=file_import.concatenate_csvs(args['cvf'],vf=True)
-    ibdf_vc=file_import.concatenate_csvs(args['cvc'])
+    ibdf_ontonly=file_import.concatenate_csvs(args['ont'],'ont')
+    ibdf_refonly=file_import.concatenate_csvs(args['ref'],'ref')
+    ibdf_vf=file_import.concatenate_csvs(args['cvf'],'vf')
+    ibdf_vc=file_import.concatenate_csvs(args['cvc'],'vc')
 
-    sys.exit()
-
+    
     #inital QC
     print("plotting initial QC")
     plots.plot_qvalues_comparison({'ONT only':ibdf_ontonly.dropna(subset=['q_value','DB']),'Ref only':ibdf_refonly.dropna(subset=['q_value','DB']),'Combi variant-containing':ibdf_vc.dropna(subset=['q_value','DB']),'Combi variant-free':ibdf_vf.dropna(subset=['q_value','DB'])},fdr_levels=[0.01])
@@ -54,7 +53,8 @@ def main():
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
-    
+    sys.exit()
+
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()

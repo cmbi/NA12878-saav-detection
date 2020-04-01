@@ -146,13 +146,21 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     
     plt.close()
 
-def quickplot(df,filename):
+def quickplot(dfdict,filetype):
     '''plot the score distribution of one of the csv files'''
     sns.set_context('paper')
-    plt.figure("Pearson R distribution")
-    sns.distplot(df['percolator_psm_score'], hist=False, label=filename,axlabel='Percolator score')
-    plt.legend(loc=1)
-    plt.savefig(filename+".png")
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    fig.set_size_inches(18.5,10.5)
+    for title,df in dfdict.items():
+        sns.distplot(df['percolator_psm_score'], hist=False, label=title,axlabel='Percolator score')
+    # Shrink current axis's height by 10% on the bottom
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    # Put a legend to the right of the current axis
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5)fontsize='xx-small')
+    #plt.legend(loc=1)
+    plt.savefig(f'{filetype}_dist_files_qc.png')
     plt.close()
 
 def plot_scores_combi(ibdf_vf,ibdf_vc):

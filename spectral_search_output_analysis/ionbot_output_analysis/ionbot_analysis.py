@@ -53,21 +53,20 @@ def main():
     plots.plot_scores_combi(ibdf_vf.dropna(),ibdf_vc.dropna())
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
-    sys.exit()
 
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()
     # theoretical_saav=calculations.saav_counts(variant_peptides['substitution'].dropna().to_list())
-    decoy_variants=file_import.il_sensitive_read_csv(args['decoy'])
+    decoy_variants=file_import.il_sensitive_read_csv(args['decoy']).drop(columns=['id']).drop_duplicates()
     # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     rt_df=pd.read_csv(args['rt']).rename({'seq':'matched_peptide'},axis=1)
     
     #collect results
     print("Doing general analysis...")
     ###gather information about all non-variant matches###
-    all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)].merge(rt_df,on='matched_peptide') #observed matches
-    all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)].merge(rt_df,on='matched_peptide')
+    all_matches_nonvar_vf=ibdf_vf[(ibdf_vf['DB']==False)&(ibdf_vf['best_psm']==1)&(ibdf_vf['q_value']<0.01)].merge(rt_df[['matched_peptide','predicted_tr']],on='matched_peptide') #observed matches
+    all_matches_nonvar_vc=ibdf_vc[(ibdf_vc['DB']==False)&(ibdf_vc['best_psm']==1)&(ibdf_vc['q_value']<0.01)].merge(rt_df[['matched_peptide','predicted_tr']],on='matched_peptide')
     all_match_unique_vf=all_matches_nonvar_vf.drop_duplicates(subset=['peptide'])
     all_match_unique_vc=all_matches_nonvar_vc.drop_duplicates(subset=['peptide'])
         

@@ -41,8 +41,8 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     """
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
-    score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score']
-    plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score'], df[~df['DB']]['percolator_psm_score']]]
+    score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score_best']
+    plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score_best'], df[~df['DB']]['percolator_psm_score_best']]]
     axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
     axes[0].vlines(x=score_cutoff, ymin=0, ymax=axes[0].get_ylim()[1], linestyles='dashed')
     axes[0].legend()
@@ -51,7 +51,7 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     #axes[0].set_xlim(0, 1)
 
     # Q value plot
-    axes[1].plot(df.sort_values('percolator_psm_score')['percolator_psm_score'], df.sort_values('percolator_psm_score')['q_value'])
+    axes[1].plot(df.sort_values('percolator_psm_score_best')['percolator_psm_score_best'], df.sort_values('percolator_psm_score_best')['q_value'])
     axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
     axes[1].set_ylabel('q-value')
     axes[1].set_xlabel(score_name)
@@ -59,9 +59,9 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
 
     # PP plot
     ratio = df['DB'].value_counts()[True] / df['DB'].value_counts()[False]
-    Ft = ECDF(df[~df['DB']]['percolator_psm_score'])
-    Fd = ECDF(df[df['DB']]['percolator_psm_score'])
-    x = df[~df['DB']]['percolator_psm_score']
+    Ft = ECDF(df[~df['DB']]['percolator_psm_score_best'])
+    Fd = ECDF(df[df['DB']]['percolator_psm_score_best'])
+    x = df[~df['DB']]['percolator_psm_score_best']
     Fdp = Fd(x)
     Ftp = Ft(x)
     axes[2].scatter(Fdp, Ftp, s=4)
@@ -137,9 +137,9 @@ def plot_scores(ibdf_ontonly,ibdf_refonly,ibdf_vf):
     #sns.set_style(style='white')
     sns.set_context('paper')
     plt.figure("Pearson R distribution")
-    sns.distplot(ibdf_refonly['percolator_psm_score'], hist=False, label='Human reference only',axlabel='Percolator score')
-    sns.distplot(ibdf_ontonly['percolator_psm_score'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
-    sns.distplot(ibdf_vf['percolator_psm_score'], hist=False, label='Reference + transcriptome translation',axlabel='Percolator score')
+    sns.distplot(ibdf_refonly['percolator_psm_score_best'], hist=False, label='Human reference only',axlabel='Percolator score')
+    sns.distplot(ibdf_ontonly['percolator_psm_score_best'], hist=False, label='Transcriptome translation only',axlabel='Percolator score')
+    sns.distplot(ibdf_vf['percolator_psm_score_best'], hist=False, label='Combi variant-free',axlabel='Percolator score')
     plt.legend(loc=1)
     plt.title('Correlation between theoretical and observed PSMs in variant-free libraries')
     plt.savefig("qc_pearsonr_3source.png")
@@ -153,12 +153,12 @@ def quickplot(dfdict,filetype):
     ax = plt.subplot(111)
     fig.set_size_inches(18.5,10.5)
     for title,df in dfdict.items():
-        sns.distplot(df['percolator_psm_score'], hist=False, label=title,axlabel='Percolator score')
+        sns.distplot(df['percolator_psm_score_best'], hist=False, label=title,axlabel='Percolator score')
     # Shrink current axis's height by 10% on the bottom
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     # Put a legend to the right of the current axis
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5)fontsize='xx-small')
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize='xx-small')
     #plt.legend(loc=1)
     plt.savefig(f'{filetype}_dist_files_qc.png')
     plt.close()
@@ -169,8 +169,8 @@ def plot_scores_combi(ibdf_vf,ibdf_vc):
     #sns.set_style(style='white')
     sns.set_context('paper')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_vf[ibdf_vf['DB']==False]['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (no variants)',axlabel='Percolator score')
-    sns.distplot(ibdf_vc[ibdf_vc['DB']==False]['percolator_psm_score'], hist=False, label='Reference + transcriptome translation (with variants)',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']==False]['percolator_psm_score_best'], hist=False, label='Combi variant-free',axlabel='Percolator score')
+    sns.distplot(ibdf_vc[ibdf_vc['DB']==False]['percolator_psm_score_best'], hist=False, label='Combi variant-containing',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig("qc_score_vcvsopenmut.png")
@@ -181,8 +181,8 @@ def plot_scores_decoy(ibdf_vf,figname):
     #sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
     #sns.set_style(style='white')
     plt.figure("Pearson R distribution 2")
-    sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score'], label='Target',axlabel='Percolator score')
-    sns.distplot(ibdf_vf[ibdf_vf['DB']=='D']['percolator_psm_score'], label='Decoy',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='T']['percolator_psm_score_best'], label='Target',axlabel='Percolator score')
+    sns.distplot(ibdf_vf[ibdf_vf['DB']=='D']['percolator_psm_score_best'], label='Decoy',axlabel='Percolator score')
     plt.legend()
     plt.title('Correlation between theoretical and observed spectra of matched peptide')
     plt.savefig(figname)
@@ -305,8 +305,7 @@ def plot_mut_abundance(mutant_cpdtpep,counterpart_cpdtpep,cpdtpep,fullseqs,figna
     cpt_pep_abundance,nmpa=calculations.calc_mut_abundances(counterpart_cpdtpep,cpdtpep,fullseqs)
     calculations.calculate_correlation(mut_pep_abundance,cpt_pep_abundance,nonmut_pep_abundance)
     #make plot
-    sns.set(rc={'figure.figsize':(11.7,8.27)},font_scale=2)
-    sns.set_style(style='white')
+    sns.set_context('paper')
     plt.figure('mutant peptides')
     # plt.scatter(*zip(*mut_pep_abundance),c='r',label='Variant peptide',alpha=1)
     # plt.scatter(*zip(*nonmut_pep_abundance),c='b',label='Normal peptide',alpha=0.25)
@@ -363,16 +362,15 @@ def plot_ib_scores_directcomp(combi):
     what is the Percolator score distribution from each respective results list
     color by retention time prediction instead of length
     '''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
+    sns.set_context('paper')
     plt.figure("Percolator scores discrepant hits")
     # combi.groupby("matched_peptide").mean()
     # combi.groupby("matched_peptide_vf").mean() #make sure don't have groups of dots per unique peptide
     # combi["pep_length"]=combi["matched_peptide"].str.len() #record length of matched peptide (by var-free)
     # combi=pd.merge(combi,rt_pred,on='matched_peptide')
     combi['delta_retention_time']=(combi['rt']-combi['predicted_tr']).abs()
-    # combi.plot.scatter(x="percolator_psm_score_varfree",y="percolator_psm_score_varcont",c="pep_length",colormap='viridis')
-    combi.plot.scatter(x="percolator_psm_score_vf",y="percolator_psm_score_vc",c="delta_retention_time",colormap='viridis')
+    # combi.plot.scatter(x="percolator_psm_score_best_varfree",y="percolator_psm_score_best_varcont",c="pep_length",colormap='viridis')
+    combi.plot.scatter(x="percolator_psm_score_best_vf",y="percolator_psm_score_best_vc",c="delta_retention_time",colormap='viridis')
     left, right = plt.xlim()
     x = np.linspace(left,right)
     plt.plot(x, x)
@@ -389,8 +387,7 @@ def plot_ib_scores_directcomp(combi):
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
     what is the Percolator score distribution from each respective results list'''
-    sns.set(rc={'figure.figsize':(11.7,8.27)})
-    sns.set_style(style='white')
+    sns.set_context('paper')
     plt.figure("Percolator scores discrepant hits")
     plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf])
     plt.xticks([1,2,3,4,5,6],['VF only','VC only','Intersection VC','Intersection VF','Non-variant VC','Non-variant VF'])
@@ -423,15 +420,15 @@ def plot_peplengths(lenct_vc,lenct_var,lenct_nonvar_vc,variant=False):
     labels=['Variant VC','All variant peptides','Non-variant peptides']
     figname='variant_peptide_length.png'
     plt.figure('discrepant peptide lengths')
-    # new_index= [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'X','Y','M','unknown']
+    sns.set_context('paper')
     chist_vc=pd.DataFrame.from_dict(lenct_vc,orient='index').sort_index()
     chist_var=pd.DataFrame.from_dict(lenct_var,orient='index').sort_index()
     chist_nonvar_vc=pd.DataFrame.from_dict(lenct_nonvar_vc,orient='index').sort_index()
     combi=pd.concat([chist_vc,chist_var,chist_nonvar_vc],axis=1,sort=True).fillna(0)
     combi.columns=labels
-    combi.plot(kind="bar",title="Length of variant and normal peptides from combination search dictionaries")
+    combi.head(30).plot(kind="bar",title="Length distributions of variant and non-variant peptides")
     #stats to look at the difference between the 2 columns
-    t2, p2 = stats.ttest_ind(combi['Non-variant VC'],combi['Variant VC']) #related or independent samples? (rel or ind?)
+    t2, p2 = stats.ttest_ind(combi['Non-variant peptides'],combi['Variant VC']) #related or independent samples? (rel or ind?)
     print("peptide length statistics (independent t-test)")
     print("t = " + str(t2))
     print("p = " + str(p2))

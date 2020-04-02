@@ -52,7 +52,7 @@ def fdr_recalc_variantpep(target,decoy,filename):
     # print(str(target.shape[0])+' target variant peptides and '+str(decoy.shape[0])+' decoy variant peptides found.')
     df_in=pd.concat([target,decoy],ignore_index=True)
     plots.plot_target_decoy(df_in,filename) #if this plot is bad, the results are also bad
-    df=calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score')
+    df=calculate_qvalues(df_in,decoy_col='DB',score_col='percolator_psm_score_best')
     indices=np.argwhere(df['q_value']<0.01)
     return(df[:int(indices[-1][0])+1]) #threshold cut
 
@@ -153,26 +153,6 @@ def saav_counts(subs_list):#,variant_colname='variant',protein_colname='protein'
     all_subs=helper_functions.initiate_counter()
     for sub in subs_list:
         all_subs[sub]+=1
-    # debug_lines=[]
-    # count_subs=[]
-    # heterozygous=[] #to store those that are heterozygous
-    # isHetero=False
-    # interest=[] #to store those peptides that are in a list of interest- namely the list of ASE transcripts from the nanopore paper
-    # for protname in variantdf[protein_colname].unique():
-    #     cpt_pep,sub=helper_functions.determine_snv(var,counterpart)
-    #     if sub!='' and sub[0]!='*' and sub[1]!='*':
-    #         all_subs[sub]+=1
-    #         if debug:
-    #             debug_lines.append('\t'.join([sub,var,counterpart]))
-    #         if observed:
-    #             count_var=slice_var[slice_var[variant_colname]==var].shape[0] #how many of this variant peptide was detected
-    #             count_ctp=slice_ctp[slice_ctp[variant_colname]==cpt_pep].shape[0] #how many of the counterpart was detected
-    #             count_subs.append((count_var,count_ctp))
-    # if debug:
-    #     with open('debug_subs.txt','w') as f:
-    #         f.writelines(line+'\n' for line in debug_lines)
-    # if observed:
-    #     return(all_subs,count_subs)
     return(all_subs)
 
 def calculate_correlation(mut_pep_abundance,cpt_abundance,nonmut_pep_abundance):

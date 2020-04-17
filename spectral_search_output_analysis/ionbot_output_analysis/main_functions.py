@@ -80,7 +80,7 @@ def discrepancy_check(vf,vc,nonvar_vf,nonvar_vc,var_peps):
     # plots.plot_peplengths(helper_functions.normalize_counter(Counter(vc_only['matched_peptide_vc'].str.len().to_list())),helper_functions.normalize_counter(Counter(nonvar_vc['matched_peptide'].str.len().to_list()))) #does not take into account repeating peptides
     #look at unexpected modifications in the mis-labeled VF (since there are no VF exclusive variants)
     vc_unique=pd.merge(vf['title'],vc[['title','variant_peptide','matched_peptide','percolator_psm_score_best','rt','predicted_tr']], on='title', how='right', indicator=True) #isolate variant containing only
-    mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','modifications','unexpected_modification','best_psm','percolator_psm_score_best','rt','predicted_tr']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','best_psm','percolator_psm_score_best')], on='title',suffixes=('_vf','_vc'))
+    mislabeled=pd.merge(nonvar_vf[['title','matched_peptide','modifications','unexpected_modification','best_psm','ionbot_score','corr','percolator_psm_score_best','rt','predicted_tr']],vc_unique.loc[vc_unique['_merge']=='right_only',('title','matched_peptide','best_psm','percolator_psm_score_best')], on='title',suffixes=('_vf','_vc'))
     #check the distributions
     mislabeled.to_csv('mislabeled_varpeps.csv',index=False) #comment this out if not want 
     #mislabeled_small=pd.merge(nonvar_vf[['title','peptide','unexpected_modification']].fillna('none'),vc_unique.loc[vc_unique['_merge']=='right_only','title'], on='title').groupby(['peptide','unexpected_modification']).aggregate(lambda x: x.iloc[0]).fillna("none").reset_index()

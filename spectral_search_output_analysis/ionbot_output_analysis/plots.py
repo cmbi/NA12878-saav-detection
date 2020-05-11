@@ -387,7 +387,8 @@ def plot_ib_scores_directcomp(combi):
 def plot_ib_scores(ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf):
     '''for the variant peptides that were found in the variant containing set but not in the variant free set,
     what is the Percolator score distribution from each respective results list'''
-    sns.set_context('paper')
+    sns.set_context('paper',font_scale=3)
+    plt.figure(figsize=(16, 12))
     plt.figure("Percolator scores discrepant hits")
     plt.boxplot([ibonly,pgonly,intersectionpg,intersectionom,nonmutvc,nonmutvf])
     plt.xticks([1,2,3,4,5,6],['VF only','VC only','Intersection VC','Intersection VF','Non-variant VC','Non-variant VF'])

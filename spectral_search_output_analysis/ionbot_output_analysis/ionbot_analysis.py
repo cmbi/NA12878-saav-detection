@@ -78,6 +78,7 @@ def main():
     main_functions.protein_support(all_matches_nonvar_vf['proteins'],all_matches_nonvar_vc['proteins'])
     #get source
     print('...summing source dictionaries...')
+    all_matches_nonvar_vc[all_matches_nonvar_vc['source_dict']=='ref'].drop_duplicates(subset='peptide').to_csv('reference_only_peptides.csv',index=False)
     main_functions.dict_source_bin(ibdf_vf['source_dict'],ibdf_vc['source_dict'],"sources_psm_theoretical_varfree.png","sources_psm_theoretical_varcont.png") #what we expect from the data
     main_functions.dict_source_bin(all_matches_nonvar_vf['source_dict'],all_matches_nonvar_vc['source_dict'],"sources_psm_obs_varfree.png","sources_psm_obs_varcont.png") #what we see
     main_functions.dict_source_bin(all_match_unique_vf['source_dict'],all_match_unique_vc['source_dict'],"sources_psm_obs_uniq_vf.png","sources_psm_obs_uniq_vc.png") #what we see
@@ -107,16 +108,16 @@ def main():
     #just to get a count of how many variants were found in variant free set
     # print("variants found in variant-free before FDR correction:"+ )
     # print("variants found in the variant-containing before FDR correction:"+)
-    print(str(detected_variant_combi_vf.shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.shape[0])+' variants found in the variant-containing output before FDR correction.')
+    print(str(detected_variant_combi_vf.drop_duplicates(subset='title').shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.drop_duplicates(subset='title').shape[0])+' variants found in the variant-containing output before FDR correction.')
 
     ###FDR###
     print('...filtering false positives...')
     #for variant-free set, filter for true variant peptides after the FDR
     prelim_variantset_vf=calculations.fdr_recalc_variantpep(detected_variant_combi_vf,detected_decoy_combi_vf,'variant_free_ppplot.png') # variants vf
+    prelim_variantset_vf.merge(ibdf_vc,on='title',suffixes=('_vf','_vc')).to_csv('prelim_vf.csv',index=False)
     prelim_counterpartset_vf=calculations.fdr_recalc_variantpep(detected_nonvar_combi_vf,detected_nonvar_decoy_combi_vf,'variant_free_ctp_ppplot.png') # counterparts vf
     final_variantset_vf=prelim_variantset_vf.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1),how='left',on='peptide',indicator=True).rename({'peptide':'ref_counterpart'},axis=1).merge(rt_df,how='left',on='matched_peptide')
-    ionbot_wrong_peps=final_variantset_vf[final_variantset_vf['_merge']=='left_only']
-    print(f"'Wrong' unique variant peptides found by ionbot after FDR correction={len(ionbot_wrong_peps['variant_peptide'].unique())}")
+    print(f"VF variant peptides after FDR correction but before correction filter={prelim_variantset_vf.drop_duplicates().shape[0]}")
     final_variantset_vf=final_variantset_vf[final_variantset_vf['_merge']=='both'].drop(columns=['_merge']).reset_index(drop=True)
     print(f"out of all {str(final_variantset_vf.shape[0])} variant peptides correctly detected by ionbot, {final_variantset_vf[final_variantset_vf['substitution']==final_variantset_vf['pred_aa_sub']].shape[0]} of them had the correct aa substitution")
     final_counterpartset_vf=prelim_counterpartset_vf.merge(variant_peptides.rename({'ref_counterpart':'peptide'},axis=1)).rename({'peptide':'ref_counterpart'},axis=1).merge(rt_df,how='left',on='matched_peptide')#.merge(rt_pred_df,how='left',on='matched_peptide')
@@ -124,7 +125,7 @@ def main():
     #for the variant-free set, get true variant peptides from the FDR re-estimation
     final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
     final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
-    print(str(final_variantset_vf.shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.shape[0])+' variants found in the variant-containing output after FDR correction.')
+    print(str(final_variantset_vf.drop_duplicates(subset='title').shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.drop_duplicates(subset='title').shape[0])+' variants found in the variant-containing output after FDR correction.')
     final_variantset_vc.to_csv('variants_vc.csv',index=False)
     final_counterpartset_vc.to_csv('variants_vc_ctp.csv',index=False)
     final_variantset_vf.to_csv('variants_vf.csv',index=False)

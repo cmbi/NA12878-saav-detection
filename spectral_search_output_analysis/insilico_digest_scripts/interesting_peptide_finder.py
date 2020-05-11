@@ -8,13 +8,14 @@ import phylopandas as ph
 from pyteomics.parser import cleave
 import dask.dataframe as dd
 
-def snvfinder(var_peptides,ref_peptides,tid):
+def snvfinder(var_peptides,ref_peptides,all_ref):
     try:
         final_variant_peptides=[]
         for pep in var_peptides:
-            counterpart=determine_snv(pep,ref_peptides)
-            if counterpart!='':
-                final_variant_peptides.append(f"{pep}|{counterpart}")
+            if pep not in all_ref:
+                counterpart=determine_snv(pep,ref_peptides)
+                if counterpart!='':
+                    final_variant_peptides.append(f"{pep}|{counterpart}")
     except Exception as e:
         raise e
     return(final_variant_peptides)
@@ -52,16 +53,16 @@ def determine_snv(peptide_query,plist):
                     else:
                         il=True
             if len(mismatch)==1:
-                return (f'{peptide_comp}|{mismatch[0]}')
+                return(f'{peptide_comp}|{mismatch[0]}')
     return('')
 
 def digest(protein_sequence):
     '''digests the protein sequences with trypsin
     '''
-    seq_cut = cleave(protein_sequence, '[KR]', 2)
+    seq_cut = cleave(protein_sequence, rule='[KR]', min_length=6, missed_cleavages=2)
     plist=set() #to prevent duplicates
     for peptide in seq_cut:
-        if peptide in plist or len(peptide) < 6:
+        if peptide in plist or len(peptide) < 6 or len(peptide) > 40:
             continue
         plist.add(peptide)
     return(plist)
@@ -114,7 +115,8 @@ if __name__ == "__main__":
         merged=merged.head(500)
     print('Searching for variant peptides...')
     merged_dd=dd.from_pandas(merged,npartitions=120)
-    variant_peps=merged_dd.map_partitions(lambda part: part.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf'],x['id']),axis=1),meta=list).compute(scheduler='processes',num_workers=30)
+    all_ref=set(ref['peptides'].apply(lambda x: list(x)).explode().tolist())
+    variant_peps=merged_dd.map_partitions(lambda part: part.apply(lambda x: snvfinder(x['peptides_vc'],x['peptides_vf'],all_ref),axis=1),meta=list).compute(scheduler='processes',num_workers=30)
     merged['variant_peps']=variant_peps
     if args['decoy']:
         df=merged[['id','variant_peps']]

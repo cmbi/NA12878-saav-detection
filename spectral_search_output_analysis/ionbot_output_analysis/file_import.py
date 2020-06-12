@@ -7,8 +7,8 @@ import plots
 import glob
 
 
-def concatenate_csvs(csvpath,typefile):
-    # directory= os.fsencode(csvpath)
+def concatenate_csvs(csvpath,contam,typefile):
+    #c=os.fsencode(contam)
     values={'unexpected_modification':'none'}
     ib={}
     for filename in glob.glob(f"{csvpath.strip('/')}/*.mgf.ionbot.csv"):
@@ -19,7 +19,7 @@ def concatenate_csvs(csvpath,typefile):
         ionbotout=ionbotout[ionbotout['best_psm']==1] # remove if you want to check out other likely peptide matches
         ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
         ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
-        ionbotout['source_dict']=ionbotout['proteins'].apply(helper_functions.bin_hits_by_source)
+        ionbotout['source_dict']=ionbotout['proteins'].apply(lambda x: helper_functions.bin_hits_by_source(x,contam))
         if typefile=='vf':
             ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
         ib[os.path.basename(filename)]=ionbotout

@@ -50,7 +50,7 @@ def get_id(idstring,base=False):
         return(outstring.split('_h')[0])
     return(outstring)
 
-def bin_hits_by_source(protstring):
+def bin_hits_by_source(protstring,con_ids):
     '''sort peptide hits by their source dictionary'''
     sources=set()
     if 'Random' in protstring or 'random' in protstring:
@@ -60,7 +60,9 @@ def bin_hits_by_source(protstring):
     else:
         ids=[protstring]
     for i in ids:
-        if '_ENSG' in i:
+        if i.split('((')[0] in con_ids:
+            return('cRAP')
+        elif '_ENSG' in i:
             sources.add('ont')
         else:
             sources.add('ref')
@@ -68,6 +70,13 @@ def bin_hits_by_source(protstring):
         return('both')
     return(list(sources)[0])
 
+def prepare_contaminants(cont_file):
+    ids=[]
+    with open(cont_file) as w:
+        for line in w:
+            if line.startswith('>'):
+                ids.append(line[1:].split(' ')[0])
+    return(ids)
 
 def counter_translator(counterobj):
     ct_prots=Counter()
@@ -290,6 +299,8 @@ def sub_conversion(list_aa):
         codes={'Cys': 'C', 'Asp': 'D', 'Ser': 'S', 'Gln': 'Q', 'Lys': 'K','Trp': 'W', 'Asn': 'N', 'Pro': 'P', 'Thr': 'T', 'Phe': 'F', 'Ala': 'A','Gly': 'G', 'Ile': 'X', 'Leu': 'X', 'Xle': 'X', 'His': 'H', 'Arg': 'R', 'Met': 'M','Val': 'V', 'Glu': 'E', 'Tyr': 'Y'}
         new_list=[]
         for l in list_aa:
+            if l not in codes:
+                return('')
             new_list.append(codes[l])
         return(','.join(new_list[::-1])) #can also be a tuple later if desired
     return('')

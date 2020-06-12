@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
     # parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
     parser.add_argument('--rt', help='retention time (obs&pred)',required=True)
+    parser.add_argument('--crap', help='Contamination file',required=True)
     # parser.add_argument('--rt_obs', help='retention time observed',required=True)
     # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
     args = vars(parser.parse_args()) 
@@ -40,10 +41,11 @@ def main():
     #import ionbot output data
     print("importing ionbot results")
     # overlap_prots = [line.strip() for line in open(args['ov'], 'r')]
-    ibdf_ontonly=file_import.concatenate_csvs(args['ont'],'ont')
-    ibdf_refonly=file_import.concatenate_csvs(args['ref'],'ref')
-    ibdf_vf=file_import.concatenate_csvs(args['cvf'],'vf')
-    ibdf_vc=file_import.concatenate_csvs(args['cvc'],'vc')
+    contam=helper_functions.prepare_contaminants(args['crap'])
+    ibdf_ontonly=file_import.concatenate_csvs(args['ont'],contam,'ont')
+    ibdf_refonly=file_import.concatenate_csvs(args['ref'],contam,'ref')
+    ibdf_vf=file_import.concatenate_csvs(args['cvf'],contam,'vf')
+    ibdf_vc=file_import.concatenate_csvs(args['cvc'],contam,'vc')
 
     
     #inital QC
@@ -93,11 +95,7 @@ def main():
     detected_nonvar_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]=="") & (ibdf_vf["DB"]==False)] #all not having saav
     detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]!="") & (ibdf_vf["DB"]==True)]
     detected_nonvar_decoy_combi_vf=ibdf_vf[(ibdf_vf["pred_aa_sub"]=="") & (ibdf_vf["DB"]==True)]
-    #detected_variant_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #get all peptides that are predicted to have a SAAV
-    #detected_nonvar_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==False)] #all not having saav
-    #detected_decoy_combi_vf=ibdf_vf[(ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
-    #detected_nonvar_decoy_combi_vf=ibdf_vf[(~ibdf_vf["modifications"].str.contains('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',regex=True)) & (ibdf_vf["DB"]==True)]
-
+    
     #for the variant-containing set, recalculate FDR based on the variant subset only
     observed_variants_vc=ibdf_vc.merge(variant_peptides.rename({'variant_peptide':'peptide'},axis=1), on='peptide').rename({'peptide':'variant_peptide'},axis=1) # target variants vc
     observed_decoy_vc=ibdf_vc.merge(decoy_variants.rename({'variant_peptide':'peptide'},axis=1), on='peptide').rename({'peptide':'variant_peptide'},axis=1) # decoy variants vc

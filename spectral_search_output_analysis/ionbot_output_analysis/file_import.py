@@ -20,6 +20,7 @@ def concatenate_csvs(csvpath,contam,typefile):
         ionbotout["DB"]=ionbotout["DB"].map({'D':True,'T':False})
         ionbotout['peptide']=ionbotout['matched_peptide'].str.replace('I|L','x',regex=True)
         ionbotout['source_dict']=ionbotout['proteins'].apply(lambda x: helper_functions.bin_hits_by_source(x,contam))
+        ionbotout=ionbotout[ionbotout['source_dict']!='cRAP'] #remove crap
         if typefile=='vf':
             ionbotout['pred_aa_sub']=ionbotout['modifications'].apply(lambda x: re.findall('[A-Z]{1}[a-z]{2}->[A-Z]{1}[a-z]{2}\[[A-Z]{1}\]',x)).apply(lambda y: re.findall('[A-Z]{1}[a-z]{2}',y[0]) if len(y)>0 else '').apply(helper_functions.sub_conversion)
         ib[os.path.basename(filename)]=ionbotout

@@ -42,15 +42,15 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     """
     sns.set_context('paper',font_scale=4)
     sns.set_palette("colorblind")
-    plt.figure(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score_best']
     plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score_best'], df[~df['DB']]['percolator_psm_score_best']]]
-    plt.hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
-    plt.vlines(x=score_cutoff, ymin=0, ymax=plt.get_ylim()[1], linestyles='dashed')
-    plt.legend()
-    plt.set_ylabel("Number of matches")
-    plt.set_xlabel(score_name)
+    ax.hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
+    ax.vlines(x=score_cutoff, ymin=0, ymax=ax.get_ylim()[1], linestyles='dashed')
+    ax.legend()
+    ax.set_ylabel("Number of matches")
+    ax.set_xlabel(score_name)
     #axes[0].set_xlim(0, 1)
 
     # Q value plot

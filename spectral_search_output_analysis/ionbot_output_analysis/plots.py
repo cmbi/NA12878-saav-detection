@@ -73,7 +73,7 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     # axes[2].set_ylabel('Target percentile')
 
     # plt.suptitle(plot_title)
-    # plt.tight_layout()
+    plt.tight_layout()
     # sns.despine()
     plt.savefig(save_as, facecolor='white', transparent=False)
     plt.close()

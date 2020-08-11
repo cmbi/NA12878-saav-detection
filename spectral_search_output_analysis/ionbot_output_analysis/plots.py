@@ -19,7 +19,8 @@ import logging
 # matplotlib.rcParams['axes.labelsize'] = 'x-large'
 # matplotlib.rcParams['figure.figsize'] = (20.0, 10.0)
 # matplotlib.rcParams.update({'font.size': 22})
-sns.set_context('paper')
+sns.set_context('paper',font_scale=4)
+sns.set_palette("colorblind")
 
 def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title='Search result'):
     """
@@ -39,39 +40,39 @@ def plot_target_decoy(df, save_as, score_name='Percolator psm score', plot_title
     plot_title - Plot title
     save_as - If not None, but string, save file to this filename
     """
-    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     score_cutoff = df[(df['q_value'] <= 0.01) & (~df['DB'])].sort_values('q_value').iloc[-1]['percolator_psm_score_best']
     plot_list = [list(x) for x in [df[df['DB']]['percolator_psm_score_best'], df[~df['DB']]['percolator_psm_score_best']]]
-    axes[0].hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
-    axes[0].vlines(x=score_cutoff, ymin=0, ymax=axes[0].get_ylim()[1], linestyles='dashed')
-    axes[0].legend()
-    axes[0].set_ylabel("Number of matches")
-    axes[0].set_xlabel(score_name)
+    ax.hist(plot_list, bins=30, label=['Decoy', 'Target'], color=['r', 'blue'], lw=1, rwidth=1)
+    ax.vlines(x=score_cutoff, ymin=0, ymax=ax.get_ylim()[1], linestyles='dashed')
+    ax.legend()
+    ax.set_ylabel("Number of matches")
+    ax.set_xlabel(score_name)
     #axes[0].set_xlim(0, 1)
 
     # Q value plot
-    axes[1].plot(df.sort_values('percolator_psm_score_best')['percolator_psm_score_best'], df.sort_values('percolator_psm_score_best')['q_value'])
-    axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
-    axes[1].set_ylabel('q-value')
-    axes[1].set_xlabel(score_name)
+    # axes[1].plot(df.sort_values('percolator_psm_score_best')['percolator_psm_score_best'], df.sort_values('percolator_psm_score_best')['q_value'])
+    # axes[1].vlines(x=score_cutoff, ymin=0, ymax=axes[1].get_ylim()[1], linestyles='dashed')
+    # axes[1].set_ylabel('q-value')
+    # axes[1].set_xlabel(score_name)
     #axes[1].set_xlim(0, 1)
 
     # PP plot
-    ratio = df['DB'].value_counts()[True] / df['DB'].value_counts()[False]
-    Ft = ECDF(df[~df['DB']]['percolator_psm_score_best'])
-    Fd = ECDF(df[df['DB']]['percolator_psm_score_best'])
-    x = df[~df['DB']]['percolator_psm_score_best']
-    Fdp = Fd(x)
-    Ftp = Ft(x)
-    axes[2].scatter(Fdp, Ftp, s=4)
-    axes[2].plot((0, 1), (0, ratio), color='r')
-    axes[2].set_xlabel('Decoy percentile')
-    axes[2].set_ylabel('Target percentile')
+    # ratio = df['DB'].value_counts()[True] / df['DB'].value_counts()[False]
+    # Ft = ECDF(df[~df['DB']]['percolator_psm_score_best'])
+    # Fd = ECDF(df[df['DB']]['percolator_psm_score_best'])
+    # x = df[~df['DB']]['percolator_psm_score_best']
+    # Fdp = Fd(x)
+    # Ftp = Ft(x)
+    # axes[2].scatter(Fdp, Ftp, s=4)
+    # axes[2].plot((0, 1), (0, ratio), color='r')
+    # axes[2].set_xlabel('Decoy percentile')
+    # axes[2].set_ylabel('Target percentile')
 
-    plt.suptitle(plot_title)
+    # plt.suptitle(plot_title)
     plt.tight_layout()
-    sns.despine()
+    # sns.despine()
     plt.savefig(save_as, facecolor='white', transparent=False)
     plt.close()
 

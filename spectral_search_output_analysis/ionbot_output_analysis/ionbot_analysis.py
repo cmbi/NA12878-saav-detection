@@ -56,6 +56,10 @@ def main():
     plots.plot_target_decoy(ibdf_vf.dropna(),"qc_score_decoy_varfree.png", plot_title="Search result variant-free")
     plots.plot_target_decoy(ibdf_vc.dropna(),"qc_score_decoy_varcont.png", plot_title="Search result variant-containing")
 
+    #read out paper-relevant information
+    print('unexpected mofidication ratios in the VF set:')
+    print(ibdf_vf['unexpected_modification'].value_counts(normalize=True))
+
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()

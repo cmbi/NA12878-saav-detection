@@ -46,7 +46,8 @@ def main():
     ibdf_refonly=file_import.concatenate_csvs(args['ref'],contam,'ref')
     ibdf_vf=file_import.concatenate_csvs(args['cvf'],contam,'vf')
     ibdf_vc=file_import.concatenate_csvs(args['cvc'],contam,'vc')
-
+    ibdf_vf.to_csv('vf.ionbot.csv',index=False)
+    ibdf_vc.to_csv('vc.ionbot.csv',index=False)
     
     #inital QC
     print("plotting initial QC")

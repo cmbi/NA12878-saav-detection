@@ -110,7 +110,7 @@ def main():
     #just to get a count of how many variants were found in variant free set
     # print("variants found in variant-free before FDR correction:"+ )
     # print("variants found in the variant-containing before FDR correction:"+)
-    print(str(detected_variant_combi_vf.drop_duplicates(subset='title').shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.drop_duplicates(subset='title').shape[0])+' variants found in the variant-containing output before FDR correction.')
+    print(str(detected_variant_combi_vf.drop_duplicates(subset='matched_peptide').shape[0])+' variants found in the variant-free output and '+str(observed_variants_vc.drop_duplicates(subset='matched_peptide').shape[0])+' variants found in the variant-containing output before FDR correction.')
 
     ###FDR###
     print('...filtering false positives...')
@@ -127,7 +127,7 @@ def main():
     #for the variant-free set, get true variant peptides from the FDR re-estimation
     final_variantset_vc=calculations.fdr_recalc_variantpep(observed_variants_vc,observed_decoy_vc,'variant_cont_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
     final_counterpartset_vc=calculations.fdr_recalc_variantpep(observed_variant_counterparts_vc,observed_decoy_counterparts_vc,'variant_cont_ctp_ppplot.png').merge(rt_df,how='left',on='matched_peptide')
-    print(str(final_variantset_vf.drop_duplicates(subset='title').shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.drop_duplicates(subset='title').shape[0])+' variants found in the variant-containing output after FDR correction.')
+    print(str(final_variantset_vf.drop_duplicates(subset='matched_peptide').shape[0])+' variants found in the variant-free output and '+str(final_variantset_vc.drop_duplicates(subset='matched_peptide').shape[0])+' variants found in the variant-containing output after FDR correction.')
     final_variantset_vc.to_csv('variants_vc.csv',index=False)
     final_counterpartset_vc.to_csv('variants_vc_ctp.csv',index=False)
     final_variantset_vf.to_csv('variants_vf.csv',index=False)

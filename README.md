@@ -8,7 +8,7 @@ There are 3 components to the project, chronologically:
 - Running of ionbot
 - Analysis of ionbot output
 
-These are reflected in the folder structure.
+At the time of writing this, ionbot is proprietary and not yet freely available. Thus, the information for only the first and last components listed above are available in this repository.
 
 See READMEs in each folder for details.
 

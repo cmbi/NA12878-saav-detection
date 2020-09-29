@@ -1,10 +1,14 @@
-# gm12878 project
-Project relating to detection of variants on the transcript and protein level of NA12878
+# Comparison of SAAV detection methods using NAA12878
+Project relating to detection of variants on the protein level of NA12878
 
-Repository for the creation of customized protein sequences and analysis of ionbot output to understand if:
+Reference: Salz et al (in preparation) ....
 
-- Variants can truly be detected on the peptide level
-- A proteogenomics approach using custom databases is necessary to identify variant peptides
-- Ionbot and other cutting-edge spectral matching tools sensitive enough to distinguish true SNVs
+There are 3 components to the project, chronologically:
+- The creation of the search libraries
+- Running of ionbot
+- Analysis of ionbot output
 
+These are reflected in the folder structure.
+
+See READMEs in each folder for details.
 

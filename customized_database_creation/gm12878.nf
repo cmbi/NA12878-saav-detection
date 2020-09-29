@@ -15,12 +15,11 @@
  * Define the default parameters
  */ 
 
-params.db = "$baseDir/data/uniprot_some_crap.fa"
-params.missed_cleavages = 1
-params.i = "/home/compomics/public3/PJ/proteomics_privacy/OSCC/OSCC-P01/OSCC-P01_raw/*.raw"
-params.mgf_store = '/home/compomics/public3/PJ/MGF'
-params.ionbot_ptm_file = "$baseDir/data/basic_opt_config.file"
-params.ionbot_params = '-e -m'
+params.gff3_file = 'path_to_gff3_gencode'
+params.pc_translations= 'path_to_pc_translations.fa'
+params.psl= 'path_to_psl_ONT'
+params.reference_genome = 'path_to_reference_genome'
+params.true_transcripts=
 
 log.info """\
 variant detection pipeline   v 1.0 
@@ -38,8 +37,8 @@ ionbot:
 ionbot_ptm_file  : $params.ionbot_ptm_file
 ionbot_params    : $params.ionbot_params
 """
-variant_gz=
-variant_gz_tbi=
+variant_gz=file(params.db)
+variant_gz_tbi=file(params.i)
 gff_file_reference=
 psl_file_
 

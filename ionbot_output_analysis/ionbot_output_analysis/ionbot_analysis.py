@@ -13,7 +13,7 @@ from Bio.SubsMat import MatrixInfo
 
 
 '''
-this script will concatenate all the separate spectral match files generated from ionbot and produce figures to answer research questions
+main analysis script.
 '''
 
 def main():
@@ -27,15 +27,10 @@ def main():
     parser.add_argument('--cvf', help='Directory combi variant-free', required=True)
     parser.add_argument('--var', help='csv file of selected SAAV peptides', required=True)
     parser.add_argument('--decoy', help='Decoy peptide candidates for FDR re-estimation for variant-containing search',required=True)
-    # parser.add_argument('--ov', help='overlap file: intersection_ont_gencode.txt', required=True)
-    # parser.add_argument('--vfd', help='csv file of entire combi variant-free', required=True)
     parser.add_argument('--bed', help='Bed file ONT isoforms', required=True)
     parser.add_argument('--gff', help='Gff3 file GENCODE isoforms', required=True)
-    # parser.add_argument('--decoyctp', help='Decoy counterpart peptide candidates for FDR re-estimation for variant-containing search',required=True)
     parser.add_argument('--rt', help='retention time (obs&pred)',required=True)
     parser.add_argument('--crap', help='Contamination file',required=True)
-    # parser.add_argument('--rt_obs', help='retention time observed',required=True)
-    # parser.add_argument('--varpeps' help='Scan IDs of variant peptides that were identified as "true" variant peptides')
     args = vars(parser.parse_args()) 
 
     #import ionbot output data
@@ -46,8 +41,6 @@ def main():
     ibdf_refonly=file_import.concatenate_csvs(args['ref'],contam,'ref')
     ibdf_vf=file_import.concatenate_csvs(args['cvf'],contam,'vf')
     ibdf_vc=file_import.concatenate_csvs(args['cvc'],contam,'vc')
-    ibdf_vf.to_csv('vf.ionbot.csv',index=False)
-    ibdf_vc.to_csv('vc.ionbot.csv',index=False)
     
     #inital QC
     print("plotting initial QC")
@@ -64,9 +57,7 @@ def main():
     #import other data
     print('importing helper data')
     variant_peptides=file_import.il_sensitive_read_csv(args['var']).drop(columns=['id','haplotype']).drop_duplicates()
-    # theoretical_saav=calculations.saav_counts(variant_peptides['substitution'].dropna().to_list())
     decoy_variants=file_import.il_sensitive_read_csv(args['decoy']).drop(columns=['id']).drop_duplicates()
-    # decoy_counterparts=file_import.il_sensitive_read_csv(args['decoyctp'])
     rt_df=pd.read_csv(args['rt']).rename({'seq':'matched_peptide'},axis=1)
     
     #collect results
@@ -136,14 +127,6 @@ def main():
 
     ##find variant peptides in the lower-ranked 
 
-    print('Analyzing variants...')
-    
-    # plots.plot_heatmaps(variant_peptides['substitution'],'heatmap_theoretical_subs.png')
-    # plots.plot_heatmaps(helper_functions.complete_blosum(MatrixInfo.blosum62),'blosum62matrix.png',bl=True)
-    # plots.plot_heatmaps(final_variantset_vc['substitution'],'heatmap_obs_subs_vc.png')
-    # plots.plot_heatmaps(final_variantset_vf['substitution'],'heatmap_obs_subs_vf.png')
-    # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vc,final_counterpartset_vc,variant_peptides),'variant_vs_counterpart_vc.png')
-    # plots.plot_mut_vs_nonmut(helper_functions.match_var_nonvar(final_variantset_vf,final_counterpartset_vf,variant_peptides),'variant_vs_counterpart_vf.png')
     print("Making final plots...")
     main_functions.discrepancy_check(final_variantset_vf, final_variantset_vc,all_matches_nonvar_vf,all_matches_nonvar_vc,variant_peptides)
     # plots.plot_final_venns(final_variantset_vc,final_variantset_vf)

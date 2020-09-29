@@ -20,4 +20,5 @@ Requirements:
 	- arguments: the fasta file created in step 2, gzipped phased vcf file and output file name
 5. Run combine_exons.py to create the final transcripts
 	- arguments: variant-incorporated exon fasta made in step 3, junction file, 0 or 1 based, and output file name
-6. Take the union for combination databases
+6. Run translate_annotated to create a file with specific variant information to be used in the analysis steps
+7. Take the union for combination databases, print all databases to file
